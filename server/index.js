@@ -18,9 +18,9 @@ app.use('/api/ai', require('./routes/ai'));
 app.use(express.static(path.join(__dirname, '..')));
 
 // 所有其他路由返回 index.html（SPA 支持）
-app.get('*', (req, res) => {
-    // 如果请求的是 HTML 页面或根路径，返回 index.html
-    if (!req.path.includes('.') || req.path.endsWith('.html')) {
+app.get('/{*splat}', (req, res) => {
+    const splat = req.params.splat || '';
+    if (!splat.includes('.') || splat.endsWith('.html')) {
         res.sendFile(path.join(__dirname, '..', 'index.html'));
     } else {
         res.status(404).send('Not Found');
