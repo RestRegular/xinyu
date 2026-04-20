@@ -1,0 +1,41 @@
+/* ===== 步骤进度条 ===== */
+.create-progress { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 32px; }
+.create-progress-step { display: flex; align-items: center; gap: 8px; }
+.create-progress-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text-tertiary); transition: all 0.2s; }
+.create-progress-dot.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+.create-progress-dot.done { border-color: var(--accent); background: var(--accent); color: #fff; }
+.create-progress-line { width: 60px; height: 2px; background: var(--border-primary); margin: 0 8px; }
+.create-progress-line.active { background: var(--accent); }
+.create-progress-label { font-size: 12px; color: var(--text-tertiary); }
+.create-progress-label.active { color: var(--accent); font-weight: 500; }
+
+/* ===== 创建页面容器 ===== */
+.create-container { max-width: 720px; margin: 0 auto; padding: 24px 20px 100px; overflow-y: auto; flex: 1; }
+
+/* ===== 步骤区域 ===== */
+.create-step { display: none; }
+.create-step.active { display: block; }
+
+/* ===== 区块卡片 ===== */
+.create-section { margin-bottom: 24px; }
+.create-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.create-section-icon { font-size: 20px; }
+.create-section-title { font-size: 15px; font-weight: 600; }
+.create-section-card { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: 20px; }
+
+/* ===== 表单行 ===== */
+.create-form-row { margin-bottom: 16px; }
+.create-form-row:last-child { margin-bottom: 0; }
+.create-form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+.create-form-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+.create-form-input { width: 100%; }
+.create-form-textarea { width: 100%; min-height: 80px; }
+.create-form-select { width: 100%; padding: 8px 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); font-size: 14px; }
+
+/* ===== 底部操作栏 ===== */
+.create-footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-primary); border-top: 1px solid var(--border-primary); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+
+/* ===== 模板选择步骤增强 ===== */
+.create-template-intro { text-align: center; margin-bottom: 24px; }
+.create-template-intro h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+.create-template-intro p { font-size: 14px; color: var(--text-secondary); }

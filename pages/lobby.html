@@ -49,61 +49,6 @@
     <!-- 动态渲染 -->
 </div>
 
-<!-- ==================== 模态框：创建新游戏 ==================== -->
-<div class="modal-overlay" id="modalNewGame">
-    <div class="modal" style="max-width:600px;">
-        <div class="modal-header">
-            <h3 id="newGameModalTitle">创建新游戏</h3>
-            <button class="btn btn-ghost btn-sm" onclick="closeModal('modalNewGame')">✕</button>
-        </div>
-        <div class="modal-body">
-            <!-- 步骤1：选择模板 -->
-            <div id="newGameStep1">
-                <div class="form-label">选择一个世界模板开始冒险</div>
-                <div class="template-grid" id="templateGrid"></div>
-            </div>
-            <!-- 步骤2：设定角色 -->
-            <div id="newGameStep2" class="hidden">
-                <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;" id="newGameWorldInfo"></div>
-                <div class="form-group">
-                    <label class="form-label">存档名称</label>
-                    <input class="input" id="newGameSaveName" placeholder="给这次冒险起个名字...">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">角色名称</label>
-                    <input class="input" id="newGamePlayerName" placeholder="你的角色叫什么...">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">角色描述</label>
-                    <textarea class="input" id="newGamePlayerDesc" placeholder="描述你的角色背景、外貌、性格..." rows="3"></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">世界描述（可编辑）</label>
-                    <textarea class="input" id="newGameWorldDesc" rows="3"></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">特殊规则（可选）</label>
-                    <textarea class="input" id="newGameWorldRules" placeholder="例如：魔法体系、科技水平、社会制度..." rows="2"></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">叙事基调</label>
-                    <select class="settings-select" id="newGameTone" style="width:100%;">
-                        <option value="史诗">史诗</option>
-                        <option value="严肃">严肃</option>
-                        <option value="轻松">轻松</option>
-                        <option value="黑暗">黑暗</option>
-                        <option value="幽默">幽默</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" id="newGameBackBtn" onclick="newGameStepBack()" style="display:none;">← 返回</button>
-            <button class="btn btn-primary btn-lg" id="newGameNextBtn" onclick="newGameStepNext()">下一步</button>
-        </div>
-    </div>
-</div>
-
 <!-- ==================== 模态框：确认操作 ==================== -->
 <div class="modal-overlay" id="modalConfirm">
     <div class="modal" style="max-width:400px;">

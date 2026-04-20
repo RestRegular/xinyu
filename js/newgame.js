@@ -2,14 +2,7 @@
 // ===== 新游戏创建 =====
 // ===================================================================
 function openNewGameModal() {
-    selectedTemplate = null;
-    document.getElementById('newGameStep1').classList.remove('hidden');
-    document.getElementById('newGameStep2').classList.add('hidden');
-    document.getElementById('newGameBackBtn').style.display = 'none';
-    document.getElementById('newGameNextBtn').textContent = '下一步';
-    document.getElementById('newGameModalTitle').textContent = '创建新游戏';
-    renderTemplateGrid();
-    openModal('modalNewGame');
+    window.location.href = 'create.html';
 }
 
 function renderTemplateGrid() {
@@ -38,63 +31,46 @@ function selectTemplate(id, el) {
     selectedTemplate = id;
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-}
 
-function newGameStepNext() {
-    if (!selectedTemplate) { showToast('请选择一个模板', 'warning'); return; }
-
-    if (selectedTemplate === 'custom') {
-        // 自定义世界，进入步骤2并清空默认值
-        document.getElementById('newGameWorldInfo').textContent = '自定义世界 — 完全自由地创建你的冒险';
-        document.getElementById('newGameSaveName').value = '';
-        document.getElementById('newGamePlayerName').value = '';
-        document.getElementById('newGamePlayerDesc').value = '';
-        document.getElementById('newGameWorldDesc').value = '';
-        document.getElementById('newGameWorldRules').value = '';
-        document.getElementById('newGameTone').value = '史诗';
-    } else {
-        const tpl = BUILTIN_TEMPLATES.find(t => t.id === selectedTemplate);
-        if (!tpl) return;
-        document.getElementById('newGameWorldInfo').textContent = `${tpl.icon} ${tpl.name} — ${tpl.world.name}`;
-        document.getElementById('newGameSaveName').value = tpl.name + '的冒险';
-        document.getElementById('newGamePlayerName').value = '';
-        document.getElementById('newGamePlayerDesc').value = '';
-        document.getElementById('newGameWorldDesc').value = tpl.world.description;
-        document.getElementById('newGameWorldRules').value = tpl.world.rules;
-        document.getElementById('newGameTone').value = tpl.world.tone;
+    // 启用下一步按钮
+    const nextBtn = document.getElementById('nextStepBtn');
+    if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.style.opacity = '1';
     }
-
-    document.getElementById('newGameStep1').classList.add('hidden');
-    document.getElementById('newGameStep2').classList.remove('hidden');
-    document.getElementById('newGameBackBtn').style.display = '';
-    document.getElementById('newGameNextBtn').textContent = '开始冒险';
-}
-
-function newGameStepBack() {
-    document.getElementById('newGameStep1').classList.remove('hidden');
-    document.getElementById('newGameStep2').classList.add('hidden');
-    document.getElementById('newGameBackBtn').style.display = 'none';
-    document.getElementById('newGameNextBtn').textContent = '下一步';
 }
 
 function createNewGame() {
-    const saveName = document.getElementById('newGameSaveName').value.trim() || '未命名的冒险';
-    const playerName = document.getElementById('newGamePlayerName').value.trim() || '旅行者';
-    const playerDesc = document.getElementById('newGamePlayerDesc').value.trim();
-    const worldDesc = document.getElementById('newGameWorldDesc').value.trim() || '一个未知的世界';
-    const worldRules = document.getElementById('newGameWorldRules').value.trim();
-    const tone = document.getElementById('newGameTone').value;
+    const saveName = document.getElementById('createSaveName').value.trim() || '未命名的冒险';
+    const worldName = document.getElementById('createWorldName').value.trim() || '未知世界';
+    const genre = document.getElementById('createWorldGenre').value || '自定义';
+    const worldDesc = document.getElementById('createWorldDesc').value.trim() || '一个未知的世界';
+    const worldRules = document.getElementById('createWorldRules').value.trim();
+    const tone = document.getElementById('createTone').value || '史诗';
+    const startLocation = document.getElementById('createStartLocation').value.trim() || '起始之地';
+    const startLocationDesc = document.getElementById('createStartLocationDesc').value.trim() || '你站在这片陌生土地的起点。';
+    const playerName = document.getElementById('createPlayerName').value.trim() || '旅行者';
+    const playerRace = document.getElementById('createPlayerRace').value.trim();
+    const playerClass = document.getElementById('createPlayerClass').value.trim();
+    const playerAppearance = document.getElementById('createPlayerAppearance').value.trim();
+    const playerPersonality = document.getElementById('createPlayerPersonality').value.trim();
+    const playerBackstory = document.getElementById('createPlayerBackstory').value.trim();
+    const startGold = parseInt(document.getElementById('createStartGold').value) || 0;
 
-    let genre = '自定义', worldName = '自定义世界', starterItems = [], starterLocation = '起始之地', starterLocationDesc = '你站在这片陌生土地的起点，前方是未知的冒险。', starterGold = 0;
+    // 组合角色描述
+    let playerDesc = '';
+    if (playerRace) playerDesc += `种族：${playerRace}。`;
+    if (playerClass) playerDesc += `职业：${playerClass}。`;
+    if (playerAppearance) playerDesc += `外貌：${playerAppearance}。`;
+    if (playerPersonality) playerDesc += `性格：${playerPersonality}。`;
+    if (playerBackstory) playerDesc += `背景：${playerBackstory}`;
 
+    let starterItems = [], starterGold = startGold;
     if (selectedTemplate !== 'custom') {
         const tpl = BUILTIN_TEMPLATES.find(t => t.id === selectedTemplate);
         if (tpl) {
-            genre = tpl.genre; worldName = tpl.world.name;
             starterItems = tpl.starterItems || [];
-            starterLocation = tpl.starterLocation;
-            starterLocationDesc = tpl.starterLocationDesc || '';
-            starterGold = tpl.starterGold || 0;
+            starterGold = tpl.starterGold !== undefined ? tpl.starterGold : startGold;
         }
     }
 
@@ -127,10 +103,10 @@ function createNewGame() {
             gold: starterGold, maxSlots: 20,
         },
         map: {
-            currentLocation: starterLocation,
+            currentLocation: startLocation,
             locations: {
-                [starterLocation]: {
-                    description: starterLocationDesc,
+                [startLocation]: {
+                    description: startLocationDesc,
                     connections: [], npcs: [], discovered: true, dangerLevel: 0,
                 },
             },
@@ -141,25 +117,16 @@ function createNewGame() {
         meta: { createdAt: now, lastSavedAt: now, version: '1.0' },
     };
 
-    // 保存
     saveSaveData(id, saveData);
     savesIndex.saves.push({
         id, name: saveName, worldName, worldGenre: genre,
-        playerName, playerLevel: 1, currentLocation: starterLocation,
+        playerName, playerLevel: 1, currentLocation: startLocation,
         turnCount: 0, playTime: 0,
         createdAt: now, lastSavedAt: now, pinned: false, archived: false,
     });
     saveSavesIndex();
 
-    // 进入游戏
-    currentSaveId = id;
-    currentSave = saveData;
-    appConfig.lastVisitedSaveId = id;
-    saveConfig();
-    closeModal('modalNewGame');
-    enterGameView();
-
-    // 发送开场消息
-    addSystemMessage(`欢迎来到${worldName}，${playerName}。你的冒险即将开始...`);
-    sendGameMessage('[系统] 玩家开始新游戏，请生成开场剧情。');
+    // 存 active save id 并跳转到游戏页面
+    localStorage.setItem('xinyu_active_save_id', id);
+    window.location.href = 'game.html';
 }

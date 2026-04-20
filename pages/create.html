@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心隅 — 创建新游戏</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/create.css">
+</head>
+<body>
+
+<!-- Toast 容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- 顶部导航栏 -->
+<div class="topbar">
+    <div class="topbar-left">
+        <button class="btn btn-ghost btn-sm" onclick="window.location.href='lobby.html'">&larr; 返回大厅</button>
+    </div>
+    <div class="topbar-center">
+        <span style="font-size:15px;font-weight:600;">创建新游戏</span>
+    </div>
+    <div class="topbar-right">
+        <span id="stepIndicator" style="font-size:12px;color:var(--text-tertiary);"></span>
+    </div>
+</div>
+
+<!-- 步骤进度条 -->
+<div class="create-progress" id="createProgress">
+    <div class="create-progress-step">
+        <div class="create-progress-dot active" id="progressDot1">1</div>
+        <span class="create-progress-label active" id="progressLabel1">选择模板</span>
+    </div>
+    <div class="create-progress-line" id="progressLine"></div>
+    <div class="create-progress-step">
+        <div class="create-progress-dot" id="progressDot2">2</div>
+        <span class="create-progress-label" id="progressLabel2">设定世界与角色</span>
+    </div>
+</div>
+
+<!-- 主内容区域 -->
+<div class="create-container">
+
+    <!-- ========== 步骤一：选择世界模板 ========== -->
+    <div class="create-step active" id="createStep1">
+        <div class="create-template-intro">
+            <h2>选择一个世界模板开始冒险</h2>
+            <p>选择一个预设模板快速开始，或创建完全自定义的世界</p>
+        </div>
+        <div class="template-grid" id="templateGrid">
+            <!-- 动态渲染 -->
+        </div>
+        <div style="text-align:center;margin-top:24px;">
+            <button class="btn btn-primary btn-lg" id="nextStepBtn" onclick="onNextStep()" disabled style="opacity:0.5;">下一步</button>
+        </div>
+    </div>
+
+    <!-- ========== 步骤二：设定世界与角色 ========== -->
+    <div class="create-step" id="createStep2">
+
+        <!-- 区块一：世界设定 -->
+        <div class="create-section">
+            <div class="create-section-header">
+                <span class="create-section-icon">&#127757;</span>
+                <span class="create-section-title">世界设定</span>
+            </div>
+            <div class="create-section-card">
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createSaveName">存档名称</label>
+                    <input class="input create-form-input" id="createSaveName" placeholder="给这次冒险起个名字...">
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createWorldName">世界名称</label>
+                    <input class="input create-form-input" id="createWorldName" placeholder="这个世界叫什么...">
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createWorldGenre">世界类型</label>
+                    <select class="create-form-select" id="createWorldGenre">
+                        <option value="奇幻">奇幻</option>
+                        <option value="科幻">科幻</option>
+                        <option value="武侠">武侠</option>
+                        <option value="末日">末日</option>
+                        <option value="现代">现代</option>
+                        <option value="自定义">自定义</option>
+                    </select>
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createWorldDesc">世界描述</label>
+                    <textarea class="input create-form-textarea" id="createWorldDesc" rows="5" placeholder="描述这个世界的基本设定、历史背景、主要势力、地理环境..."></textarea>
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createWorldRules">特殊规则</label>
+                    <textarea class="input create-form-textarea" id="createWorldRules" rows="3" placeholder="例如：魔法体系、科技水平、社会制度、货币系统..."></textarea>
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createTone">叙事基调</label>
+                    <select class="create-form-select" id="createTone">
+                        <option value="史诗">史诗</option>
+                        <option value="严肃">严肃</option>
+                        <option value="轻松">轻松</option>
+                        <option value="黑暗">黑暗</option>
+                        <option value="幽默">幽默</option>
+                    </select>
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createStartLocation">起始地点名称</label>
+                    <input class="input create-form-input" id="createStartLocation" placeholder="玩家最初醒来的地方...">
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createStartLocationDesc">起始地点描述</label>
+                    <textarea class="input create-form-textarea" id="createStartLocationDesc" rows="3" placeholder="描述玩家最初醒来的地方..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 区块二：角色设定 -->
+        <div class="create-section">
+            <div class="create-section-header">
+                <span class="create-section-icon">&#129497;</span>
+                <span class="create-section-title">角色设定</span>
+            </div>
+            <div class="create-section-card">
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createPlayerName">角色名称</label>
+                    <input class="input create-form-input" id="createPlayerName" placeholder="你的角色叫什么...">
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createPlayerRace">种族/物种</label>
+                    <input class="input create-form-input" id="createPlayerRace" placeholder="人类、精灵、机器人、兽人...">
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createPlayerClass">职业/身份</label>
+                    <input class="input create-form-input" id="createPlayerClass" placeholder="战士、法师、探险家、商人...">
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createPlayerAppearance">角色外貌</label>
+                    <textarea class="input create-form-textarea" id="createPlayerAppearance" rows="2" placeholder="描述角色的外貌特征..."></textarea>
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createPlayerPersonality">角色性格</label>
+                    <textarea class="input create-form-textarea" id="createPlayerPersonality" rows="2" placeholder="描述角色的性格特点..."></textarea>
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createPlayerBackstory">角色背景故事</label>
+                    <textarea class="input create-form-textarea" id="createPlayerBackstory" rows="5" placeholder="描述角色的过去、动机、目标...这段内容将帮助AI更好地理解你的角色"></textarea>
+                </div>
+                <div class="create-form-row">
+                    <label class="create-form-label" for="createStartGold">初始金币</label>
+                    <input class="input create-form-input" type="number" id="createStartGold" value="0" min="0">
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- 底部操作栏 -->
+<div class="create-footer" id="createFooter" style="display:none;">
+    <button class="btn btn-secondary" onclick="onBackStep()">&larr; 返回选择模板</button>
+    <button class="btn btn-primary btn-lg" onclick="onStartAdventure()">开始冒险</button>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/storage.js"></script>
+<script src="../js/router.js"></script>
+<script src="../js/newgame.js"></script>
+<script src="../js/app-create.js"></script>
+</body>
+</html>
