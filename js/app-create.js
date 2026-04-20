@@ -103,8 +103,13 @@ function onBackStep() {
 }
 
 // 开始冒险
-function onStartAdventure() {
-    createNewGame();
+async function onStartAdventure() {
+    try {
+        await createNewGame();
+    } catch(err) {
+        showToast('创建失败: ' + err.message, 'error');
+        console.error('createNewGame error:', err);
+    }
 }
 
 init();
