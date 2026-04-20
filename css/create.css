@@ -1,5 +1,5 @@
 /* ===== 步骤进度条 ===== */
-.create-progress { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 32px; }
+.create-progress { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 10px; margin-bottom: 10px; }
 .create-progress-step { display: flex; align-items: center; gap: 8px; }
 .create-progress-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text-tertiary); transition: all 0.2s; }
 .create-progress-dot.active { border-color: var(--accent); background: var(--accent); color: #fff; }
@@ -20,7 +20,7 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .create-step.active { display: flex; }
 
 /* ===== 步骤内布局：固定头/尾 + 滚动中间 ===== */
-.create-step-header { flex-shrink: 0; padding: 20px 20px 0; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.create-step-header { flex-shrink: 0; margin-top: 10px; max-width: 720px; width: 100%; box-sizing: border-box; }
 .create-step-body { flex: 1; overflow-y: auto; padding: 16px 20px; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 .create-step-footer { flex-shrink: 0; padding: 12px 20px; border-top: 1px solid var(--border-primary); background: var(--bg-primary); display: flex; justify-content: center; gap: 12px; }
 
