@@ -101,7 +101,7 @@ async function loadSaveData(id) {
 
 async function saveSaveData(id, data) {
     try {
-        await fetch(`${API_BASE}/saves/${id}`, {
+        let resp = await fetch(`${API_BASE}/saves/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -115,6 +115,26 @@ async function saveSaveData(id, data) {
                 playTime: data.stats?.playTime || 0,
             }),
         });
+        // PUT 返回 404 说明存档不存在，用 POST 创建
+        if (!resp.ok && resp.status === 404) {
+            resp = await fetch(`${API_BASE}/saves`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id,
+                    name: data.name || '未命名',
+                    data,
+                    worldName: data.world?.name || '',
+                    worldGenre: data.world?.genre || '',
+                    playerName: data.player?.name || '',
+                    playerLevel: data.player?.level || 1,
+                    currentLocation: data.map?.currentLocation || '',
+                }),
+            });
+        }
+        if (!resp.ok) {
+            console.warn('保存存档失败:', resp.status);
+        }
     } catch(e) {
         console.warn('保存存档失败:', e);
     }
