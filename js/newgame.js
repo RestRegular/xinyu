@@ -46,6 +46,7 @@ function createNewGame() {
     const genre = document.getElementById('createWorldGenre').value || '自定义';
     const worldDesc = document.getElementById('createWorldDesc').value.trim() || '一个未知的世界';
     const worldRules = document.getElementById('createWorldRules').value.trim();
+    const customPrompt = document.getElementById('createCustomPrompt').value.trim();
     const tone = document.getElementById('createTone').value || '史诗';
     const startLocation = document.getElementById('createStartLocation').value.trim() || '起始之地';
     const startLocationDesc = document.getElementById('createStartLocationDesc').value.trim() || '你站在这片陌生土地的起点。';
@@ -79,7 +80,7 @@ function createNewGame() {
 
     const saveData = {
         id, name: saveName, version: '1.0',
-        world: { name: worldName, genre, description: worldDesc, rules: worldRules, tone, customPrompt: '' },
+        world: { name: worldName, genre, description: worldDesc, rules: worldRules, tone, customPrompt },
         player: {
             name: playerName, description: playerDesc, level: 1, experience: 0, experienceToNext: 100,
             attributes: {

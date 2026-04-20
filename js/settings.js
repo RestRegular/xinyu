@@ -9,6 +9,7 @@ function populateSettings() {
     document.getElementById('tempVal').textContent = appConfig.temperature || 0.9;
     document.getElementById('settingMaxTokens').value = appConfig.maxTokens || 1024;
     document.getElementById('settingNarrative').value = appConfig.ui?.narrativeLength || 'medium';
+    document.getElementById('settingCustomInstructions').value = appConfig.customInstructions || '';
 }
 
 function saveSettingsFromUI() {
@@ -18,6 +19,7 @@ function saveSettingsFromUI() {
     appConfig.temperature = parseFloat(document.getElementById('settingTemp').value) || 0.9;
     appConfig.maxTokens = parseInt(document.getElementById('settingMaxTokens').value) || 1024;
     appConfig.ui.narrativeLength = document.getElementById('settingNarrative').value;
+    appConfig.customInstructions = document.getElementById('settingCustomInstructions').value.trim();
     saveConfig();
 }
 
@@ -48,3 +50,24 @@ async function testApiKey() {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', saveSettingsFromUI);
 });
+
+// 提示词预览
+function previewPrompt() {
+    const el = document.getElementById('promptPreviewContent');
+    if (typeof getPromptPreview === 'function') {
+        el.textContent = getPromptPreview();
+    } else {
+        el.textContent = '提示词预览功能需要加载游戏数据。\n\n请先进入一局游戏，然后返回设置页面查看完整提示词。';
+    }
+    openModal('modalPromptPreview');
+}
+
+function copyPrompt() {
+    const el = document.getElementById('promptPreviewContent');
+    const text = el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('已复制到剪贴板', 'success');
+    }).catch(() => {
+        showToast('复制失败', 'error');
+    });
+}

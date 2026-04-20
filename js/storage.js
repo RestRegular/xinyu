@@ -2,11 +2,7 @@
 // ===== 存储系统 =====
 // ===================================================================
 function loadConfig() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEYS.config);
-        if (raw) { appConfig = JSON.parse(raw); return; }
-    } catch(e) {}
-    appConfig = {
+    const defaults = {
         apiKey: '',
         apiBaseUrl: 'https://api.deepseek.com/v1/chat/completions',
         model: 'deepseek-chat',
@@ -14,7 +10,17 @@ function loadConfig() {
         maxTokens: 1024,
         ui: { fontSize: 'medium', narrativeLength: 'medium' },
         lastVisitedSaveId: null,
+        customInstructions: '',
     };
+    try {
+        const raw = localStorage.getItem(STORAGE_KEYS.config);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            appConfig = { ...defaults, ...parsed, ui: { ...defaults.ui, ...(parsed.ui || {}) } };
+            return;
+        }
+    } catch(e) {}
+    appConfig = defaults;
     saveConfig();
 }
 

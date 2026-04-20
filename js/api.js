@@ -286,14 +286,84 @@ async function processNonStreamResponse(messages) {
 }
 
 // ===================================================================
-// ===== System Prompt 构建（完善版） =====
+// ===== 世界类型预设模板 =====
+// ===================================================================
+const GENRE_PRESETS = {
+    '奇幻': {
+        toneGuide: '使用宏大、庄重的语言，注重命运的厚重感和英雄主义色彩。战斗描写要有力量感，魔法场景要有神秘感。',
+        worldRules: '魔法分为元素系（火、水、风、土）、暗影系和神圣系。战士、法师、游侠、牧师是常见职业。不同种族有不同的文化传统。',
+        narrativeTips: '注重描写魔法效果的光影和声音、古老遗迹的神秘氛围、种族间的文化差异。NPC对话可以加入一些古风或正式的用语。',
+        items: '物品命名可以带有魔法属性描述，如"烈焰之刃"、"精灵之泪"。',
+    },
+    '科幻': {
+        toneGuide: '使用冷静、理性的语言风格，注重科技细节和逻辑推演。可以加入一些科学术语增强沉浸感。',
+        worldRules: '科技水平高度发达，拥有超光速航行、能量护盾、等离子武器。人工智能和机器人在社会中扮演重要角色。',
+        narrativeTips: '注重描写太空的壮阔、科技设备的精密感、外星环境的异域风情。NPC对话可以更加简洁直接。',
+        items: '物品命名可以带有科技感，如"量子脉冲枪"、"纳米修复包"、"反物质电池"。',
+    },
+    '武侠': {
+        toneGuide: '使用半文半白的语言风格，注重江湖义气和侠骨柔情。武功描写要有招式名称和气势。',
+        worldRules: '武功分为内功、外功、轻功三大类。门派有少林、武当、峨眉、丐帮、魔教等。江湖中有正邪之分。',
+        narrativeTips: '注重描写武功招式的精妙、江湖人情世故、山水风景的诗意。NPC对话可以适当使用江湖切口和古语。',
+        items: '物品命名可以带有武侠风格，如"玄铁重剑"、"九转回魂丹"、"轻功靴"。',
+    },
+    '末日': {
+        toneGuide: '使用冷峻、克制的语言风格，注重生存的紧迫感和资源的匮乏感。描写要有废土的荒凉和危险。',
+        worldRules: '核战之后的废土世界，辐射无处不在。物资极度稀缺，以物易物是主要交易方式。变异生物具有不同的弱点。',
+        narrativeTips: '注重描写废墟的荒凉、辐射的危险、生存的艰难抉择。NPC对话通常简短、警惕、充满戒心。',
+        items: '物品命名可以带有废土风格，如"自制水管弩"、"辐射净水片"、"防毒面具滤芯"。',
+    },
+    '现代': {
+        toneGuide: '使用现代日常的语言风格，注重真实感和代入感。可以适当加入一些幽默和轻松的元素。',
+        worldRules: '现代社会背景，科技水平与现实世界相当。可以有一些超自然或悬疑元素。',
+        narrativeTips: '注重描写现代都市的细节、人物的心理活动、社交关系的微妙变化。',
+        items: '物品命名贴近现实，如"智能手机"、"急救包"、"手电筒"。',
+    },
+};
+
+// ===================================================================
+// ===== System Prompt 构建（分层架构版） =====
 // ===================================================================
 function buildSystemPrompt() {
     const s = currentSave;
     const p = s.player;
     const loc = s.map.locations[s.map.currentLocation];
     const inv = s.inventory;
+    const genre = s.world.genre || '自定义';
+    const preset = GENRE_PRESETS[genre] || {};
 
+    // === 第一层：基础角色设定（固定） ===
+    const layerBase = `# 角色设定
+你是一位才华横溢的文字冒险游戏主持人（Game Master），擅长沉浸式叙事。你正在主持"${s.world.name}"的冒险。`;
+
+    // === 第二层：世界设定（来自存档 + 类型预设增强） ===
+    const toneGuide = preset.toneGuide || {
+        '史诗': '使用宏大、庄重的语言，注重命运的厚重感和英雄主义色彩',
+        '严肃': '保持冷静克制的叙事风格，注重逻辑和真实感',
+        '轻松': '使用幽默轻松的语言，可以加入有趣的对话和情节',
+        '黑暗': '使用压抑阴沉的语言，注重氛围渲染和心理恐惧',
+        '幽默': '可以打破第四面墙，加入元幽默和有趣的梗',
+    }[s.world.tone] || '保持一致的叙事风格';
+
+    const worldRules = s.world.rules || preset.worldRules || '无特殊规则';
+    const narrativeTips = preset.narrativeTips || '';
+    const itemNaming = preset.items || '';
+
+    const layerWorld = `## 世界观
+- 类型：${genre}
+- 描述：${s.world.description}
+- 叙事基调：${s.world.tone}（${toneGuide}）
+- 世界规则：${worldRules}
+${narrativeTips ? '- 叙事技巧：' + narrativeTips : ''}
+${itemNaming ? '- 物品命名风格：' + itemNaming : ''}`;
+
+    // === 第三层：角色设定（来自存档） ===
+    const layerCharacter = `## 玩家角色
+- 名称：${p.name}
+- 描述：${p.description || '无详细描述'}
+- 等级：${p.level}（经验 ${p.experience || 0}/${p.experienceToNext || 100}）`;
+
+    // === 第四层：当前情境（动态生成） ===
     const narrativeHint = {
         concise: '每次回复50-150字，简洁有力',
         medium: '每次回复100-300字，详略得当',
@@ -302,46 +372,24 @@ function buildSystemPrompt() {
 
     const inventoryStr = inv.items.length > 0
         ? inv.items.map(i => {
-            let str = `${i.name}`;
-            if (i.quantity > 1) str += `x${i.quantity}`;
-            str += `[${i.type}]`;
+            let str = i.name;
+            if (i.quantity > 1) str += 'x' + i.quantity;
+            str += '[' + i.type + ']';
             if (i.equipped) str += '(已装备)';
             if (i.effects && Object.keys(i.effects).length > 0) {
-                str += `(${Object.entries(i.effects).map(([k,v]) => `${k}${v>0?'+':''}${v}`).join(',')})`;
+                str += '(' + Object.entries(i.effects).map(([k,v]) => k + (v>0?'+':'') + v).join(',') + ')';
             }
             return str;
         }).join('、')
         : '空';
 
     const statusStr = p.statusEffects.length > 0
-        ? p.statusEffects.map(e => `${e.name}[${e.duration > 0 ? e.duration + '回合' : '永久'}]`).join('、')
+        ? p.statusEffects.map(e => e.name + '[' + (e.duration > 0 ? e.duration + '回合' : '永久') + ']').join('、')
         : '无';
 
-    const npcs = loc?.npcs?.length > 0 ? loc.npcs.join('、') : '无';
+    const npcs = loc && loc.npcs && loc.npcs.length > 0 ? loc.npcs.join('、') : '无';
 
-    const toneGuide = {
-        '史诗': '使用宏大、庄重的语言，注重命运的厚重感和英雄主义色彩',
-        '严肃': '保持冷静克制的叙事风格，注重逻辑和真实感',
-        '轻松': '使用幽默轻松的语言，可以加入有趣的对话和情节',
-        '黑暗': '使用压抑阴沉的语言，注重氛围渲染和心理恐惧',
-        '幽默': '可以打破第四面墙，加入元幽默和有趣的梗',
-    }[s.world.tone] || '保持一致的叙事风格';
-
-    return `# 角色设定
-你是一位才华横溢的文字冒险游戏主持人（Game Master），擅长沉浸式叙事。你正在主持"${s.world.name}"的冒险。
-
-## 世界观
-- 类型：${s.world.genre}
-- 描述：${s.world.description}
-- 特殊规则：${s.world.rules || '无'}
-- 叙事基调：${s.world.tone}（${toneGuide}）
-
-## 玩家角色
-- 名称：${p.name}
-- 描述：${p.description || '无详细描述'}
-- 等级：${p.level}（经验 ${p.experience || 0}/${p.experienceToNext || 100}）
-
-## 当前完整状态
+    const layerContext = `## 当前状态
 - 位置：${s.map.currentLocation}
 - 回合：${s.stats.turnCount}
 - HP：${p.attributes.hp.current}/${p.attributes.hp.max}
@@ -350,14 +398,18 @@ function buildSystemPrompt() {
 - 敏捷：${p.attributes.agility.current} | 幸运：${p.attributes.luck.current}
 - 金币：${inv.gold}
 - 背包(${inv.items.length}/${inv.maxSlots})：${inventoryStr}
-- 状态：${statusStr}
+- 状态效果：${statusStr}
 
 ## 当前位置
 ${loc ? loc.description : '未知区域'}
 - 此处NPC：${npcs}
-- 可前往：${loc?.connections?.join('、') || '无已知路径'}
+- 可前往：${loc && loc.connections ? loc.connections.join('、') : '无已知路径'}`;
 
-## 你的职责
+    // === 第五层：行为规则（固定 + 自定义指令） ===
+    const globalInstructions = appConfig.customInstructions || '';
+    const saveInstructions = s.world.customPrompt || '';
+
+    const layerRules = `## 你的职责
 1. **沉浸式叙事**：用第二人称（"你"）叙述，语言生动、有画面感，让玩家身临其境
 2. **合理推进**：根据玩家行动和世界观逻辑推进剧情，不要凭空创造矛盾
 3. **状态管理**：所有涉及数值变化的操作必须通过工具函数执行
@@ -376,6 +428,8 @@ ${loc ? loc.description : '未知区域'}
 - 战斗结束检查 → check_death
 - 遇到新NPC → create_npc
 - NPC离开 → remove_npc
+- 装备/卸下 → equip_item
+- 玩家死亡后复活 → revive_player
 
 ## 叙事规则
 - ${narrativeHint}
@@ -383,7 +437,18 @@ ${loc ? loc.description : '未知区域'}
 - 战斗时交替描述双方行动，不要一次性决定结果
 - 在叙述末尾可以暗示可能的行动方向，但不要替玩家做决定
 - 如果玩家尝试不可能的事，用剧情合理地解释原因
-- 保持与之前剧情的连贯性，记住已发生的事件和NPC`.trim();
+- 保持与之前剧情的连贯性，记住已发生的事件和NPC
+${globalInstructions ? '\n## 玩家自定义指令（全局）\n' + globalInstructions : ''}
+${saveInstructions ? '\n## 玩家自定义指令（本世界）\n' + saveInstructions : ''}`;
+
+    // 组合所有层
+    return [layerBase, layerWorld, layerCharacter, layerContext, layerRules].join('\n\n');
+}
+
+// ----- Prompt 预览 -----
+function getPromptPreview() {
+    if (!currentSave) return '请先加载存档';
+    return buildSystemPrompt();
 }
 
 // ===================================================================

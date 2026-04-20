@@ -114,6 +114,11 @@
                     </select>
                 </div>
                 <div class="create-form-row">
+                    <label class="create-form-label" for="createCustomPrompt">自定义指令 <span style="font-weight:400;color:var(--text-tertiary);">（可选）</span></label>
+                    <textarea class="input create-form-textarea" id="createCustomPrompt" rows="3" placeholder="针对这个世界的额外指令，每行一条。例如：&#10;不要出现血腥内容&#10;多用对话推进剧情&#10;NPC说话要带口音"></textarea>
+                    <div class="create-form-hint">这些指令会追加到系统提示词中，仅对本世界生效</div>
+                </div>
+                <div class="create-form-row">
                     <label class="create-form-label" for="createStartLocation">起始地点名称</label>
                     <input class="input create-form-input" id="createStartLocation" placeholder="玩家最初醒来的地方...">
                 </div>
