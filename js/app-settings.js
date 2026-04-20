@@ -1,0 +1,3 @@
+loadConfig();
+loadSavesIndex();
+populateSettings();

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心隅 — 统计</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<!-- Toast 容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ==================== 统计页面 ==================== -->
+<div class="topbar">
+    <div class="topbar-left">
+        <button class="btn btn-ghost btn-sm" onclick="window.location.href='game.html'">← 返回游戏</button>
+        <span style="font-size:15px;font-weight:600;" id="statsTitle">游戏统计</span>
+    </div>
+    <div class="topbar-right"></div>
+</div>
+<div class="stats-container" id="statsContent">
+    <!-- 动态渲染 -->
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/storage.js"></script>
+<script src="../js/router.js"></script>
+<script src="../js/stats.js"></script>
+<script src="../js/app-stats.js"></script>
+</body>
+</html>
