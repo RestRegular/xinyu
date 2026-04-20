@@ -203,6 +203,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     background: var(--bg-primary); border: 1px solid var(--border-primary);
     border-radius: var(--radius-lg); padding: 16px;
     transition: all 0.15s; cursor: pointer; position: relative;
+    min-height: 160px; display: flex; flex-direction: column;
 }
 .save-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
 .save-card-pinned { border-left: 3px solid var(--accent); }
@@ -217,6 +218,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .save-card-footer {
     display: flex; align-items: center; justify-content: space-between;
     padding-top: 12px; border-top: 1px solid var(--border-secondary);
+    margin-top: auto;
 }
 .save-card-time { font-size: 11px; color: var(--text-tertiary); }
 
