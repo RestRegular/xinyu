@@ -1,6 +1,6 @@
-function init() {
-    loadConfig();
-    loadSavesIndex();
+async function init() {
+    await loadConfig();
+    await loadSavesIndex();
     renderLobby();
 }
 

@@ -26,27 +26,34 @@ function saveSettingsFromUI() {
 async function testApiKey() {
     const key = document.getElementById('settingApiKey').value.trim();
     if (!key) { showToast('请输入 API Key', 'warning'); return; }
+    // 先临时保存
+    appConfig.apiKey = key;
+    await saveConfig();
     try {
-        const resp = await fetch(appConfig.apiBaseUrl, {
+        const resp = await fetch('/api/ai/verify', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-            body: JSON.stringify({ model: appConfig.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: key }),
         });
-        if (resp.ok) {
+        const data = await resp.json();
+        if (data.valid) {
             showToast('API Key 验证成功', 'success');
             appConfig.apiKey = key;
-            saveConfig();
+            await saveConfig();
         } else {
-            const err = await resp.text();
-            showToast(`验证失败: ${resp.status}`, 'error');
+            showToast(`验证失败: ${data.error || '未知错误'}`, 'error');
         }
     } catch(e) {
-        showToast('网络错误: ' + e.message, 'error');
+        showToast('验证失败: ' + e.message, 'error');
     }
 }
 
-// 监听设置变更
-['settingApiKey', 'settingApiUrl', 'settingModel', 'settingTemp', 'settingMaxTokens', 'settingNarrative'].forEach(id => {
+// 监听设置变更（API相关实时保存，其余change时保存）
+['settingApiKey', 'settingApiUrl', 'settingModel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', saveSettingsFromUI);
+});
+['settingTemp', 'settingMaxTokens', 'settingNarrative'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', saveSettingsFromUI);
 });

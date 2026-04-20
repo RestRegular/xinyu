@@ -128,17 +128,17 @@ function continueGame(id) {
     enterGameView();
 }
 
-function renameSave(id) {
+async function renameSave(id) {
     const save = savesIndex.saves.find(s => s.id === id);
     if (!save) return;
     document.getElementById('renameInput').value = save.name || '';
-    document.getElementById('renameAction').onclick = () => {
+    document.getElementById('renameAction').onclick = async () => {
         const newName = document.getElementById('renameInput').value.trim();
         if (!newName) { showToast('名称不能为空', 'error'); return; }
         save.name = newName;
         if (currentSaveId === id && currentSave) currentSave.name = newName;
-        saveSavesIndex();
-        if (currentSaveId === id) saveSaveData(id, currentSave);
+        await saveSavesIndex();
+        if (currentSaveId === id) await saveSaveData(id, currentSave);
         closeModal('modalRename');
         renderLobby();
         showToast('已重命名');
@@ -146,16 +146,16 @@ function renameSave(id) {
     openModal('modalRename');
 }
 
-function duplicateSave(id) {
-    const data = loadSaveData(id);
+async function duplicateSave(id) {
+    const data = await loadSaveData(id);
     if (!data) { showToast('存档数据丢失', 'error'); return; }
     const newId = generateId();
     const meta = savesIndex.saves.find(s => s.id === id);
     const newMeta = { ...(meta || {}), id: newId, name: (meta?.name || '未命名') + ' (副本)', pinned: false, archived: false, createdAt: new Date().toISOString(), lastSavedAt: new Date().toISOString() };
     const newData = { ...JSON.parse(JSON.stringify(data)), id: newId, name: newMeta.name, meta: { ...data.meta, createdAt: new Date().toISOString(), lastSavedAt: new Date().toISOString() } };
     savesIndex.saves.push(newMeta);
-    saveSavesIndex();
-    saveSaveData(newId, newData);
+    await saveSavesIndex();
+    await saveSaveData(newId, newData);
     renderLobby();
     showToast('已创建副本');
 }
@@ -178,20 +178,20 @@ function toggleArchive(id) {
     showToast(save.archived ? '已归档' : '已取消归档');
 }
 
-function deleteSave(id) {
+async function deleteSave(id) {
     const save = savesIndex.saves.find(s => s.id === id);
-    showConfirm('删除存档', `确定要删除"${save?.name || '未命名'}"吗？此操作不可恢复。`, () => {
+    showConfirm('删除存档', `确定要删除"${save?.name || '未命名'}"吗？此操作不可恢复。`, async () => {
         savesIndex.saves = savesIndex.saves.filter(s => s.id !== id);
-        saveSavesIndex();
-        deleteSaveData(id);
+        await saveSavesIndex();
+        await deleteSaveData(id);
         if (currentSaveId === id) { currentSave = null; currentSaveId = null; }
         renderLobby();
         showToast('已删除');
     });
 }
 
-function exportSave(id) {
-    const data = loadSaveData(id);
+async function exportSave(id) {
+    const data = await loadSaveData(id);
     if (!data) { showToast('存档数据丢失', 'error'); return; }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -207,20 +207,21 @@ function exportCurrentSave() {
     if (currentSaveId) exportSave(currentSaveId);
 }
 
-function exportAllSaves() {
-    const allData = { config: { ...appConfig, apiKey: '' }, saves: savesIndex, saveData: {} };
-    savesIndex.saves.forEach(s => {
-        const data = loadSaveData(s.id);
-        if (data) allData.saveData[s.id] = data;
-    });
-    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `心隅_全部存档_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('全部存档已导出');
+async function exportAllSaves() {
+    try {
+        const resp = await fetch('/api/saves/export/all');
+        const allData = await resp.json();
+        const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `心隅_全部存档_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('全部存档已导出');
+    } catch(e) {
+        showToast('导出失败', 'error');
+    }
 }
 
 function importSave() {
@@ -231,40 +232,22 @@ function handleImportFile(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const data = JSON.parse(e.target.result);
-            if (data.saveData) {
-                // 批量导入
-                Object.entries(data.saveData).forEach(([id, saveData]) => {
-                    const newId = generateId();
-                    saveSaveData(newId, saveData);
-                    const meta = data.saves?.saves?.find(s => s.id === id) || {};
-                    savesIndex.saves.push({ ...meta, id: newId, pinned: false, archived: false });
-                });
-                saveSavesIndex();
-                showToast(`已导入 ${Object.keys(data.saveData).length} 个存档`);
-            } else if (data.id && data.world && data.player) {
-                // 单个存档
-                const newId = generateId();
-                saveSaveData(newId, data);
-                savesIndex.saves.push({
-                    id: newId, name: data.name || '导入的存档',
-                    worldName: data.world?.name || '', worldGenre: data.world?.genre || '自定义',
-                    playerName: data.player?.name || '', playerLevel: data.player?.level || 1,
-                    currentLocation: data.map?.currentLocation || '',
-                    turnCount: data.meta?.turnCount || data.stats?.turnCount || 0,
-                    playTime: data.stats?.playTime || 0,
-                    createdAt: data.meta?.createdAt || new Date().toISOString(),
-                    lastSavedAt: data.meta?.lastSavedAt || new Date().toISOString(),
-                    pinned: false, archived: false,
-                });
-                saveSavesIndex();
-                showToast('存档已导入');
+            const resp = await fetch('/api/saves/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            const result = await resp.json();
+            if (result.success) {
+                await loadSavesIndex();
+                renderLobby();
+                showToast(`已导入 ${result.count} 个存档`);
             } else {
-                showToast('无法识别的存档格式', 'error');
+                showToast('导入失败', 'error');
             }
-            renderLobby();
         } catch(err) {
             showToast('文件解析失败: ' + err.message, 'error');
         }
@@ -273,16 +256,25 @@ function handleImportFile(event) {
     event.target.value = '';
 }
 
-function clearAllData() {
-    showConfirm('清除全部数据', '确定要删除所有存档和设置吗？此操作不可恢复！', () => {
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('xinyu_')) localStorage.removeItem(key);
-        });
-        loadConfig();
-        loadSavesIndex();
-        currentSave = null;
-        currentSaveId = null;
-        renderLobby();
-        showToast('已清除全部数据');
+async function clearAllData() {
+    showConfirm('清除全部数据', '确定要删除所有存档和设置吗？此操作不可恢复！', async () => {
+        try {
+            // 删除所有存档
+            const saves = savesIndex.saves || [];
+            for (const s of saves) {
+                await deleteSaveData(s.id);
+            }
+            // 重置配置
+            appConfig.apiKey = '';
+            appConfig.customInstructions = '';
+            await saveConfig();
+            await loadSavesIndex();
+            currentSave = null;
+            currentSaveId = null;
+            renderLobby();
+            showToast('已清除全部数据');
+        } catch(e) {
+            showToast('清除失败', 'error');
+        }
     });
 }

@@ -40,7 +40,7 @@ function selectTemplate(id, el) {
     }
 }
 
-function createNewGame() {
+async function createNewGame() {
     const saveName = document.getElementById('createSaveName').value.trim() || '未命名的冒险';
     const worldName = document.getElementById('createWorldName').value.trim() || '未知世界';
     const genre = document.getElementById('createWorldGenre').value || '自定义';
@@ -118,14 +118,14 @@ function createNewGame() {
         meta: { createdAt: now, lastSavedAt: now, version: '1.0' },
     };
 
-    saveSaveData(id, saveData);
+    await saveSaveData(id, saveData);
     savesIndex.saves.push({
         id, name: saveName, worldName, worldGenre: genre,
         playerName, playerLevel: 1, currentLocation: startLocation,
         turnCount: 0, playTime: 0,
         createdAt: now, lastSavedAt: now, pinned: false, archived: false,
     });
-    saveSavesIndex();
+    await saveSavesIndex();
 
     // 存 active save id 并跳转到游戏页面
     localStorage.setItem('xinyu_active_save_id', id);

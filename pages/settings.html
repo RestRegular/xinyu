@@ -18,9 +18,13 @@
         <button class="btn btn-ghost btn-sm" onclick="window.location.href='lobby.html'">← 返回</button>
         <span style="font-size:15px;font-weight:600;">系统设置</span>
     </div>
-    <div class="topbar-right"></div>
+    <div class="topbar-right">
+        <button class="btn btn-primary btn-sm" onclick="saveSettingsFromUI();showToast('设置已保存','success')">保存设置</button>
+    </div>
 </div>
 <div class="settings-container">
+    <div class="settings-grid">
+
     <div class="settings-section">
         <div class="settings-section-title">API 配置</div>
         <div class="settings-card">
@@ -91,29 +95,6 @@
         </div>
     </div>
     <div class="settings-section">
-        <div class="settings-section-title">自定义指令</div>
-        <div class="settings-card">
-            <div class="settings-row" style="flex-direction:column;align-items:stretch;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                    <div>
-                        <div class="settings-row-label">全局自定义指令</div>
-                        <div class="settings-row-desc">对所有游戏生效的额外规则，每行一条</div>
-                    </div>
-                </div>
-                <textarea class="input" id="settingCustomInstructions" rows="5" placeholder="例如：&#10;不要出现血腥暴力内容&#10;多用NPC对话推进剧情&#10;战斗描写要简短有力&#10;每回合至少给玩家一个选择机会" oninput="saveSettingsFromUI()"></textarea>
-            </div>
-            <div class="settings-row">
-                <div>
-                    <div class="settings-row-label">预览当前提示词</div>
-                    <div class="settings-row-desc">查看完整的系统提示词（需要在游戏中才能预览完整版）</div>
-                </div>
-                <div class="settings-row-control">
-                    <button class="btn btn-secondary btn-sm" onclick="previewPrompt()">预览</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="settings-section">
         <div class="settings-section-title">数据管理</div>
         <div class="settings-card">
             <div class="settings-row">
@@ -146,13 +127,37 @@
             </div>
         </div>
     </div>
-    <div class="settings-section">
+    <div class="settings-section full-width">
+        <div class="settings-section-title">自定义指令</div>
+        <div class="settings-card">
+            <div class="settings-row" style="flex-direction:column;align-items:stretch;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div>
+                        <div class="settings-row-label">全局自定义指令</div>
+                        <div class="settings-row-desc">对所有游戏生效的额外规则，每行一条</div>
+                    </div>
+                </div>
+                <textarea class="input" id="settingCustomInstructions" rows="5" placeholder="例如：&#10;不要出现血腥暴力内容&#10;多用NPC对话推进剧情&#10;战斗描写要简短有力&#10;每回合至少给玩家一个选择机会" oninput="saveSettingsFromUI()"></textarea>
+            </div>
+            <div class="settings-row">
+                <div>
+                    <div class="settings-row-label">预览当前提示词</div>
+                    <div class="settings-row-desc">查看完整的系统提示词（需要在游戏中才能预览完整版）</div>
+                </div>
+                <div class="settings-row-control">
+                    <button class="btn btn-secondary btn-sm" onclick="previewPrompt()">预览</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="settings-section full-width">
         <div class="settings-section-title">关于</div>
         <div class="settings-card" style="text-align:center;padding:24px;">
             <div style="font-size:18px;font-weight:700;margin-bottom:4px;">心隅</div>
             <div style="font-size:12px;color:var(--text-tertiary);">v1.0 — 一个AI驱动的文字角色扮演游戏平台</div>
         </div>
     </div>
+    </div><!-- end settings-grid -->
 </div>
 
 <!-- ==================== 模态框：提示词预览 ==================== -->
@@ -193,6 +198,9 @@
 <script src="../js/storage.js"></script>
 <script src="../js/router.js"></script>
 <script src="../js/lobby.js"></script>
+<script src="../js/game.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/tools.js"></script>
 <script src="../js/settings.js"></script>
 <script src="../js/app-settings.js"></script>
 </body>

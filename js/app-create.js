@@ -6,9 +6,9 @@
 const urlParams = new URLSearchParams(window.location.search);
 const preselectedTemplate = urlParams.get('template');
 
-function init() {
-    loadConfig();
-    loadSavesIndex();
+async function init() {
+    await loadConfig();
+    await loadSavesIndex();
 
     if (preselectedTemplate) {
         // 直接进入步骤2

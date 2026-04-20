@@ -8,6 +8,10 @@ const RETRY_DELAY = 1000;        // 重试延迟 1秒
 
 // ----- 错误分类 -----
 function classifyError(status, body) {
+    // 后端代理错误格式
+    if (body && body.error && typeof body.error === 'string') {
+        return { type: 'proxy', message: body.error };
+    }
     if (status === 401) return { type: 'auth', message: 'API Key 无效或已过期，请在设置中检查' };
     if (status === 402 || status === 403) return { type: 'quota', message: 'API 余额不足，请充值后重试' };
     if (status === 429) return { type: 'rate_limit', message: '请求过于频繁，请稍后再试' };
@@ -64,19 +68,16 @@ async function callAI(userText) {
         let retries = 0;
         while (true) {
             try {
-                response = await fetchWithTimeout(appConfig.apiBaseUrl, {
+                response = await fetchWithTimeout('/api/ai/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${appConfig.apiKey}`,
                     },
                     body: JSON.stringify({
-                        model: appConfig.model,
                         messages,
                         tools: gameTools,
                         temperature: appConfig.temperature,
                         max_tokens: appConfig.maxTokens,
-                        stream: true,
                     }),
                 });
                 break; // 请求成功
@@ -241,19 +242,16 @@ async function processStreamResponse(response) {
 
 // ----- 非流式降级 -----
 async function processNonStreamResponse(messages) {
-    const response = await fetchWithTimeout(appConfig.apiBaseUrl, {
+    const response = await fetchWithTimeout('/api/ai/chat/sync', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${appConfig.apiKey}`,
         },
         body: JSON.stringify({
-            model: appConfig.model,
             messages,
             tools: gameTools,
             temperature: appConfig.temperature,
             max_tokens: appConfig.maxTokens,
-            stream: false,
         }),
     });
 
