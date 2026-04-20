@@ -1,5 +1,5 @@
 // ===================================================================
-// ===== 游戏界面 =====
+// ===== 游戏界面（重构版 - 纯 UI 展示层） =====
 // ===================================================================
 function enterGameView() {
     showView('game');
@@ -119,11 +119,9 @@ function updateMapPanel() {
 function showItemDetail(itemId) {
     const item = currentSave.inventory.items.find(i => i.id === itemId);
     if (!item) return;
-    // 简单提示：使用或丢弃
     const actions = [];
     if (item.usable) actions.push(`<button class="btn btn-primary btn-sm" onclick="useItem('${itemId}');closeDropdowns()">使用</button>`);
     actions.push(`<button class="btn btn-secondary btn-sm" onclick="dropItem('${itemId}');closeDropdowns()">丢弃</button>`);
-    // 使用 toast 显示简要信息
     let msg = `${item.name} — ${item.description}`;
     if (item.effects) {
         const effs = Object.entries(item.effects).map(([k,v]) => `${k.toUpperCase()} ${v>0?'+':''}${v}`).join(', ');
@@ -135,17 +133,33 @@ function showItemDetail(itemId) {
 function useItem(itemId) {
     const item = currentSave.inventory.items.find(i => i.id === itemId);
     if (!item) return;
+    // 使用物品 = 发送消息给 AI，由后端处理
     sendGameMessage(`[使用物品] ${item.name}`);
 }
 
-function dropItem(itemId) {
+async function dropItem(itemId) {
     const item = currentSave.inventory.items.find(i => i.id === itemId);
     if (!item) return;
-    currentSave.inventory.items = currentSave.inventory.items.filter(i => i.id !== itemId);
-    updateInventoryPanel();
-    autoSave();
-    addNotification(`丢弃了 ${item.name}`, 'info');
-    showToast(`已丢弃 ${item.name}`);
+
+    // 调用后端 API 丢弃物品
+    try {
+        const resp = await fetch('/api/game/drop-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ saveId: currentSaveId, itemId }),
+        });
+        if (resp.ok) {
+            const result = await resp.json();
+            if (result.saveData) {
+                currentSave = result.saveData;
+            }
+            updateInventoryPanel();
+            addNotification(`丢弃了 ${item.name}`, 'info');
+            showToast(`已丢弃 ${item.name}`);
+        }
+    } catch(e) {
+        showToast('丢弃失败', 'error');
+    }
 }
 
 function moveToLocation(name) {
@@ -153,43 +167,24 @@ function moveToLocation(name) {
 }
 
 function toggleRightPanel(section) {
-    // 移动端切换面板显示
     const panel = document.getElementById('gameRightpanel');
     panel.classList.toggle('mobile-show');
 }
 
 function backToLobby() {
     if (isGenerating) { showToast('请等待AI回复完成', 'warning'); return; }
-    autoSave();
     currentSave = null;
-    showView('lobby');
+    window.location.href = 'lobby.html';
 }
 
 function manualSave() {
     if (!currentSave) return;
-    autoSave();
-    showToast('游戏已保存', 'success');
-}
-
-function autoSave() {
-    if (!currentSave || !currentSaveId) return;
-    const now = new Date().toISOString();
-    currentSave.meta.lastSavedAt = now;
-    saveSaveData(currentSaveId, currentSave);
-
-    // 更新索引
-    const idx = savesIndex.saves.find(s => s.id === currentSaveId);
-    if (idx) {
-        idx.lastSavedAt = now;
-        idx.playerLevel = currentSave.player.level;
-        idx.currentLocation = currentSave.map.currentLocation;
-        idx.turnCount = currentSave.stats.turnCount;
-        saveSavesIndex();
-    }
+    // 后端在每次 action 后自动保存，这里仅提示
+    showToast('游戏已自动保存', 'success');
 }
 
 // ===================================================================
-// ===== 消息渲染 =====
+// ===== 消息渲染（纯 UI） =====
 // ===================================================================
 function renderGameMessages() {
     const container = document.getElementById('gameMessages');
@@ -218,7 +213,6 @@ function formatNarratorText(text) {
 }
 
 function addSystemMessage(text) {
-    currentSave.chatHistory.push({ role: 'system', content: text });
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
     div.className = 'msg msg-system';
@@ -228,7 +222,6 @@ function addSystemMessage(text) {
 }
 
 function addUserMessage(text) {
-    currentSave.chatHistory.push({ role: 'user', content: text });
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
     div.className = 'msg msg-user';
@@ -238,7 +231,6 @@ function addUserMessage(text) {
 }
 
 function addAssistantMessage(text) {
-    currentSave.chatHistory.push({ role: 'assistant', content: text });
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
     div.className = 'msg msg-narrator';
@@ -248,7 +240,6 @@ function addAssistantMessage(text) {
 }
 
 function addNotification(text, type = 'info') {
-    currentSave.chatHistory.push({ role: 'notification', content: text, type });
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
     div.className = 'msg';
@@ -317,7 +308,7 @@ function sendMessage() {
 
     if (!appConfig.apiKey) {
         showToast('请先在设置中配置 API Key', 'warning');
-        showView('settings');
+        window.location.href = 'settings.html';
         return;
     }
 
@@ -331,21 +322,16 @@ async function sendGameMessage(text) {
     isGenerating = true;
     document.getElementById('gameSendBtn').disabled = true;
 
+    // 添加用户消息到 UI（后端也会添加到 chatHistory，但前端先显示）
     addUserMessage(text);
-    currentSave.stats.turnCount++;
-    updateGameTopbar();
-
-    addTypingIndicator();
 
     try {
         await callAI(text);
     } catch(err) {
-        removeTypingIndicator();
         addNotification('发生错误: ' + err.message, 'negative');
         showToast('请求失败: ' + err.message, 'error');
     }
 
     isGenerating = false;
     document.getElementById('gameSendBtn').disabled = false;
-    autoSave();
 }

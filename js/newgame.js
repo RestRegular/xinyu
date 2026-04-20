@@ -1,14 +1,25 @@
 // ===================================================================
-// ===== 新游戏创建 =====
+// ===== 新游戏创建（重构版 - 调用后端 API） =====
 // ===================================================================
+
 function openNewGameModal() {
     window.location.href = 'create.html';
 }
 
-function renderTemplateGrid() {
+// 从后端加载模板列表
+async function loadTemplates() {
+    try {
+        const resp = await fetch('/api/game/templates');
+        if (resp.ok) return await resp.json();
+    } catch(e) {}
+    return [];
+}
+
+async function renderTemplateGrid() {
     const grid = document.getElementById('templateGrid');
+    const templates = await loadTemplates();
     let html = '';
-    BUILTIN_TEMPLATES.forEach(tpl => {
+    templates.forEach(tpl => {
         html += `
             <div class="template-card" onclick="selectTemplate('${tpl.id}', this)">
                 <div class="template-card-icon">${tpl.icon}</div>
@@ -58,76 +69,31 @@ async function createNewGame() {
     const playerBackstory = document.getElementById('createPlayerBackstory').value.trim();
     const startGold = parseInt(document.getElementById('createStartGold').value) || 0;
 
-    // 组合角色描述
-    let playerDesc = '';
-    if (playerRace) playerDesc += `种族：${playerRace}。`;
-    if (playerClass) playerDesc += `职业：${playerClass}。`;
-    if (playerAppearance) playerDesc += `外貌：${playerAppearance}。`;
-    if (playerPersonality) playerDesc += `性格：${playerPersonality}。`;
-    if (playerBackstory) playerDesc += `背景：${playerBackstory}`;
+    try {
+        const resp = await fetch('/api/game/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone,
+                startLocation, startLocationDesc,
+                playerName, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory,
+                startGold, templateId: selectedTemplate,
+            }),
+        });
 
-    let starterItems = [], starterGold = startGold;
-    if (selectedTemplate !== 'custom') {
-        const tpl = BUILTIN_TEMPLATES.find(t => t.id === selectedTemplate);
-        if (tpl) {
-            starterItems = tpl.starterItems || [];
-            starterGold = tpl.starterGold !== undefined ? tpl.starterGold : startGold;
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            showToast('创建失败: ' + (err.error || '未知错误'), 'error');
+            return;
         }
+
+        const result = await resp.json();
+        if (result.success) {
+            // 存 active save id 并跳转到游戏页面
+            localStorage.setItem('xinyu_active_save_id', result.id);
+            window.location.href = 'game.html';
+        }
+    } catch(e) {
+        showToast('创建失败: ' + e.message, 'error');
     }
-
-    const id = generateId();
-    const now = new Date().toISOString();
-
-    const saveData = {
-        id, name: saveName, version: '1.0',
-        world: { name: worldName, genre, description: worldDesc, rules: worldRules, tone, customPrompt },
-        player: {
-            name: playerName, description: playerDesc, level: 1, experience: 0, experienceToNext: 100,
-            attributes: {
-                hp: { current: 100, max: 100, label: '生命值' },
-                mp: { current: 50, max: 50, label: '魔力值' },
-                attack: { current: 10, max: 10, label: '攻击力' },
-                defense: { current: 5, max: 5, label: '防御力' },
-                agility: { current: 7, max: 7, label: '敏捷' },
-                luck: { current: 3, max: 3, label: '幸运' },
-            },
-            statusEffects: [],
-        },
-        inventory: {
-            items: starterItems.map((item, i) => ({
-                id: 'item_' + Date.now() + '_' + i,
-                name: item.name, type: item.type, description: item.description || '',
-                quantity: item.quantity || 1, effects: item.effects || {},
-                rarity: item.rarity || 'common', usable: item.usable || false,
-                equippable: item.equippable || false, equipped: false,
-            })),
-            gold: starterGold, maxSlots: 20,
-        },
-        map: {
-            currentLocation: startLocation,
-            locations: {
-                [startLocation]: {
-                    description: startLocationDesc,
-                    connections: [], npcs: [], discovered: true, dangerLevel: 0,
-                },
-            },
-        },
-        chatHistory: [],
-        stats: { turnCount: 0, playTime: 0, monstersDefeated: 0, itemsCollected: 0, locationsDiscovered: 1, deaths: 0 },
-        eventLog: [{ turn: 1, type: 'system', text: '冒险开始' }],
-        meta: { createdAt: now, lastSavedAt: now, version: '1.0' },
-    };
-
-    await saveSaveData(id, saveData);
-    savesIndex.saves.push({
-        id, name: saveName, worldName, worldGenre: genre,
-        playerName, playerLevel: 1, currentLocation: startLocation,
-        turnCount: 0, playTime: 0,
-        createdAt: now, lastSavedAt: now, pinned: false, archived: false,
-    });
-    await saveSavesIndex();
-
-    // 存 active save id 并跳转到游戏页面
-    localStorage.setItem('xinyu_active_save_id', id);
-    window.location.href = 'game.html';
 }

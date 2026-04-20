@@ -1,5 +1,5 @@
 // ===================================================================
-// ===== 管理大厅 =====
+// ===== 管理大厅（重构版 - 存档操作调用后端 API） =====
 // ===================================================================
 function setFilter(filter, el) {
     currentFilter = filter;
@@ -28,21 +28,20 @@ function renderLobby() {
     if (search) {
         saves = saves.filter(s =>
             (s.name || '').toLowerCase().includes(search) ||
-            (s.worldName || '').toLowerCase().includes(search) ||
-            (s.playerName || '').toLowerCase().includes(search)
+            (s.world_name || s.worldName || '').toLowerCase().includes(search) ||
+            (s.player_name || s.playerName || '').toLowerCase().includes(search)
         );
     }
 
     // 排序
     saves.sort((a, b) => {
-        // 置顶优先
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
         switch (sort) {
-            case 'lastSaved': return new Date(b.lastSavedAt || 0) - new Date(a.lastSavedAt || 0);
-            case 'created': return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+            case 'lastSaved': return new Date(b.last_saved_at || b.lastSavedAt || 0) - new Date(a.last_saved_at || a.lastSavedAt || 0);
+            case 'created': return new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0);
             case 'name': return (a.name || '').localeCompare(b.name || '');
-            case 'level': return (b.playerLevel || 0) - (a.playerLevel || 0);
+            case 'level': return (b.player_level || b.playerLevel || 0) - (a.player_level || a.playerLevel || 0);
             default: return 0;
         }
     });
@@ -63,11 +62,19 @@ function renderLobby() {
 
     let html = '<div class="saves-grid">';
     saves.forEach(save => {
+        const name = save.name || '未命名';
+        const worldGenre = save.world_genre || save.worldGenre || '自定义';
+        const playerName = save.player_name || save.playerName || '?';
+        const playerLevel = save.player_level || save.playerLevel || 1;
+        const currentLocation = save.current_location || save.currentLocation || '未知';
+        const turnCount = save.turn_count || save.turnCount || 0;
+        const lastSavedAt = save.last_saved_at || save.lastSavedAt;
         const pinnedClass = save.pinned ? 'save-card-pinned' : '';
+
         html += `
             <div class="save-card ${pinnedClass}" ondblclick="continueGame('${save.id}')">
                 <div class="save-card-header">
-                    <div class="save-card-title">${escapeHtml(save.name || '未命名')}</div>
+                    <div class="save-card-title">${escapeHtml(name)}</div>
                     <div class="save-card-actions">
                         ${save.pinned ? '<span style="font-size:11px;">📌</span>' : ''}
                         <div class="dropdown">
@@ -89,18 +96,18 @@ function renderLobby() {
                 </div>
                 <div class="save-card-meta">
                     <div class="save-card-meta-row">
-                        <span class="badge ${genreBadgeClass(save.worldGenre)}">${genreIcon(save.worldGenre)} ${escapeHtml(save.worldGenre || '自定义')}</span>
+                        <span class="badge ${genreBadgeClass(worldGenre)}">${genreIcon(worldGenre)} ${escapeHtml(worldGenre)}</span>
                     </div>
                     <div class="save-card-meta-row">
-                        <span>${escapeHtml(save.playerName || '?')} · Lv.${save.playerLevel || 1}</span>
+                        <span>${escapeHtml(playerName)} · Lv.${playerLevel}</span>
                     </div>
                     <div class="save-card-meta-row">
-                        <span>📍 ${escapeHtml(save.currentLocation || '未知')}</span>
+                        <span>📍 ${escapeHtml(currentLocation)}</span>
                     </div>
                 </div>
                 <div class="save-card-footer">
-                    <span style="font-size:12px;color:var(--text-tertiary);">回合 ${save.turnCount || 0}</span>
-                    <span class="save-card-time">${relativeTime(save.lastSavedAt)}</span>
+                    <span style="font-size:12px;color:var(--text-tertiary);">回合 ${turnCount}</span>
+                    <span class="save-card-time">${relativeTime(lastSavedAt)}</span>
                 </div>
             </div>
         `;
@@ -116,10 +123,10 @@ function renderLobby() {
 }
 
 // ===================================================================
-// ===== 存档操作 =====
+// ===== 存档操作（重构版 - 调用后端 API） =====
 // ===================================================================
-function continueGame(id) {
-    const data = loadSaveData(id);
+async function continueGame(id) {
+    const data = await loadSaveData(id);
     if (!data) { showToast('存档数据丢失', 'error'); return; }
     currentSaveId = id;
     currentSave = data;
@@ -135,56 +142,76 @@ async function renameSave(id) {
     document.getElementById('renameAction').onclick = async () => {
         const newName = document.getElementById('renameInput').value.trim();
         if (!newName) { showToast('名称不能为空', 'error'); return; }
-        save.name = newName;
-        if (currentSaveId === id && currentSave) currentSave.name = newName;
-        await saveSavesIndex();
-        if (currentSaveId === id) await saveSaveData(id, currentSave);
-        closeModal('modalRename');
-        renderLobby();
-        showToast('已重命名');
+
+        try {
+            const resp = await fetch(`/api/game/${id}/rename`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName }),
+            });
+            if (resp.ok) {
+                save.name = newName;
+                if (currentSaveId === id && currentSave) currentSave.name = newName;
+                closeModal('modalRename');
+                await loadSavesIndex();
+                renderLobby();
+                showToast('已重命名');
+            }
+        } catch(e) {
+            showToast('重命名失败', 'error');
+        }
     };
     openModal('modalRename');
 }
 
 async function duplicateSave(id) {
-    const data = await loadSaveData(id);
-    if (!data) { showToast('存档数据丢失', 'error'); return; }
-    const newId = generateId();
-    const meta = savesIndex.saves.find(s => s.id === id);
-    const newMeta = { ...(meta || {}), id: newId, name: (meta?.name || '未命名') + ' (副本)', pinned: false, archived: false, createdAt: new Date().toISOString(), lastSavedAt: new Date().toISOString() };
-    const newData = { ...JSON.parse(JSON.stringify(data)), id: newId, name: newMeta.name, meta: { ...data.meta, createdAt: new Date().toISOString(), lastSavedAt: new Date().toISOString() } };
-    savesIndex.saves.push(newMeta);
-    await saveSavesIndex();
-    await saveSaveData(newId, newData);
-    renderLobby();
-    showToast('已创建副本');
+    try {
+        const resp = await fetch(`/api/game/${id}/duplicate`, { method: 'POST' });
+        if (resp.ok) {
+            const result = await resp.json();
+            await loadSavesIndex();
+            renderLobby();
+            showToast('已创建副本');
+        }
+    } catch(e) {
+        showToast('创建副本失败', 'error');
+    }
 }
 
-function togglePin(id) {
-    const save = savesIndex.saves.find(s => s.id === id);
-    if (!save) return;
-    save.pinned = !save.pinned;
-    saveSavesIndex();
-    renderLobby();
-    showToast(save.pinned ? '已置顶' : '已取消置顶');
+async function togglePin(id) {
+    try {
+        const resp = await fetch(`/api/game/${id}/pin`, { method: 'PATCH' });
+        if (resp.ok) {
+            const result = await resp.json();
+            await loadSavesIndex();
+            renderLobby();
+            showToast(result.pinned ? '已置顶' : '已取消置顶');
+        }
+    } catch(e) {
+        showToast('操作失败', 'error');
+    }
 }
 
-function toggleArchive(id) {
-    const save = savesIndex.saves.find(s => s.id === id);
-    if (!save) return;
-    save.archived = !save.archived;
-    saveSavesIndex();
-    renderLobby();
-    showToast(save.archived ? '已归档' : '已取消归档');
+async function toggleArchive(id) {
+    try {
+        const resp = await fetch(`/api/game/${id}/archive`, { method: 'PATCH' });
+        if (resp.ok) {
+            const result = await resp.json();
+            await loadSavesIndex();
+            renderLobby();
+            showToast(result.archived ? '已归档' : '已取消归档');
+        }
+    } catch(e) {
+        showToast('操作失败', 'error');
+    }
 }
 
 async function deleteSave(id) {
     const save = savesIndex.saves.find(s => s.id === id);
     showConfirm('删除存档', `确定要删除"${save?.name || '未命名'}"吗？此操作不可恢复。`, async () => {
-        savesIndex.saves = savesIndex.saves.filter(s => s.id !== id);
-        await saveSavesIndex();
         await deleteSaveData(id);
         if (currentSaveId === id) { currentSave = null; currentSaveId = null; }
+        await loadSavesIndex();
         renderLobby();
         showToast('已删除');
     });
@@ -259,12 +286,10 @@ function handleImportFile(event) {
 async function clearAllData() {
     showConfirm('清除全部数据', '确定要删除所有存档和设置吗？此操作不可恢复！', async () => {
         try {
-            // 删除所有存档
             const saves = savesIndex.saves || [];
             for (const s of saves) {
                 await deleteSaveData(s.id);
             }
-            // 重置配置
             appConfig.apiKey = '';
             appConfig.customInstructions = '';
             await saveConfig();
