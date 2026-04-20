@@ -31,8 +31,9 @@
 
 /* ===== 基础重置 ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; }
+html { height: 100%; }
 body {
+    display: flex; flex-direction: column; height: 100%; overflow: hidden;
     font-family: var(--font-stack);
     font-size: 14px;
     line-height: 1.5;
@@ -344,7 +345,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 
 /* ===== 游戏界面 ===== */
 #view-game { background: var(--bg-primary); }
-.game-container { display: flex; height: calc(100vh - var(--topbar-h)); overflow: hidden; }
+.game-container { display: flex; flex: 1; overflow: hidden; }
 
 /* 左侧栏 */
 .game-sidebar {
