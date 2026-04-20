@@ -9,12 +9,20 @@
 .create-progress-label { font-size: 12px; color: var(--text-tertiary); }
 .create-progress-label.active { color: var(--accent); font-weight: 500; }
 
+/* ===== 创建页面布局 ===== */
+body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
 /* ===== 创建页面容器 ===== */
-.create-container { max-width: 720px; margin: 0 auto; padding: 24px 20px 100px; overflow-y: auto; flex: 1; }
+.create-container { max-width: 720px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; overflow: hidden; width: 100%; box-sizing: border-box; }
 
 /* ===== 步骤区域 ===== */
-.create-step { display: none; }
-.create-step.active { display: block; }
+.create-step { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.create-step.active { display: flex; }
+
+/* ===== 步骤内布局：固定头/尾 + 滚动中间 ===== */
+.create-step-header { flex-shrink: 0; padding: 20px 20px 0; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.create-step-body { flex: 1; overflow-y: auto; padding: 16px 20px; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.create-step-footer { flex-shrink: 0; padding: 12px 20px; border-top: 1px solid var(--border-primary); background: var(--bg-primary); display: flex; justify-content: center; gap: 12px; }
 
 /* ===== 区块卡片 ===== */
 .create-section { margin-bottom: 24px; }
@@ -31,9 +39,6 @@
 .create-form-input { width: 100%; }
 .create-form-textarea { width: 100%; min-height: 80px; }
 .create-form-select { width: 100%; padding: 8px 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); font-size: 14px; }
-
-/* ===== 底部操作栏 ===== */
-.create-footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-primary); border-top: 1px solid var(--border-primary); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
 
 /* ===== 模板选择步骤增强 ===== */
 .create-template-intro { text-align: center; margin-bottom: 24px; }

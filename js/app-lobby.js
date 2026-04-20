@@ -10,12 +10,4 @@ function continueGame(id) {
     window.location.href = 'game.html';
 }
 
-// 新游戏按钮绑定
-document.getElementById('newGameNextBtn').addEventListener('click', function() {
-    const step2Visible = !document.getElementById('newGameStep2').classList.contains('hidden');
-    if (step2Visible) {
-        createNewGame();
-    }
-});
-
 init();

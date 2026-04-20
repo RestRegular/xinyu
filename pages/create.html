@@ -43,20 +43,31 @@
 
     <!-- ========== 步骤一：选择世界模板 ========== -->
     <div class="create-step active" id="createStep1">
-        <div class="create-template-intro">
-            <h2>选择一个世界模板开始冒险</h2>
-            <p>选择一个预设模板快速开始，或创建完全自定义的世界</p>
+        <div class="create-step-header">
+            <div class="create-template-intro">
+                <h2>选择一个世界模板开始冒险</h2>
+                <p>选择一个预设模板快速开始，或创建完全自定义的世界</p>
+            </div>
         </div>
-        <div class="template-grid" id="templateGrid">
-            <!-- 动态渲染 -->
+        <div class="create-step-body">
+            <div class="template-grid" id="templateGrid">
+                <!-- 动态渲染 -->
+            </div>
         </div>
-        <div style="text-align:center;margin-top:24px;">
+        <div class="create-step-footer">
             <button class="btn btn-primary btn-lg" id="nextStepBtn" onclick="onNextStep()" disabled style="opacity:0.5;">下一步</button>
         </div>
     </div>
 
     <!-- ========== 步骤二：设定世界与角色 ========== -->
     <div class="create-step" id="createStep2">
+        <div class="create-step-header">
+            <div class="create-template-intro">
+                <h2>设定你的世界与角色</h2>
+                <p>自定义世界背景和角色信息，让AI更好地理解你的故事</p>
+            </div>
+        </div>
+        <div class="create-step-body">
 
         <!-- 区块一：世界设定 -->
         <div class="create-section">
@@ -151,13 +162,12 @@
             </div>
         </div>
 
+        </div><!-- end create-step-body -->
+        <div class="create-step-footer">
+            <button class="btn btn-secondary" onclick="onBackStep()">&larr; 返回选择模板</button>
+            <button class="btn btn-primary btn-lg" onclick="onStartAdventure()">开始冒险</button>
+        </div>
     </div>
-</div>
-
-<!-- 底部操作栏 -->
-<div class="create-footer" id="createFooter" style="display:none;">
-    <button class="btn btn-secondary" onclick="onBackStep()">&larr; 返回选择模板</button>
-    <button class="btn btn-primary btn-lg" onclick="onStartAdventure()">开始冒险</button>
 </div>
 
 <script src="../js/config.js"></script>
