@@ -47,7 +47,9 @@ router.post('/action', async (req, res) => {
     if (!saveData.characters) saveData.characters = {};
 
     const appConfig = getAppConfig();
-    saveData.chatHistory.push({ role: 'user', content: userMessage });
+    // 系统消息用 system role，不显示为玩家消息
+    const isSystemMsg = userMessage.startsWith('[系统]');
+    saveData.chatHistory.push({ role: isSystemMsg ? 'system' : 'user', content: userMessage });
     saveData.stats.turnCount++;
 
     const systemPrompt = buildSystemPrompt(saveData, appConfig);

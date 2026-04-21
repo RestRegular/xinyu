@@ -15,7 +15,10 @@
             // 新游戏自动生成开场剧情
             if (!data.chatHistory || data.chatHistory.length === 0) {
                 addSystemMessage(`欢迎来到${data.world.name}，${data.player.name}。你的冒险即将开始...`);
-                sendGameMessage('[系统] 玩家开始新游戏，请根据世界设定和角色背景，生成一段沉浸式的开场剧情。描述玩家最初醒来的场景、周围的环境，并暗示接下来可能发生的事情。不要替玩家做任何决定。');
+                // 直接调用AI生成开场剧情，不显示为玩家消息
+                callAI('[系统] 玩家开始新游戏，请根据世界设定和角色背景，生成一段沉浸式的开场剧情。描述玩家最初醒来的场景、周围的环境，并暗示接下来可能发生的事情。不要替玩家做任何决定。').catch(err => {
+                    addNotification('开场剧情生成失败: ' + err.message, 'negative');
+                });
             }
         } else {
             window.location.href = 'lobby.html';
