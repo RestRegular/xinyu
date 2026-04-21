@@ -65,6 +65,19 @@ router.post('/action', async (req, res) => {
             timestamp: new Date().toISOString(),
         });
 
+        // 将通知持久化到 chatHistory，刷新后可恢复显示
+        if (result.notifications && result.notifications.length > 0) {
+            const now = new Date().toISOString();
+            for (const notif of result.notifications) {
+                saveData.chatHistory.push({
+                    role: 'notification',
+                    content: notif.text,
+                    type: notif.type === 'character_created' ? 'positive' : (notif.type || 'info'),
+                    timestamp: now,
+                });
+            }
+        }
+
         await persistSave(saveData, saveId);
 
         res.json({
