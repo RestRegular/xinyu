@@ -155,16 +155,6 @@ async function simulateStreamingText(text) {
     scrollToBottom();
 }
 
-// ----- 刷新所有 UI 面板 -----
-function refreshAllPanels() {
-    if (!currentSave) return;
-    updateGameTopbar();
-    updateSidebar();
-    updateAttributesPanel();
-    updateInventoryPanel();
-    updateMapPanel();
-}
-
 // ----- 带超时的 fetch -----
 async function fetchWithTimeout(url, options, timeout = API_TIMEOUT) {
     const controller = new AbortController();

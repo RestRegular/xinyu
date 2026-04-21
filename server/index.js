@@ -16,7 +16,7 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/game', require('./routes/game'));
 
 // 静态文件服务（前端页面）
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.listen(PORT, () => {
     console.log(`心隅服务器已启动: http://localhost:${PORT}`);

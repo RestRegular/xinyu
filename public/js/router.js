@@ -91,3 +91,19 @@ function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ===================================================================
+// ===== 全局快捷键 =====
+// ===================================================================
+document.addEventListener('keydown', (e) => {
+    // Ctrl+S 保存
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        if (typeof manualSave === 'function' && currentSave) manualSave();
+    }
+    // Esc 关闭弹窗/下拉菜单
+    if (e.key === 'Escape') {
+        closeDropdowns();
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    }
+});
