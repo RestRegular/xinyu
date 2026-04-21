@@ -391,12 +391,9 @@ const BUILTIN_TEMPLATES = [
 router.post('/autofill', async (req, res) => {
     const { worldName, genre, worldDesc, worldRules, tone, startLocation, startLocationDesc, playerName, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, templateId } = req.body;
 
-    // 获取 API 配置
-    const configRow = db.prepare("SELECT value FROM config WHERE key = 'appConfig'").get();
-    const appConfig = configRow ? JSON.parse(configRow.value) : {};
-    const apiKey = req.body.apiKey || appConfig.apiKey;
-    const apiBaseUrl = appConfig.apiBaseUrl || 'https://api.deepseek.com';
-    const model = appConfig.model || 'deepseek-chat';
+    const apiKey = getApiKey();
+    const apiBaseUrl = getApiBaseUrl();
+    const model = getModel();
 
     if (!apiKey) {
         return res.status(400).json({ error: '请先在设置中配置 API Key' });
