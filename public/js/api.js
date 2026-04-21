@@ -70,7 +70,11 @@ async function callAI(userText) {
         // 显示后端产生的通知
         if (result.notifications && result.notifications.length > 0) {
             for (const notif of result.notifications) {
-                addNotification(notif.text, notif.type || 'info');
+                if (notif.type === 'character_created' && notif.character) {
+                    // 角色创建：渲染角色卡片到消息流
+                    addCharacterCreatedCard(notif.character);
+                }
+                addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
             }
         }
 

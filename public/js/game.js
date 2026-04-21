@@ -468,6 +468,47 @@ function addCharacterMessage(block) {
 }
 
 // ----- 新增 content type 渲染函数 -----
+
+// 角色创建卡片（实时渲染到消息流）
+function addCharacterCreatedCard(character) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-character-created';
+
+    const roleLabels = {
+        merchant: '商人', blacksmith: '铁匠', mentor: '导师', companion: '同伴',
+        antagonist: '反派', guard: '守卫', noble: '贵族', healer: '治疗师',
+        quest_giver: '任务发布者', trainer: '训练师',
+    };
+    const roleLabel = roleLabels[character.role] || character.role || '未知';
+
+    let extraInfo = '';
+    if (character.extra) {
+        const keys = Object.keys(character.extra);
+        if (keys.length > 0) {
+            extraInfo = `<div class="created-card-extra">${keys.map(k => `<span class="created-card-tag">${escapeHtml(k)}</span>`).join('')}</div>`;
+        }
+    }
+
+    div.innerHTML = `
+        <div class="created-card">
+            <div class="created-card-header">
+                <span class="created-card-icon">🎭</span>
+                <span class="created-card-title">新角色登场</span>
+            </div>
+            <div class="created-card-body">
+                <div class="created-card-name">${escapeHtml(character.name)}</div>
+                <div class="created-card-role">${escapeHtml(roleLabel)}</div>
+                ${character.personality ? `<div class="created-card-personality">${escapeHtml(character.personality)}</div>` : ''}
+                ${character.speechStyle ? `<div class="created-card-speech">"${escapeHtml(character.speechStyle)}"</div>` : ''}
+                ${extraInfo}
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
 function addSceneMessage(block) {
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');

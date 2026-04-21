@@ -283,7 +283,12 @@ function handleCreateCharacter(args, saveData) {
         success: true,
         characterId: charId,
         characterName: name,
-        notifications: [{ text: `🎭 重要角色创建：${name}（${character.role}）`, type: 'info' }]
+        characterData: character,
+        notifications: [{
+            type: 'character_created',
+            text: `🎭 重要角色创建：${name}（${character.role}）`,
+            character: character,
+        }]
     };
 }
 

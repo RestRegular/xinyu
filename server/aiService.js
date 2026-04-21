@@ -157,19 +157,19 @@ const gameTools = [
         type: 'function',
         function: {
             name: 'create_character',
-            description: '将NPC升级为重要角色（拥有独立AI代理、记忆和关系系统）。填写基础人设，根据角色类型在extra中补充特有属性。普通路人NPC不需要创建。',
+            description: '创建一个重要角色（拥有独立AI代理、记忆和关系系统）。当遇到以下情况时必须调用此工具：1)玩家首次遇到有名字、有对话的NPC；2)NPC在后续剧情中会反复出现；3)NPC与玩家有交易、任务、师徒等持续关系。普通路人、一次性龙套不需要创建。创建后该角色将出现在重要角色列表中。',
             parameters: {
                 type: 'object',
                 properties: {
                     name: { type: 'string', description: '角色名称' },
-                    role: { type: 'string', description: '角色类型标识（自由文本，如merchant/blacksmith/mentor/companion/antagonist等）' },
+                    role: { type: 'string', description: '角色类型标识（如merchant/blacksmith/mentor/companion/antagonist/guard/noble等）' },
                     appearance: { type: 'string', description: '外貌描述' },
-                    personality: { type: 'string', description: '性格特点' },
-                    speech_style: { type: 'string', description: '说话风格' },
+                    personality: { type: 'string', description: '性格特点（如沉稳、暴躁、温柔、狡猾等）' },
+                    speech_style: { type: 'string', description: '说话风格（如正式、粗鲁、文雅、幽默等）' },
                     background: { type: 'string', description: '背景故事' },
                     motivation: { type: 'string', description: '动机/目标' },
                     secrets: { type: 'string', description: '秘密' },
-                    extra: { type: 'object', description: '角色特有属性，完全自由。商人添加shop，训练师添加trainableSkills，治疗师添加healingAbility，反派添加goals/weaknesses等。无固定结构。' },
+                    extra: { type: 'object', description: '角色特有属性。商人添加{shop:{name,items}}，训练师添加{trainableSkills:[]}，治疗师添加{healingAbility}，任务发布者添加{quests:[]}等。无固定结构，完全自由。' },
                 },
                 required: ['name', 'role', 'personality', 'speech_style'],
             },
@@ -372,6 +372,12 @@ ${charsInfo}`;
 4. 将角色AI返回的 reaction 和 dialogue 原样嵌入你的叙述中
 5. 不要自己编造任何关于重要角色的描述，一切以角色AI返回为准
 6. 普通NPC（非重要角色列表中的）你可以自由描写
+
+## 角色创建规则（非常重要）
+- 当玩家遇到一个有名字、有独特个性的NPC时，必须立即调用 create_character 创建为重要角色
+- 酒馆老板、商店店主、任务发布者、导师、同伴等都应该创建为重要角色
+- 创建时尽量填写完整的人设信息（性格、说话风格、外貌、背景等），这会让角色更加生动
+- 不要等到玩家主动要求才创建，当你引入一个重要的NPC时就应该主动创建
 
 ## 工具函数使用指南
 - 玩家受伤/治疗 → update_attributes
