@@ -382,6 +382,9 @@ function renderGameMessages() {
             // 支持结构化内容渲染（新格式）
             if (msg.structured && msg.structured.content) {
                 msg.structured.content.forEach(block => {
+                    // 过滤掉工具返回的JSON（AI有时会错误地把工具结果写入content）
+                    if (block.type && !['narrative','scene','dialogue','action','combat','loot','character'].includes(block.type)) return;
+                    if (block.text && typeof block.text === 'string' && block.text.startsWith('{"success"')) return;
                     if (block.type === 'narrative') {
                         html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
                     } else if (block.type === 'scene') {
@@ -414,7 +417,12 @@ function renderGameMessages() {
                 });
             } else {
                 // 兼容旧格式（纯文本 assistant 消息）
-                html += `<div class="msg msg-narrator">${formatNarratorText(msg.content)}</div>`;
+                // 过滤掉工具返回的JSON泄漏
+                let text = msg.content || '';
+                if (text.trim().startsWith('{"success"') || text.trim().startsWith('{\n{"success"')) {
+                    text = '（系统数据已处理）';
+                }
+                html += `<div class="msg msg-narrator">${formatNarratorText(text)}</div>`;
             }
         } else if (msg.role === 'notification') {
             const cls = msg.type === 'positive' ? 'positive' : msg.type === 'negative' ? 'negative' : 'info';

@@ -457,6 +457,14 @@ ${charsInfo}`;
 - 普通NPC的对话可以用 dialogue 类型，也可以在 narrative 中用引号包裹
 - 重要角色的对话必须通过 character 类型返回（由角色AI代理生成）
 
+## 工具返回结果处理规则（非常重要）
+- 工具调用后你会收到返回结果（如 {"success":true,...}），这些结果仅供你参考
+- 绝对不要把工具返回的 JSON 写入你的 content 输出中
+- 你的 content 只应包含叙事内容（scene/narrative/dialogue/action/combat/loot/character 类型）
+- 工具已经执行了数据变更（创建地点、创建角色等），你只需要用自然语言描述发生了什么
+- 错误示例：在content中写入 {"success":true,"location":"xxx",...}
+- 正确示例：在content中写入 {"type":"narrative","text":"你注意到镇上有一座古老的教堂..."}
+
 ## content 类型说明
 - "scene"：进入新地点时的场景描写，前端会以特殊样式突出展示
 - "narrative"：常规剧情叙述，最常用的类型
