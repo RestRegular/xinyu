@@ -600,23 +600,20 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 
 /* 选项按钮 */
-.msg-options {
-    display: flex;
-    justify-content: center;
-    padding: 8px 0;
+.game-options-area {
+    padding: 0 16px 8px;
 }
-.options-buttons {
+.options-list {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    max-width: 720px;
+    flex-direction: column;
+    gap: 6px;
 }
 .option-btn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    padding: 8px 18px;
-    border-radius: 20px;
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
     font-size: 13px;
     font-weight: 500;
     color: var(--accent);
@@ -624,7 +621,16 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     border: 1px solid transparent;
     cursor: pointer;
     transition: all 0.15s ease;
-    white-space: nowrap;
+    text-align: left;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: optionSlideIn 0.25s ease forwards;
+}
+@keyframes optionSlideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 .option-btn:hover {
     background: var(--accent);
@@ -633,7 +639,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     box-shadow: 0 2px 8px rgba(94, 106, 210, 0.25);
 }
 .option-btn:active {
-    transform: scale(0.97);
+    transform: scale(0.98);
 }
 
 .typing-indicator {

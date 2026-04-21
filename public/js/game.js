@@ -751,8 +751,8 @@ function sendMessage() {
     input.style.height = 'auto';
 
     // 清除旧的选项按钮
-    const oldOptions = document.querySelector('.msg-options');
-    if (oldOptions) oldOptions.remove();
+    const optionsArea = document.getElementById('gameOptionsArea');
+    if (optionsArea) optionsArea.innerHTML = '';
 
     sendGameMessage(text);
 }

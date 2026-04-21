@@ -114,33 +114,29 @@ async function renderStructuredContent(contentBlocks) {
 
 // ----- 渲染选项按钮 -----
 function renderOptions(options) {
-    const container = document.getElementById('gameMessages');
+    const container = document.getElementById('gameOptionsArea');
 
-    // 移除旧的选项容器
-    const oldOptions = container.querySelector('.msg-options');
-    if (oldOptions) oldOptions.remove();
+    // 清空旧选项
+    container.innerHTML = '';
 
     const wrapper = document.createElement('div');
-    wrapper.className = 'msg msg-options';
+    wrapper.className = 'options-list';
 
-    const btnContainer = document.createElement('div');
-    btnContainer.className = 'options-buttons';
-
-    options.forEach(opt => {
+    options.forEach((opt, index) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = opt.text || opt.label || '';
+        btn.style.animationDelay = `${index * 0.06}s`;
         btn.onclick = () => {
-            // 点击选项后移除选项按钮
-            wrapper.remove();
+            // 点击选项后移除所有选项
+            container.innerHTML = '';
             // 发送选项对应的 action 作为玩家输入
             const actionText = opt.action || opt.text || opt.label || '';
             sendGameMessage(actionText, true);
         };
-        btnContainer.appendChild(btn);
+        wrapper.appendChild(btn);
     });
 
-    wrapper.appendChild(btnContainer);
     container.appendChild(wrapper);
     scrollToBottom();
 }
