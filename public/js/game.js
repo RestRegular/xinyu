@@ -440,12 +440,12 @@ function formatNarratorText(text) {
     if (!text) return '';
     let html = escapeHtml(text);
     // 将中文引号内的对话转为对话气泡样式
-    // 匹配 "xxx" 或 "xxx"（中文双引号）
-    html = html.replace(/[\u201c\u201d]([^]*?)[\u201c\u201d]/g, (match, content) => {
-        return `<span class="inline-dialogue">"${content}"</span>`;
+    // 严格匹配 左引号...右引号
+    html = html.replace(/\u201c([^\u201c\u201d]*?)\u201d/g, (match, content) => {
+        return `<span class="inline-dialogue">\u201c${content}\u201d</span>`;
     });
     // 将英文双引号内的对话也转换
-    html = html.replace(/"([^]*?)"/g, (match, content) => {
+    html = html.replace(/"([^"]*?)"/g, (match, content) => {
         return `<span class="inline-dialogue">"${content}"</span>`;
     });
     return html.replace(/\n/g, '<br>');
