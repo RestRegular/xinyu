@@ -116,6 +116,69 @@ function updateMapPanel() {
     document.getElementById('mapPanel').innerHTML = html;
 }
 
+function updateCharactersPanel() {
+    const characters = currentSave.characters || {};
+    const el = document.getElementById('charactersPanel');
+    const list = Object.values(characters);
+
+    if (list.length === 0) {
+        el.innerHTML = '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
+        return;
+    }
+
+    el.innerHTML = list.map(c => {
+        const relTitle = c.relationship?.title || '陌生人';
+        const relValue = c.relationship?.value ?? 0;
+        const relColor = relValue > 50 ? 'positive' : relValue < -50 ? 'negative' : 'neutral';
+        return `
+            <div class="character-list-item" onclick="showCharacterDetail('${c.id}')">
+                <div class="character-list-name">${escapeHtml(c.name)}</div>
+                <div class="character-list-role">${escapeHtml(c.role || '')}</div>
+                <div class="character-list-rel ${relColor}">${escapeHtml(relTitle)} (${relValue})</div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function showCharacterDetail(charId) {
+    if (!currentSaveId) return;
+    try {
+        const resp = await fetch(`/api/game/characters/${charId}?saveId=${currentSaveId}`);
+        if (!resp.ok) return;
+        const char = await resp.json();
+
+        const relTitle = char.relationship?.title || '陌生人';
+        const relValue = char.relationship?.value ?? 0;
+        const memories = char.memories || [];
+
+        let html = `
+            <div style="margin-bottom:16px;">
+                <h4 style="font-size:16px;font-weight:600;margin-bottom:4px;">${escapeHtml(char.name)}</h4>
+                <span style="font-size:12px;color:var(--text-secondary);">${escapeHtml(char.role || '未知身份')}</span>
+            </div>
+            <div style="margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">关系</div>
+                <div style="font-size:13px;">${escapeHtml(relTitle)} (${relValue})</div>
+            </div>
+        `;
+
+        if (char.persona) {
+            html += `<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">性格</div><div style="font-size:13px;color:var(--text-secondary);">${escapeHtml(char.persona)}</div></div>`;
+        }
+
+        if (memories.length > 0) {
+            html += `<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">记忆 (${memories.length})</div>`;
+            memories.slice(-10).forEach(m => {
+                html += `<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;border-bottom:1px solid var(--border-secondary);">${escapeHtml(m.text)}</div>`;
+            });
+            html += '</div>';
+        }
+
+        document.getElementById('worldInfoContent').innerHTML = html;
+        openModal('modalWorldInfo');
+    } catch(e) {}
+}
+
 function showItemDetail(itemId) {
     const item = currentSave.inventory.items.find(i => i.id === itemId);
     if (!item) return;
@@ -183,6 +246,17 @@ function manualSave() {
     showToast('游戏已自动保存', 'success');
 }
 
+// ----- 刷新所有 UI 面板 -----
+function refreshAllPanels() {
+    if (!currentSave) return;
+    updateGameTopbar();
+    updateSidebar();
+    updateAttributesPanel();
+    updateInventoryPanel();
+    updateMapPanel();
+    updateCharactersPanel();
+}
+
 // ===================================================================
 // ===== 消息渲染（纯 UI） =====
 // ===================================================================
@@ -196,7 +270,29 @@ function renderGameMessages() {
         } else if (msg.role === 'user') {
             html += `<div class="msg msg-user"><div class="msg-user-bubble">${escapeHtml(msg.content)}</div></div>`;
         } else if (msg.role === 'assistant') {
-            html += `<div class="msg msg-narrator">${formatNarratorText(msg.content)}</div>`;
+            // 支持结构化内容渲染（新格式）
+            if (msg.structured && msg.structured.content) {
+                msg.structured.content.forEach(block => {
+                    if (block.type === 'narrative') {
+                        html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
+                    } else if (block.type === 'character') {
+                        const moodEmoji = getMoodEmoji(block.mood);
+                        const moodLabel = getMoodLabel(block.mood);
+                        let cardHtml = `<div class="msg msg-character"><div class="character-card">`;
+                        cardHtml += `<div class="character-card-header">`;
+                        cardHtml += `<span class="character-name">${escapeHtml(block.characterName || '未知角色')}</span>`;
+                        cardHtml += `<span class="character-mood ${block.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>`;
+                        cardHtml += `</div>`;
+                        if (block.reaction) cardHtml += `<div class="character-reaction">${escapeHtml(block.reaction)}</div>`;
+                        if (block.dialogue) cardHtml += `<div class="character-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+                        cardHtml += `</div></div>`;
+                        html += cardHtml;
+                    }
+                });
+            } else {
+                // 兼容旧格式（纯文本 assistant 消息）
+                html += `<div class="msg msg-narrator">${formatNarratorText(msg.content)}</div>`;
+            }
         } else if (msg.role === 'notification') {
             const cls = msg.type === 'positive' ? 'positive' : msg.type === 'negative' ? 'negative' : 'info';
             const icon = msg.type === 'positive' ? '✚' : msg.type === 'negative' ? '✖' : 'ℹ';
@@ -237,6 +333,58 @@ function addAssistantMessage(text) {
     div.innerHTML = formatNarratorText(text);
     container.appendChild(div);
     scrollToBottom();
+}
+
+function addCharacterMessage(block) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-character';
+
+    const moodEmoji = getMoodEmoji(block.mood);
+    const moodLabel = getMoodLabel(block.mood);
+
+    let html = `
+        <div class="character-card">
+            <div class="character-card-header">
+                <span class="character-name">${escapeHtml(block.characterName || '未知角色')}</span>
+                <span class="character-mood ${block.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>
+            </div>
+    `;
+
+    if (block.reaction) {
+        html += `<div class="character-reaction">${escapeHtml(block.reaction)}</div>`;
+    }
+    if (block.dialogue) {
+        html += `<div class="character-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+    }
+
+    html += '</div>';
+    div.innerHTML = html;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
+// ----- 心情辅助函数 -----
+function getMoodEmoji(mood) {
+    const map = {
+        happy: '😊', sad: '😢', angry: '😠', fearful: '😨',
+        surprised: '😲', neutral: '😐', curious: '🤔',
+        contempt: '😤', disgusted: '🤢', loving: '🥰',
+        anxious: '😰', excited: '😄', cold: '🧊',
+        friendly: '🙂', hostile: '😈', suspicious: '👁️',
+    };
+    return map[mood] || '😐';
+}
+
+function getMoodLabel(mood) {
+    const map = {
+        happy: '开心', sad: '悲伤', angry: '愤怒', fearful: '恐惧',
+        surprised: '惊讶', neutral: '平静', curious: '好奇',
+        contempt: '轻蔑', disgusted: '厌恶', loving: '喜爱',
+        anxious: '焦虑', excited: '兴奋', cold: '冷淡',
+        friendly: '友好', hostile: '敌意', suspicious: '怀疑',
+    };
+    return map[mood] || '平静';
 }
 
 function addNotification(text, type = 'info') {

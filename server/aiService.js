@@ -2,7 +2,7 @@
 // ===== AI 编排服务（服务端版） =====
 // ===================================================================
 
-const { executeGameFunction } = require('./gameEngine');
+const { executeCharacterTool, getRelationshipTitle } = require('./gameEngine');
 
 // ----- 世界类型预设模板 -----
 const GENRE_PRESETS = {
@@ -38,8 +38,9 @@ const GENRE_PRESETS = {
     },
 };
 
-// ----- Function Calling 工具定义 -----
+// ----- GM 工具定义（原有12个 + 新增4个角色工具） -----
 const gameTools = [
+    // ---- 原有12个游戏工具 ----
     {
         type: 'function',
         function: {
@@ -48,20 +49,8 @@ const gameTools = [
             parameters: {
                 type: 'object',
                 properties: {
-                    changes: {
-                        type: 'object',
-                        description: '属性变更对象，键为属性名，值为变更量（正增负减）',
-                        properties: {
-                            hp: { type: 'number', description: '生命值变更' },
-                            mp: { type: 'number', description: '魔力值变更' },
-                            attack: { type: 'number', description: '攻击力变更' },
-                            defense: { type: 'number', description: '防御力变更' },
-                            agility: { type: 'number', description: '敏捷变更' },
-                            luck: { type: 'number', description: '幸运变更' },
-                            experience: { type: 'number', description: '经验值变更' },
-                        },
-                    },
-                    reason: { type: 'string', description: '变更原因（简短描述）' },
+                    changes: { type: 'object', description: '属性变更对象', properties: { hp: { type: 'number' }, mp: { type: 'number' }, attack: { type: 'number' }, defense: { type: 'number' }, agility: { type: 'number' }, luck: { type: 'number' }, experience: { type: 'number' } } },
+                    reason: { type: 'string' },
                 },
                 required: ['changes', 'reason'],
             },
@@ -71,16 +60,13 @@ const gameTools = [
         type: 'function',
         function: {
             name: 'add_item',
-            description: '向玩家背包添加物品。拾取、购买、获得奖励、NPC赠予等场景调用。',
+            description: '向玩家背包添加物品。',
             parameters: {
                 type: 'object',
                 properties: {
-                    name: { type: 'string', description: '物品名称' },
-                    type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'key', 'quest', 'misc'], description: '物品类型' },
-                    description: { type: 'string', description: '物品描述' },
-                    quantity: { type: 'number', description: '数量' },
-                    effects: { type: 'object', description: '物品效果，如 {"hp": 30, "attack": 5}' },
-                    rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'legendary'], description: '稀有度' },
+                    name: { type: 'string' }, type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'key', 'quest', 'misc'] },
+                    description: { type: 'string' }, quantity: { type: 'number' },
+                    effects: { type: 'object' }, rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'legendary'] },
                 },
                 required: ['name', 'type', 'description'],
             },
@@ -90,48 +76,24 @@ const gameTools = [
         type: 'function',
         function: {
             name: 'remove_item',
-            description: '从背包移除物品。使用消耗品、交易、丢弃等场景调用。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: '物品名称' },
-                    quantity: { type: 'number', description: '移除数量' },
-                    reason: { type: 'string', description: '移除原因' },
-                },
-                required: ['name', 'reason'],
-            },
+            description: '从背包移除物品。',
+            parameters: { type: 'object', properties: { name: { type: 'string' }, quantity: { type: 'number' }, reason: { type: 'string' } }, required: ['name', 'reason'] },
         },
     },
     {
         type: 'function',
         function: {
             name: 'move_to_location',
-            description: '移动玩家到新位置。首次到达的新地点必须提供 description 和 connections。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    location_name: { type: 'string', description: '目标地点名称' },
-                    description: { type: 'string', description: '新地点描述（首次发现时必填）' },
-                    connections: { type: 'array', items: { type: 'string' }, description: '新地点可前往的相邻地点（首次发现时必填）' },
-                },
-                required: ['location_name'],
-            },
+            description: '移动玩家到新位置。',
+            parameters: { type: 'object', properties: { location_name: { type: 'string' }, description: { type: 'string' }, connections: { type: 'array', items: { type: 'string' } } }, required: ['location_name'] },
         },
     },
     {
         type: 'function',
         function: {
             name: 'add_status_effect',
-            description: '添加状态效果。中毒、灼烧、祝福、虚弱等。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: '状态名称' },
-                    duration: { type: 'number', description: '持续回合数，-1为永久' },
-                    effect: { type: 'string', description: '效果描述' },
-                },
-                required: ['name', 'duration', 'effect'],
-            },
+            description: '添加状态效果。',
+            parameters: { type: 'object', properties: { name: { type: 'string' }, duration: { type: 'number' }, effect: { type: 'string' } }, required: ['name', 'duration', 'effect'] },
         },
     },
     {
@@ -139,13 +101,7 @@ const gameTools = [
         function: {
             name: 'remove_status_effect',
             description: '移除状态效果。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: '要移除的状态名称' },
-                },
-                required: ['name'],
-            },
+            parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
         },
     },
     {
@@ -153,21 +109,14 @@ const gameTools = [
         function: {
             name: 'update_gold',
             description: '更新金币数量。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    amount: { type: 'number', description: '变更量（正获得负花费）' },
-                    reason: { type: 'string', description: '原因' },
-                },
-                required: ['amount', 'reason'],
-            },
+            parameters: { type: 'object', properties: { amount: { type: 'number' }, reason: { type: 'string' } }, required: ['amount', 'reason'] },
         },
     },
     {
         type: 'function',
         function: {
             name: 'check_death',
-            description: '检查玩家是否死亡。战斗或危险事件后必须调用。',
+            description: '检查玩家是否死亡。',
             parameters: { type: 'object', properties: {} },
         },
     },
@@ -175,66 +124,143 @@ const gameTools = [
         type: 'function',
         function: {
             name: 'create_npc',
-            description: '在当前位置创建一个NPC。遇到新角色时调用。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: 'NPC名称' },
-                    description: { type: 'string', description: 'NPC外貌和特征描述' },
-                    personality: { type: 'string', description: 'NPC性格特点' },
-                },
-                required: ['name', 'description'],
-            },
+            description: '在当前位置创建一个普通NPC。',
+            parameters: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, personality: { type: 'string' } }, required: ['name', 'description'] },
         },
     },
     {
         type: 'function',
         function: {
             name: 'remove_npc',
-            description: '从当前位置移除一个NPC。NPC离开或死亡时调用。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: 'NPC名称' },
-                    reason: { type: 'string', description: '移除原因' },
-                },
-                required: ['name'],
-            },
+            description: '从当前位置移除一个NPC。',
+            parameters: { type: 'object', properties: { name: { type: 'string' }, reason: { type: 'string' } }, required: ['name'] },
         },
     },
     {
         type: 'function',
         function: {
             name: 'equip_item',
-            description: '装备或卸下物品。武器和护甲可以装备。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: '物品名称' },
-                    equip: { type: 'boolean', description: 'true为装备，false为卸下' },
-                },
-                required: ['name', 'equip'],
-            },
+            description: '装备或卸下物品。',
+            parameters: { type: 'object', properties: { name: { type: 'string' }, equip: { type: 'boolean' } }, required: ['name', 'equip'] },
         },
     },
     {
         type: 'function',
         function: {
             name: 'revive_player',
-            description: '复活玩家。在玩家死亡后，被救活或复活时调用。恢复部分HP。',
+            description: '复活玩家。',
+            parameters: { type: 'object', properties: { revive_location: { type: 'string' }, hp_percent: { type: 'number' } }, required: [] },
+        },
+    },
+    // ---- 新增4个角色工具 ----
+    {
+        type: 'function',
+        function: {
+            name: 'create_character',
+            description: '将NPC升级为重要角色（拥有独立AI代理、记忆和关系系统）。填写基础人设，根据角色类型在extra中补充特有属性。普通路人NPC不需要创建。',
             parameters: {
                 type: 'object',
                 properties: {
-                    revive_location: { type: 'string', description: '复活地点名称' },
-                    hp_percent: { type: 'number', description: '恢复HP百分比(0-100)，默认50' },
+                    name: { type: 'string', description: '角色名称' },
+                    role: { type: 'string', description: '角色类型标识（自由文本，如merchant/blacksmith/mentor/companion/antagonist等）' },
+                    appearance: { type: 'string', description: '外貌描述' },
+                    personality: { type: 'string', description: '性格特点' },
+                    speech_style: { type: 'string', description: '说话风格' },
+                    background: { type: 'string', description: '背景故事' },
+                    motivation: { type: 'string', description: '动机/目标' },
+                    secrets: { type: 'string', description: '秘密' },
+                    extra: { type: 'object', description: '角色特有属性，完全自由。商人添加shop，训练师添加trainableSkills，治疗师添加healingAbility，反派添加goals/weaknesses等。无固定结构。' },
                 },
-                required: [],
+                required: ['name', 'role', 'personality', 'speech_style'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_character_reaction',
+            description: '获取重要角色对当前情境的真实反应。角色AI会根据自己的人设、记忆、关系值和心情生成动作、表情和对话。你必须通过此工具获取角色反应，绝不能自己编造重要角色的任何行为或对话。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    character_name: { type: 'string', description: '角色名称' },
+                    context: { type: 'string', description: '当前互动情境的描述' },
+                },
+                required: ['character_name', 'context'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'update_relationship',
+            description: '直接调整玩家与重要角色的关系值。当玩家做出影响关系的行为时调用。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    character_name: { type: 'string' },
+                    delta: { type: 'number', description: '关系变化值（正负均可）' },
+                    reason: { type: 'string' },
+                },
+                required: ['character_name', 'delta', 'reason'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'character_action',
+            description: '让重要角色执行影响游戏状态的动作。如商人出售物品、治疗师恢复HP、任务发布者给予奖励等。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    character_name: { type: 'string' },
+                    action: { type: 'string', enum: ['give_item', 'heal', 'offer_quest', 'teach_skill', 'take_item', 'custom'] },
+                    details: { type: 'object', description: '动作详情，自由结构' },
+                },
+                required: ['character_name', 'action'],
             },
         },
     },
 ];
 
-// ----- System Prompt 构建 -----
+// ----- 角色AI工具定义（角色AI代理专用） -----
+const characterTools = [
+    {
+        type: 'function',
+        function: {
+            name: 'update_relationship',
+            description: '根据互动内容调整你与玩家的关系值。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    delta: { type: 'number', description: '关系变化值（正负均可）' },
+                    reason: { type: 'string', description: '原因' },
+                },
+                required: ['delta', 'reason'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'add_memory',
+            description: '记录本次互动中值得记住的关键信息。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    text: { type: 'string', description: '值得记住的事' },
+                    type: { type: 'string', enum: ['favor', 'conflict', 'secret', 'info', 'quest'], description: '记忆类型' },
+                },
+                required: ['text'],
+            },
+        },
+    },
+];
+
+// ===================================================================
+// ===== GM System Prompt 构建 =====
+// ===================================================================
 function buildSystemPrompt(saveData, appConfig) {
     const s = saveData;
     const p = s.player;
@@ -268,7 +294,7 @@ function buildSystemPrompt(saveData, appConfig) {
 ${narrativeTips ? '- 叙事技巧：' + narrativeTips : ''}
 ${itemNaming ? '- 物品命名风格：' + itemNaming : ''}`;
 
-    // 第三层：角色设定
+    // 第三层：玩家角色
     const layerCharacter = `## 玩家角色
 - 名称：${p.name}
 - 描述：${p.description || '无详细描述'}
@@ -287,9 +313,7 @@ ${itemNaming ? '- 物品命名风格：' + itemNaming : ''}`;
             if (i.quantity > 1) str += 'x' + i.quantity;
             str += '[' + i.type + ']';
             if (i.equipped) str += '(已装备)';
-            if (i.effects && Object.keys(i.effects).length > 0) {
-                str += '(' + Object.entries(i.effects).map(([k,v]) => k + (v>0?'+':'') + v).join(',') + ')';
-            }
+            if (i.effects && Object.keys(i.effects).length > 0) str += '(' + Object.entries(i.effects).map(([k,v]) => k + (v>0?'+':'') + v).join(',') + ')';
             return str;
         }).join('、')
         : '空';
@@ -299,6 +323,16 @@ ${itemNaming ? '- 物品命名风格：' + itemNaming : ''}`;
         : '无';
 
     const npcs = loc && loc.npcs && loc.npcs.length > 0 ? loc.npcs.join('、') : '无';
+
+    // 当前位置的重要角色列表
+    const characters = s.characters || {};
+    const charsAtLocation = Object.values(characters).filter(c => c.location === s.map.currentLocation && c.status === 'alive');
+    let charsInfo = '当前位置没有重要角色';
+    if (charsAtLocation.length > 0) {
+        charsInfo = charsAtLocation.map(c =>
+            `- ${c.name}（${c.role}）| 关系：${c.relationship.title}(${c.relationship.value}/100）`
+        ).join('\n');
+    }
 
     const layerContext = `## 当前状态
 - 位置：${s.map.currentLocation}
@@ -314,48 +348,185 @@ ${itemNaming ? '- 物品命名风格：' + itemNaming : ''}`;
 ## 当前位置
 ${loc ? loc.description : '未知区域'}
 - 此处NPC：${npcs}
-- 可前往：${loc && loc.connections ? loc.connections.join('、') : '无已知路径'}`;
+- 可前往：${loc && loc.connections ? loc.connections.join('、') : '无已知路径'}
+
+## 当前位置的重要角色
+${charsInfo}`;
 
     // 第五层：行为规则
     const globalInstructions = appConfig?.customInstructions || '';
     const saveInstructions = s.world.customPrompt || '';
 
     const layerRules = `## 你的职责
-1. **沉浸式叙事**：用第二人称（"你"）叙述，语言生动、有画面感，让玩家身临其境
-2. **合理推进**：根据玩家行动和世界观逻辑推进剧情，不要凭空创造矛盾
-3. **状态管理**：所有涉及数值变化的操作必须通过工具函数执行
-4. **NPC互动**：为NPC赋予鲜明的性格和说话方式，通过对话推动剧情
-5. **战斗设计**：战斗要有策略性，描述动作和结果，通过工具函数计算伤害
+1. **沉浸式叙事**：用第二人称（"你"）叙述，语言生动、有画面感
+2. **环境描写**：你只负责环境描写和剧情推进
+3. **合理推进**：根据玩家行动和世界观逻辑推进剧情
+4. **状态管理**：所有涉及数值变化的操作必须通过工具函数执行
+5. **战斗设计**：战斗要有策略性，通过工具函数计算伤害
+
+## 重要角色交互规则
+当场景中存在重要角色（上方列表中的角色）时：
+1. 你只负责环境描写和剧情推进，绝不替角色做任何事
+2. 不要描写重要角色的动作、表情、心理活动或对话
+3. 当玩家与重要角色互动时，必须调用 get_character_reaction 获取角色的真实反应
+4. 将角色AI返回的 reaction 和 dialogue 原样嵌入你的叙述中
+5. 不要自己编造任何关于重要角色的描述，一切以角色AI返回为准
+6. 普通NPC（非重要角色列表中的）你可以自由描写
 
 ## 工具函数使用指南
-- 玩家受伤/治疗 → update_attributes（changes: {hp: -15}）
+- 玩家受伤/治疗 → update_attributes
 - 获得经验 → update_attributes（changes: {experience: +50}）
 - 拾取/购买物品 → add_item
 - 使用/消耗物品 → remove_item
-- 移动到新地点 → move_to_location（新地点需提供 description 和 connections）
+- 移动到新地点 → move_to_location
 - 中毒/灼烧/祝福 → add_status_effect
-- 治愈状态 → remove_status_effect
 - 金币变化 → update_gold
 - 战斗结束检查 → check_death
-- 遇到新NPC → create_npc
+- 遇到普通NPC → create_npc
 - NPC离开 → remove_npc
 - 装备/卸下 → equip_item
 - 玩家死亡后复活 → revive_player
+- 创建重要角色 → create_character（填写人设，按角色类型补充extra字段）
+- 获取角色反应 → get_character_reaction（必须通过此工具，不能自己编造）
+- 调整关系值 → update_relationship
+- 角色执行动作 → character_action
+
+## 输出格式
+你的最终回复必须是合法的 JSON，格式如下（不要输出任何其他内容）：
+{
+    "content": [
+        {"type": "narrative", "text": "环境描写文本..."},
+        {"type": "character", "characterId": "char_xxx", "characterName": "角色名", "reaction": "角色动作/表情描写", "dialogue": "角色说的话", "mood": "心情"},
+        {"type": "narrative", "text": "更多剧情..."}
+    ],
+    "options": [
+        {"text": "选项显示文本", "action": "玩家发送的实际文本"},
+        {"text": "另一个选项", "action": "玩家发送的实际文本"}
+    ]
+}
+
+content 中的段落按时间顺序排列。type 可以是 "narrative"（你的叙述）或 "character"（角色AI返回的反应）。
+options 提供2-4个合理的行动选择，基于当前情境推断。
+如果当前没有重要角色在场，content 中不需要 character 类型的段落。
 
 ## 叙事规则
 - ${narrativeHint}
-- 不要使用游戏术语（如"HP-10"），用自然语言（如"利刃划过你的手臂"）
-- 战斗时交替描述双方行动，不要一次性决定结果
-- 在叙述末尾可以暗示可能的行动方向，但不要替玩家做决定
-- 如果玩家尝试不可能的事，用剧情合理地解释原因
-- 保持与之前剧情的连贯性，记住已发生的事件和NPC
+- 不要使用游戏术语（如"HP-10"），用自然语言
+- 战斗时交替描述双方行动
+- 保持与之前剧情的连贯性
 ${globalInstructions ? '\n## 玩家自定义指令（全局）\n' + globalInstructions : ''}
 ${saveInstructions ? '\n## 玩家自定义指令（本世界）\n' + saveInstructions : ''}`;
 
     return [layerBase, layerWorld, layerCharacter, layerContext, layerRules].join('\n\n');
 }
 
-// ----- 对话历史管理 -----
+// ===================================================================
+// ===== 角色AI Prompt 构建 =====
+// ===================================================================
+function buildCharacterPrompt(character, saveData) {
+    const p = saveData.player;
+    const inv = saveData.inventory || { items: [] };
+
+    // 人设层
+    let personaLines = [];
+    if (character.appearance) personaLines.push(`- 外貌：${character.appearance}`);
+    if (character.personality) personaLines.push(`- 性格：${character.personality}`);
+    if (character.speechStyle) personaLines.push(`- 说话风格：${character.speechStyle}`);
+    if (character.background) personaLines.push(`- 背景：${character.background}`);
+    if (character.motivation) personaLines.push(`- 动机：${character.motivation}`);
+    if (character.secrets) personaLines.push(`- 秘密：${character.secrets}`);
+    const personaStr = personaLines.join('\n') || '（未设定详细人设）';
+
+    // 记忆层
+    let memoryStr = '（暂无记忆）';
+    if (character.memories && character.memories.length > 0) {
+        memoryStr = character.memories.slice(-20).map(m =>
+            `- 第${m.turn}回合：${m.text}${m.type ? ` [${m.type}]` : ''}`
+        ).join('\n');
+    }
+
+    // 特有能力层（递归格式化）
+    let extraStr = '';
+    if (character.extra && Object.keys(character.extra).length > 0) {
+        extraStr = '\n\n## 你的特有能力与信息\n' + formatObjectRecursive(character.extra, 0);
+    }
+
+    // 背包摘要
+    const inventoryStr = inv.items.length > 0
+        ? inv.items.map(i => `${i.name}${i.quantity > 1 ? 'x' + i.quantity : ''}`).join('、')
+        : '空';
+
+    return `# 角色身份
+你是"${character.name}"，${character.role}。你不是在扮演一个角色，你就是${character.name}本人。你拥有自己的记忆、情感、立场和秘密。
+
+# 人设
+${personaStr}
+
+# 与玩家的关系
+- 关系值：${character.relationship.value}/100（${character.relationship.title}）
+- 态度参考：
+  0~20: 冷淡敌对，不愿多说，回答简短生硬
+  21~40: 礼貌但有距离感，正常但不热情
+  41~60: 友好，愿意正常交流和分享信息
+  61~80: 信任，愿意主动帮助和分享秘密
+  81~100: 亲密，毫无保留，可以透露最深的秘密
+
+# 你的记忆
+${memoryStr}
+${extraStr}
+
+# 当前情境
+- 玩家：${p.name}${p.level ? '，Lv.' + p.level : ''}${p.description ? '，' + p.description : ''}
+- 位置：${saveData.map?.currentLocation || '未知'}
+- 世界：${saveData.world?.name || '未知'}（${saveData.world?.genre || '未知'}）
+- 玩家状态：HP ${p.attributes?.hp?.current ?? '?'}/${p.attributes?.hp?.max ?? '?'}，金币 ${inv.gold ?? 0}
+- 玩家背包：${inventoryStr}
+
+# 你的任务
+你收到了一个情境描述，请给出你的真实反应。
+
+你必须返回以下 JSON（不要输出任何其他内容）：
+{
+    "reaction": "描述你的动作、表情、肢体语言（第三人称，生动有画面感，供GM融入叙述）",
+    "dialogue": "你说的话（第一人称，符合你的说话风格）",
+    "mood": "你当前的心情（一个词，如happy/angry/sad/suspicious/nervous/excited等）"
+}
+
+注意：
+- 始终保持角色一致性，不要OOC（out of character）
+- reaction 要有画面感，便于GM融入环境描写
+- dialogue 要符合你的说话风格
+- 根据关系值调整态度，不要违背关系逻辑
+- 如果情境触发了你的特有能力（如玩家想买东西、想治疗），在对话中自然体现`;
+}
+
+/**
+ * 递归格式化对象为可读文本
+ */
+function formatObjectRecursive(obj, depth) {
+    if (depth > 4) return String(obj);
+    const indent = '  '.repeat(depth);
+    if (Array.isArray(obj)) {
+        if (obj.length === 0) return '（空）';
+        return obj.map(item => {
+            if (typeof item === 'object' && item !== null) return '\n' + indent + '- ' + formatObjectRecursive(item, depth + 1);
+            return item;
+        }).join('\n' + indent + '- ');
+    }
+    if (typeof obj === 'object' && obj !== null) {
+        const entries = Object.entries(obj);
+        if (entries.length === 0) return '（空）';
+        return entries.map(([key, val]) => {
+            if (typeof val === 'object' && val !== null) return `\n${indent}${key}：${formatObjectRecursive(val, depth + 1)}`;
+            return `\n${indent}${key}：${val}`;
+        }).join('');
+    }
+    return String(obj);
+}
+
+// ===================================================================
+// ===== 对话历史管理 =====
+// ===================================================================
 const SUMMARIZE_THRESHOLD = 30;
 
 function buildMessageHistory(chatHistory) {
@@ -368,7 +539,6 @@ function buildMessageHistory(chatHistory) {
     const recent = filtered.slice(-keepRecent);
     const old = filtered.slice(0, -keepRecent);
 
-    // 生成结构化摘要
     const summaryParts = [];
     let currentSpeaker = '';
     let currentContent = '';
@@ -376,18 +546,14 @@ function buildMessageHistory(chatHistory) {
     for (const msg of old) {
         const speaker = msg.role === 'user' ? '玩家' : 'GM';
         if (speaker !== currentSpeaker) {
-            if (currentContent) {
-                summaryParts.push(`${currentSpeaker}: ${currentContent.slice(0, 100)}`);
-            }
+            if (currentContent) summaryParts.push(`${currentSpeaker}: ${currentContent.slice(0, 100)}`);
             currentSpeaker = speaker;
             currentContent = msg.content;
         } else {
             currentContent += '；' + msg.content;
         }
     }
-    if (currentContent) {
-        summaryParts.push(`${currentSpeaker}: ${currentContent.slice(0, 100)}`);
-    }
+    if (currentContent) summaryParts.push(`${currentSpeaker}: ${currentContent.slice(0, 100)}`);
 
     const summary = summaryParts.join('\n');
 
@@ -397,4 +563,4 @@ function buildMessageHistory(chatHistory) {
     ];
 }
 
-module.exports = { buildSystemPrompt, buildMessageHistory, gameTools, GENRE_PRESETS };
+module.exports = { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, gameTools, characterTools, GENRE_PRESETS };

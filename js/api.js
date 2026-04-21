@@ -57,9 +57,14 @@ async function callAI(userText) {
             currentSave = result.saveData;
         }
 
-        // 渲染 AI 叙述（流式效果模拟）
-        if (result.narrative) {
-            await simulateStreamingText(result.narrative);
+        // 渲染结构化内容（content 数组 + options 按钮）
+        if (result.content && Array.isArray(result.content) && result.content.length > 0) {
+            await renderStructuredContent(result.content);
+        }
+
+        // 渲染选项按钮
+        if (result.options && result.options.length > 0) {
+            renderOptions(result.options);
         }
 
         // 显示后端产生的通知
@@ -76,6 +81,54 @@ async function callAI(userText) {
         removeTypingIndicator();
         throw err;
     }
+}
+
+// ----- 渲染结构化内容（content 数组） -----
+async function renderStructuredContent(contentBlocks) {
+    const container = document.getElementById('gameMessages');
+
+    for (const block of contentBlocks) {
+        if (block.type === 'narrative') {
+            // 叙述文本 — 使用流式打字效果
+            await simulateStreamingText(block.text);
+        } else if (block.type === 'character') {
+            // 角色反应 — 渲染角色卡片
+            addCharacterMessage(block);
+        }
+    }
+}
+
+// ----- 渲染选项按钮 -----
+function renderOptions(options) {
+    const container = document.getElementById('gameMessages');
+
+    // 移除旧的选项容器
+    const oldOptions = container.querySelector('.msg-options');
+    if (oldOptions) oldOptions.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg msg-options';
+
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'options-buttons';
+
+    options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt.text || opt.label || '';
+        btn.onclick = () => {
+            // 点击选项后移除选项按钮
+            wrapper.remove();
+            // 发送选项对应的 action 作为玩家输入
+            const actionText = opt.action || opt.text || opt.label || '';
+            sendGameMessage(actionText);
+        };
+        btnContainer.appendChild(btn);
+    });
+
+    wrapper.appendChild(btnContainer);
+    container.appendChild(wrapper);
+    scrollToBottom();
 }
 
 // ----- 模拟流式打字效果 -----
