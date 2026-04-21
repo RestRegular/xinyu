@@ -1,13 +1,27 @@
 // ===================================================================
-// ===== GM 多 Agent 管线（Pipeline v2） =====
+// ===== GM 多 Agent 管线（Pipeline v3.1 — 修复版） =====
 // ===================================================================
 //
-// 架构（v2 — 工具调用模式）：
-//   Phase 1: StoryAgent(SA) — 使用工具调用生成剧情+执行游戏操作（和旧版一致，保证可靠性）
-//   Phase 2: 后处理 — 从 SA 的工具调用结果中提取角色创建/属性变更等通知
+// 架构：
+//   SA (StoryAgent) — 叙事 + 触发工具调用（持有全部工具定义）
+//   RA (RoleAgent)   — 角色管理：create_character, update_relationship, character_action, create_npc, remove_npc
+//   MA (MapAgent)    — 地图管理：move_to_location
+//   PA (PropertyAgent) — 属性管理：update_attributes, add_item, remove_item,
+//                         add_status_effect, remove_status_effect, update_gold,
+//                         check_death, equip_item, revive_player
 //
-// SA 仍然使用 aiService.js 的 buildSystemPrompt + gameTools（工具调用模式）
-// 管线负责编排调用流程、处理角色AI嵌套、解析最终输出
+// 关键修复（vs v3）：
+//   v3 的 bug 是拦截后返回占位结果，AI 看不到真实执行数据。
+//   v3.1：拦截后立即执行工具，返回真实结果给 AI，同时记录到 Agent 队列。
+//   这样 AI 能看到 create_character 的返回值（角色ID等），后续输出不会乱。
+//
+// 流程：
+//   1. SA 发起 tool_call
+//   2. 管线判断工具归属：
+//      - get_character_reaction → SA 直接处理（调用角色AI）
+//      - RA/MA/PA 工具 → 立即执行，返回真实结果给 AI，同时记录到 Agent 队列
+//   3. SA 生成完毕后，RA/MA/PA 可对收集到的调用做后处理（当前版本跳过）
+//   4. 合并输出
 //
 // ===================================================================
 
@@ -15,17 +29,39 @@ const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, gameTools,
 const { executeGameFunction, executeCharacterTool } = require('./gameEngine');
 
 // ===================================================================
+// ===== 工具分组 =====
+// ===================================================================
+
+const TOOL_AGENT_MAP = {
+    // RA — 角色管理
+    create_character: 'RA',
+    update_relationship: 'RA',
+    character_action: 'RA',
+    create_npc: 'RA',
+    remove_npc: 'RA',
+    // MA — 地图管理
+    move_to_location: 'MA',
+    // PA — 属性/物品/状态管理
+    update_attributes: 'PA',
+    add_item: 'PA',
+    remove_item: 'PA',
+    add_status_effect: 'PA',
+    remove_status_effect: 'PA',
+    update_gold: 'PA',
+    check_death: 'PA',
+    equip_item: 'PA',
+    revive_player: 'PA',
+};
+
+// ===================================================================
 // ===== 管线编排器 =====
 // ===================================================================
 
-/**
- * 执行完整的 GM 管线
- */
 async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
     const { apiKey, apiBaseUrl, model } = apiConfig;
     const allNotifications = [];
 
-    // ===== Phase 1: StoryAgent — 工具调用模式 =====
+    // ===== Phase 1: StoryAgent =====
     const systemPrompt = buildSystemPrompt(saveData, appConfig);
     const history = buildMessageHistory(saveData.chatHistory);
     const messages = [{ role: 'system', content: systemPrompt }, ...history];
@@ -34,11 +70,13 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
     const MAX_RETRIES = 2;
     const API_TIMEOUT = 90000;
 
+    // 记录各 Agent 处理的工具调用（用于日志/后续后处理）
+    const agentCallLog = { SA: [], RA: [], MA: [], PA: [] };
+
     let loopCount = 0;
     while (loopCount < MAX_TOOL_CALL_LOOPS) {
         loopCount++;
 
-        // 请求 AI（含重试）
         let response;
         let retries = 0;
         while (true) {
@@ -55,9 +93,7 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
                 break;
             } catch (err) {
                 retries++;
-                if (retries >= MAX_RETRIES) {
-                    throw new Error('AI 请求失败: ' + (err.message || '未知错误'));
-                }
+                if (retries >= MAX_RETRIES) throw new Error('AI 请求失败: ' + (err.message || '未知错误'));
                 await new Promise(r => setTimeout(r, 1000 * retries));
             }
         }
@@ -67,12 +103,10 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
             throw new Error(`AI 请求失败 (${response.status}): ${errText}`);
         }
 
-        // 解析流式响应
         let result;
         try {
             result = await parseStreamResponse(response);
         } catch (err) {
-            // 流式失败，尝试非流式
             result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, gameTools, appConfig);
         }
 
@@ -80,7 +114,6 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
         if (result.tool_calls) assistantMsg.tool_calls = result.tool_calls;
         messages.push(assistantMsg);
 
-        // 处理 tool calls
         if (result.tool_calls && result.tool_calls.length > 0) {
             for (const tc of result.tool_calls) {
                 const fnName = tc.function.name;
@@ -90,13 +123,20 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
                 let toolResult;
 
                 if (fnName === 'get_character_reaction') {
-                    // ★ 角色 AI 嵌套调用
+                    // ★ SA 直接处理：调用角色 AI
                     toolResult = await handleGetCharacterReaction(fnArgs, saveData, apiKey, apiBaseUrl, model, appConfig);
+                    agentCallLog.SA.push({ fnName, fnArgs, result: toolResult });
                 } else {
+                    // ★ 立即执行工具，返回真实结果给 AI
                     toolResult = executeGameFunction(fnName, fnArgs, saveData);
+
+                    // 记录到对应 Agent 队列
+                    const agent = TOOL_AGENT_MAP[fnName] || 'PA';
+                    agentCallLog[agent].push({ fnName, fnArgs, result: toolResult });
                 }
 
                 if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
+                // ★ 返回真实结果（不是占位），AI 能看到完整执行数据
                 messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
             }
             continue;
@@ -104,7 +144,15 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
         break;
     }
 
-    // ===== Phase 2: 解析最终输出 =====
+    // ===== Phase 2: Agent 后处理（当前版本跳过，后续可扩展） =====
+    // agentCallLog 中记录了每个 Agent 处理的所有工具调用
+    // 后续可在此处添加：
+    //   - RA 后处理：检查新创建的角色是否需要初始化额外数据
+    //   - MA 后处理：检查地图连接是否合理
+    //   - PA 后处理：检查属性变更是否超出阈值
+    // 当前这些逻辑已在 executeGameFunction 内部处理，无需额外后处理
+
+    // ===== Phase 3: 解析最终输出 =====
     const lastAssistantMsg = messages[messages.length - 1];
     const rawContent = lastAssistantMsg?.content || '';
     const structuredOutput = parseGMOutput(rawContent);
@@ -178,7 +226,6 @@ async function handleGetCharacterReaction(args, saveData, apiKey, apiBaseUrl, mo
         }
     }
 
-    // 处理角色AI的 tool calls
     if (result.tool_calls && result.tool_calls.length > 0) {
         for (const tc of result.tool_calls) {
             let fnArgs;
@@ -286,4 +333,4 @@ async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools
     return { content: choice.message?.content || '', tool_calls: choice.message?.tool_calls || null };
 }
 
-module.exports = { runGMPipeline };
+module.exports = { runGMPipeline, TOOL_AGENT_MAP };
