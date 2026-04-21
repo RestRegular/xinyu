@@ -5,8 +5,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, gameTools, characterTools } = require('../aiService');
-const { executeGameFunction, executeCharacterTool } = require('../gameEngine');
+const { runGMPipeline } = require('../gmPipeline');
+const { executeGameFunction } = require('../gameEngine');
 
 // ----- 配置读取辅助 -----
 function getConfigValue(key, defaultValue) {
@@ -36,264 +36,50 @@ router.post('/action', async (req, res) => {
     const apiKey = getApiKey();
     if (!apiKey) return res.status(400).json({ error: '未配置 API Key，请在设置中配置' });
 
-    // 加载存档
     const row = db.prepare('SELECT data FROM saves WHERE id = ?').get(saveId);
     if (!row) return res.status(404).json({ error: '存档不存在' });
 
     let saveData;
     try { saveData = JSON.parse(row.data); } catch(e) { return res.status(500).json({ error: '存档数据解析失败' }); }
 
-    // 确保 characters 字段存在
     if (!saveData.characters) saveData.characters = {};
 
     const appConfig = getAppConfig();
-    // 系统消息用 system role，不显示为玩家消息
     const isSystemMsg = userMessage.startsWith('[系统]');
     saveData.chatHistory.push({ role: isSystemMsg ? 'system' : 'user', content: userMessage, timestamp: new Date().toISOString() });
     saveData.stats.turnCount++;
 
-    const systemPrompt = buildSystemPrompt(saveData, appConfig);
-    const history = buildMessageHistory(saveData.chatHistory);
-    const messages = [{ role: 'system', content: systemPrompt }, ...history];
+    try {
+        const result = await runGMPipeline(saveData, userMessage, {
+            apiKey,
+            apiBaseUrl: getApiBaseUrl(),
+            model: getModel(),
+            temperature: appConfig.temperature,
+            maxTokens: appConfig.maxTokens,
+        }, appConfig);
 
-    const MAX_TOOL_CALL_LOOPS = 5; // 增加到5轮以支持角色AI嵌套调用
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY = 1000;
-    const API_TIMEOUT = 90000; // 角色AI嵌套调用需要更长超时
-    const apiBaseUrl = getApiBaseUrl();
-    const model = getModel();
-    const allNotifications = [];
+        saveData.chatHistory.push({
+            role: 'assistant',
+            content: JSON.stringify({ content: result.content, options: result.options }),
+            structured: { content: result.content, options: result.options },
+            timestamp: new Date().toISOString(),
+        });
 
-    let loopCount = 0;
-    while (loopCount < MAX_TOOL_CALL_LOOPS) {
-        loopCount++;
+        await persistSave(saveData, saveId);
 
-        // 请求 AI（含重试）
-        let response;
-        let retries = 0;
-        while (true) {
-            try {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
-                response = await fetch(apiBaseUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model, messages, tools: gameTools, temperature: appConfig.temperature, max_tokens: appConfig.maxTokens, stream: true }),
-                    signal: controller.signal,
-                });
-                clearTimeout(timer);
-                break;
-            } catch(err) {
-                retries++;
-                if (retries >= MAX_RETRIES) {
-                    await persistSave(saveData, saveId);
-                    return res.status(500).json({ error: 'AI 请求失败: ' + (err.message || '未知错误') });
-                }
-                await new Promise(r => setTimeout(r, RETRY_DELAY * retries));
-            }
-        }
-
-        if (!response.ok) {
-            const errText = await response.text().catch(() => '');
-            await persistSave(saveData, saveId);
-            return res.status(response.status).json({ error: errText });
-        }
-
-        // 解析流式响应
-        let result;
-        try {
-            result = await parseStreamResponse(response);
-        } catch(err) {
-            try {
-                result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, gameTools, appConfig);
-            } catch(fallbackErr) {
-                await persistSave(saveData, saveId);
-                return res.status(500).json({ error: '响应解析失败' });
-            }
-        }
-
-        const assistantMsg = { role: 'assistant', content: result.content };
-        if (result.tool_calls) assistantMsg.tool_calls = result.tool_calls;
-        messages.push(assistantMsg);
-
-        // 处理 tool calls
-        if (result.tool_calls && result.tool_calls.length > 0) {
-            for (const tc of result.tool_calls) {
-                const fnName = tc.function.name;
-                let fnArgs;
-                try { fnArgs = JSON.parse(tc.function.arguments); } catch(e) { fnArgs = {}; }
-
-                let toolResult;
-
-                if (fnName === 'get_character_reaction') {
-                    // ★ 核心：调用角色AI代理获取角色反应
-                    toolResult = await handleGetCharacterReaction(fnArgs, saveData, apiKey, apiBaseUrl, model, appConfig);
-                } else {
-                    // 其他工具正常执行
-                    toolResult = executeGameFunction(fnName, fnArgs, saveData);
-                }
-
-                if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
-                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
-            }
-            continue;
-        }
-        break;
+        res.json({
+            content: result.content,
+            options: result.options,
+            notifications: result.notifications,
+            saveData,
+        });
+    } catch (err) {
+        await persistSave(saveData, saveId);
+        res.status(500).json({ error: 'GM 管线执行失败: ' + err.message });
     }
-
-    // 解析 GM 最终输出（期望是结构化 JSON）
-    const lastAssistantMsg = messages[messages.length - 1];
-    const rawContent = lastAssistantMsg?.content || '';
-    let structuredOutput = parseGMOutput(rawContent);
-
-    // 保存到 chatHistory
-    saveData.chatHistory.push({ role: 'assistant', content: rawContent, structured: structuredOutput, timestamp: new Date().toISOString() });
-
-    // 持久化存档
-    await persistSave(saveData, saveId);
-
-    // 返回结构化结果
-    res.json({
-        content: structuredOutput.content || [{ type: 'narrative', text: rawContent }],
-        options: structuredOutput.options || [],
-        notifications: allNotifications,
-        saveData,
-    });
 });
 
-// ===================================================================
-// ===== 角色AI代理处理（get_character_reaction 的核心逻辑） =====
-// ===================================================================
-async function handleGetCharacterReaction(args, saveData, apiKey, apiBaseUrl, model, appConfig) {
-    const charName = args.character_name;
-    const context = args.context || '';
 
-    if (!saveData.characters) return { success: false, error: '当前没有重要角色' };
-
-    const character = Object.values(saveData.characters).find(c => c.name === charName);
-    if (!character) return { success: false, error: `未找到角色"${charName}"` };
-
-    character.lastInteractedAt = new Date().toISOString();
-
-    // 构建角色 Prompt
-    const charPrompt = buildCharacterPrompt(character, saveData);
-    const charMessages = [
-        { role: 'system', content: charPrompt },
-        { role: 'user', content: `情境：${context}\n\n请给出你的反应和回应。` },
-    ];
-
-    // 请求角色AI（含重试）
-    let response;
-    let retries = 0;
-    const MAX_RETRIES = 2;
-    const API_TIMEOUT = 60000;
-
-    while (true) {
-        try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
-            response = await fetch(apiBaseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model, messages: charMessages, tools: characterTools,
-                    temperature: Math.max(0.6, appConfig.temperature - 0.2), // 角色AI温度略低，保持人设一致
-                    max_tokens: 1024, stream: true,
-                }),
-                signal: controller.signal,
-            });
-            clearTimeout(timer);
-            break;
-        } catch(err) {
-            retries++;
-            if (retries >= MAX_RETRIES) return { success: false, error: '角色AI请求失败' };
-            await new Promise(r => setTimeout(r, 1000 * retries));
-        }
-    }
-
-    if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        return { success: false, error: `角色AI错误: ${errText}` };
-    }
-
-    // 解析角色AI响应
-    let result;
-    try {
-        result = await parseStreamResponse(response);
-    } catch(err) {
-        try {
-            result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, charMessages, characterTools, { temperature: 0.7, max_tokens: 1024 });
-        } catch(e) {
-            return { success: false, error: '角色AI响应解析失败' };
-        }
-    }
-
-    // 处理角色AI的 tool calls（update_relationship, add_memory）
-    if (result.tool_calls && result.tool_calls.length > 0) {
-        for (const tc of result.tool_calls) {
-            let fnArgs;
-            try { fnArgs = JSON.parse(tc.function.arguments); } catch(e) { fnArgs = {}; }
-            executeCharacterTool(tc.function.name, fnArgs, character, saveData);
-        }
-    }
-
-    // 解析角色AI返回的 JSON
-    let charReaction = { reaction: '', dialogue: '', mood: 'neutral' };
-    try {
-        // 尝试从 content 中提取 JSON
-        const jsonMatch = result.content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            charReaction = { ...charReaction, ...JSON.parse(jsonMatch[0]) };
-        }
-    } catch(e) {
-        // JSON 解析失败，将整个 content 作为 dialogue
-        charReaction.dialogue = result.content;
-    }
-
-    return {
-        success: true,
-        characterId: character.id,
-        characterName: character.name,
-        reaction: charReaction.reaction || '',
-        dialogue: charReaction.dialogue || '',
-        mood: charReaction.mood || 'neutral',
-        relationship_value: character.relationship.value,
-        relationship_title: character.relationship.title,
-    };
-}
-
-/**
- * 解析 GM 的 JSON 输出，容错处理
- */
-function parseGMOutput(rawContent) {
-    // 尝试直接解析
-    try {
-        const parsed = JSON.parse(rawContent);
-        if (parsed.content && Array.isArray(parsed.content)) {
-            return {
-                content: parsed.content,
-                options: parsed.options || [],
-            };
-        }
-    } catch(e) {}
-
-    // 尝试从文本中提取 JSON 块
-    const jsonMatch = rawContent.match(/\{[\s\S]*"content"[\s\S]*\}/);
-    if (jsonMatch) {
-        try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.content && Array.isArray(parsed.content)) {
-                return { content: parsed.content, options: parsed.options || [] };
-            }
-        } catch(e) {}
-    }
-
-    // JSON 解析失败，降级为纯文本叙述
-    return {
-        content: [{ type: 'narrative', text: rawContent }],
-        options: [],
-    };
-}
 
 // ===================================================================
 // ===== GET /api/game/characters — 获取角色列表 =====
@@ -689,58 +475,5 @@ async function persistSave(saveData, saveId) {
         .run(JSON.stringify(saveData), saveData.name || null, saveData.world?.name || '', saveData.world?.genre || '', saveData.player?.name || '', saveData.player?.level || 1, saveData.map?.currentLocation || '', saveData.stats?.turnCount || 0, saveData.stats?.playTime || 0, now, saveId);
 }
 
-async function parseStreamResponse(response) {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '', content = '', toolCalls = [], currentToolCallIndex = -1;
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const events = buffer.split('\n\n');
-            buffer = events.pop() || '';
-            for (const event of events) {
-                for (const line of event.split('\n')) {
-                    const trimmed = line.trim();
-                    if (!trimmed || !trimmed.startsWith('data: ')) continue;
-                    const data = trimmed.slice(6);
-                    if (data === '[DONE]') continue;
-                    try {
-                        const parsed = JSON.parse(data);
-                        const delta = parsed.choices?.[0]?.delta;
-                        if (!delta) continue;
-                        if (delta.content) content += delta.content;
-                        if (delta.tool_calls) {
-                            for (const tc of delta.tool_calls) {
-                                if (tc.index !== undefined && tc.index !== currentToolCallIndex) {
-                                    currentToolCallIndex = tc.index;
-                                    toolCalls.push({ id: tc.id || ('call_' + Date.now() + '_' + tc.index), type: 'function', function: { name: tc.function?.name || '', arguments: '' } });
-                                }
-                                if (tc.id) toolCalls[currentToolCallIndex].id = tc.id;
-                                if (tc.function?.name) toolCalls[currentToolCallIndex].function.name = tc.function.name;
-                                if (tc.function?.arguments) toolCalls[currentToolCallIndex].function.arguments += tc.function.arguments;
-                            }
-                        }
-                    } catch(e) {}
-                }
-            }
-        }
-    } finally { reader.releaseLock(); }
-    return { content, tool_calls: toolCalls.length > 0 ? toolCalls : null };
-}
-
-async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools, appConfig) {
-    const response = await fetch(apiBaseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, tools: tools || undefined, temperature: appConfig.temperature, max_tokens: appConfig.maxTokens, stream: false }),
-    });
-    if (!response.ok) { const errText = await response.text(); throw new Error(`AI 请求失败 (${response.status}): ${errText}`); }
-    const data = await response.json();
-    const choice = data.choices?.[0];
-    if (!choice) throw new Error('AI 返回了空响应');
-    return { content: choice.message?.content || '', tool_calls: choice.message?.tool_calls || null };
-}
 
 module.exports = router;
