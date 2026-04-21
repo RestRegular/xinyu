@@ -18,6 +18,9 @@ app.use('/api/game', require('./routes/game'));
 // 静态文件服务（前端页面）
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// 静态文件服务（上传的世界卡片 SVG 图片）
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.listen(PORT, () => {
     console.log(`心隅服务器已启动: http://localhost:${PORT}`);
 });

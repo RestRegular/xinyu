@@ -259,12 +259,13 @@ async function handleWorldTemplateImport(event) {
     if (!file) return;
 
     try {
-        const text = await file.text();
         let data;
+        let svgFile = null;
 
         if (file.name.endsWith('.svg')) {
             // 从 SVG 中提取嵌入的 JSON 数据
             // 兼容两种格式：<script type="application/json"> 和 <xinyu:data>
+            const text = await file.text();
             let match = text.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
             if (!match) {
                 match = text.match(/<xinyu:data>([\s\S]*?)<\/xinyu:data>/);
@@ -274,7 +275,9 @@ async function handleWorldTemplateImport(event) {
                 return;
             }
             data = JSON.parse(match[1]);
+            svgFile = file;
         } else {
+            const text = await file.text();
             data = JSON.parse(text);
         }
 
@@ -293,6 +296,26 @@ async function handleWorldTemplateImport(event) {
 
         const result = await resp.json();
         if (result.success) {
+            // 如果是 SVG 文件，上传图片
+            if (svgFile) {
+                const formData = new FormData();
+                formData.append('svg', svgFile);
+                formData.append('worldName', result.template.world.name);
+
+                const uploadResp = await fetch('/api/game/templates/upload-svg', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (uploadResp.ok) {
+                    const uploadResult = await uploadResp.json();
+                    if (uploadResult.success) {
+                        // 将 SVG 图片 URL 保存到模板中
+                        result.template.svgUrl = uploadResult.url;
+                    }
+                }
+            }
+
             // 保存到本地存储
             const imported = getImportedTemplates();
             // 避免重复导入（按 name 去重）

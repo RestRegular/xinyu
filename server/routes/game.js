@@ -7,6 +7,21 @@ const router = express.Router();
 const db = require('../db');
 const { Pipeline, runUserAgent } = require('../gmPipeline');
 const { executeGameFunction } = require('../gameEngine');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+// 配置文件上传
+const upload = multer({
+    dest: path.join(__dirname, '../uploads/world_cards'),
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'image/svg+xml' || file.name.endsWith('.svg')) {
+            cb(null, true);
+        } else {
+            cb(new Error('只支持 SVG 格式的文件'), false);
+        }
+    }
+});
 
 // 单例 Pipeline 实例
 const pipeline = new Pipeline();
@@ -525,5 +540,75 @@ async function persistSave(saveData, saveId) {
         .run(JSON.stringify(saveData), saveData.name || null, saveData.world?.name || '', saveData.world?.genre || '', saveData.player?.name || '', saveData.player?.level || 1, saveData.map?.currentLocation || '', saveData.stats?.turnCount || 0, saveData.stats?.playTime || 0, now, saveId);
 }
 
+// ===================================================================
+// ===== 世界卡片 SVG 图片管理接口 =====
+// ===================================================================
+
+// POST /api/game/templates/upload-svg - 上传世界卡片 SVG 图片
+router.post('/templates/upload-svg', upload.single('svg'), (req, res) => {
+    try {
+        const file = req.file;
+        if (!file) {
+            return res.status(400).json({ error: '请选择要上传的 SVG 文件' });
+        }
+
+        // 生成新的文件名（基于世界名称）
+        const worldName = req.body.worldName || '未知世界';
+        const sanitizedName = worldName.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_');
+        const fileName = `${sanitizedName}.svg`;
+        const filePath = path.join(__dirname, '../uploads/world_cards', fileName);
+
+        // 重命名文件
+        fs.renameSync(file.path, filePath);
+
+        // 返回文件路径
+        res.json({ 
+            success: true, 
+            fileName, 
+            url: `/api/game/templates/svg/${encodeURIComponent(fileName)}` 
+        });
+    } catch (error) {
+        res.status(500).json({ error: '上传失败: ' + error.message });
+    }
+});
+
+// GET /api/game/templates/svg/:filename - 获取世界卡片 SVG 图片
+router.get('/templates/svg/:filename', (req, res) => {
+    try {
+        const filename = req.params.filename;
+        const filePath = path.join(__dirname, '../uploads/world_cards', filename);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'SVG 文件不存在' });
+        }
+
+        res.set('Content-Type', 'image/svg+xml');
+        res.sendFile(filePath);
+    } catch (error) {
+        res.status(500).json({ error: '获取图片失败: ' + error.message });
+    }
+});
+
+// GET /api/game/templates/svg-list - 获取所有 SVG 图片列表
+router.get('/templates/svg-list', (req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, '../uploads/world_cards');
+        
+        if (!fs.existsSync(directoryPath)) {
+            return res.json({ success: true, files: [] });
+        }
+
+        const files = fs.readdirSync(directoryPath)
+            .filter(file => file.endsWith('.svg'))
+            .map(file => ({
+                fileName: file,
+                url: `/api/game/templates/svg/${encodeURIComponent(file)}`
+            }));
+
+        res.json({ success: true, files });
+    } catch (error) {
+        res.status(500).json({ error: '获取图片列表失败: ' + error.message });
+    }
+});
 
 module.exports = router;

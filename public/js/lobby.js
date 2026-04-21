@@ -74,9 +74,9 @@ function renderLobby() {
         
         // 生成SVG图片路径（基于世界名称）
         const svgFileName = worldName.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_') + '.svg';
-        const svgPath = '../world_cards/' + svgFileName;
+        const svgPath = `/api/game/templates/svg/${encodeURIComponent(svgFileName)}`;
         
-        // 检查SVG文件是否存在（简单的客户端检查）
+        // 使用后端API获取SVG图片
         const svgImage = `<div class="save-card-image" style="background-image: url('${svgPath}'); background-size: cover; background-position: center; height: 80px; border-radius: 4px; margin-bottom: 8px;"></div>`;
 
         html += `
