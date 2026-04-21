@@ -493,7 +493,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .player-card-name {
     font-size: 14px;
     font-weight: 600;
-    color: #3B82F6;
+    color: var(--text-primary);
 }
 .player-card-tag {
     font-size: 10px;
