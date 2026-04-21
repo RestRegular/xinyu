@@ -18,13 +18,20 @@ async function loadTemplates() {
 async function renderTemplateGrid() {
     const grid = document.getElementById('templateGrid');
     const templates = await loadTemplates();
+
+    // 合并本地存储的导入模板
+    const importedTemplates = getImportedTemplates();
+    const allTemplates = [...templates, ...importedTemplates];
+
     let html = '';
-    templates.forEach(tpl => {
+    allTemplates.forEach(tpl => {
+        const imported = tpl._imported ? ' data-imported="true"' : '';
         html += `
-            <div class="template-card" onclick="selectTemplate('${tpl.id}', this)">
+            <div class="template-card"${imported} onclick="selectTemplate('${tpl.id}', this)">
                 <div class="template-card-icon">${tpl.icon}</div>
-                <div class="template-card-name">${tpl.name}</div>
-                <div class="template-card-desc">${tpl.description}</div>
+                <div class="template-card-name">${escapeHtml(tpl.name)}</div>
+                <div class="template-card-desc">${escapeHtml(tpl.description)}</div>
+                ${tpl._imported ? '<div class="template-card-type" style="right:16px;top:8px;font-size:10px;color:var(--text-tertiary);">已导入</div>' : ''}
             </div>
         `;
     });
@@ -43,12 +50,34 @@ function selectTemplate(id, el) {
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
 
+    // 如果选中的是导入模板，自动填充步骤二的表单
+    const importedTemplates = getImportedTemplates();
+    const imported = importedTemplates.find(t => t.id === id);
+    if (imported) {
+        populateStep2FromTemplate(imported);
+    }
+
     // 启用下一步按钮
     const nextBtn = document.getElementById('nextStepBtn');
     if (nextBtn) {
         nextBtn.disabled = false;
         nextBtn.style.opacity = '1';
     }
+}
+
+// 用导入模板的数据填充步骤二表单
+function populateStep2FromTemplate(tpl) {
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    setVal('createSaveName', tpl.name);
+    setVal('createWorldName', tpl.world?.name);
+    setVal('createWorldGenre', tpl.world?.genre);
+    setVal('createWorldDesc', tpl.world?.description);
+    setVal('createWorldRules', tpl.world?.rules);
+    setVal('createTone', tpl.world?.tone);
+    setVal('createCustomPrompt', tpl.world?.customPrompt);
+    setVal('createStartLocation', tpl.starterLocation);
+    setVal('createStartLocationDesc', tpl.starterLocationDesc);
+    setVal('createStartGold', tpl.starterGold);
 }
 
 async function createNewGame() {
@@ -95,5 +124,121 @@ async function createNewGame() {
         }
     } catch(e) {
         showToast('创建失败: ' + e.message, 'error');
+    }
+}
+
+// ===================================================================
+// ===== 世界模板导入/导出 =====
+// ===================================================================
+const IMPORTED_TEMPLATES_KEY = 'xinyu_imported_templates';
+
+function getImportedTemplates() {
+    try {
+        return JSON.parse(localStorage.getItem(IMPORTED_TEMPLATES_KEY) || '[]');
+    } catch(e) { return []; }
+}
+
+function saveImportedTemplates(templates) {
+    localStorage.setItem(IMPORTED_TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+// 触发文件选择
+function importWorldTemplate() {
+    document.getElementById('worldTemplateInput').click();
+}
+
+// 处理导入的世界模板文件
+async function handleWorldTemplateImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // 发送到后端验证并标准化
+        const resp = await fetch('/api/game/templates/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            showToast('导入失败: ' + (err.error || '文件格式不正确'), 'error');
+            return;
+        }
+
+        const result = await resp.json();
+        if (result.success) {
+            // 保存到本地存储
+            const imported = getImportedTemplates();
+            // 避免重复导入（按 name 去重）
+            const exists = imported.findIndex(t => t.name === result.template.name);
+            if (exists >= 0) {
+                imported[exists] = result.template;
+            } else {
+                imported.push(result.template);
+            }
+            saveImportedTemplates(imported);
+
+            // 重新渲染模板网格
+            await renderTemplateGrid();
+
+            // 自动选中新导入的模板
+            const cards = document.querySelectorAll('.template-card');
+            cards.forEach(card => {
+                if (card.getAttribute('onclick')?.includes(result.template.id)) {
+                    selectTemplate(result.template.id, card);
+                }
+            });
+
+            showToast(`已导入世界: ${result.template.name}`, 'success');
+        }
+    } catch(e) {
+        showToast('导入失败: 无法解析文件', 'error');
+    }
+
+    event.target.value = '';
+}
+
+// 导出世界模板为 JSON 文件
+function exportWorldTemplate(template) {
+    const exportData = {
+        name: template.name,
+        genre: template.genre,
+        icon: template.icon,
+        description: template.description,
+        world: template.world,
+        starterItems: template.starterItems || [],
+        starterLocation: template.starterLocation || '',
+        starterLocationDesc: template.starterLocationDesc || '',
+        starterGold: template.starterGold || 0,
+        _exportedAt: new Date().toISOString(),
+        _app: '心隅',
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `心隅_世界_${template.name.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`已导出世界: ${template.name}`);
+}
+
+// 从存档导出世界模板
+async function exportWorldFromSave(saveId) {
+    try {
+        const resp = await fetch(`/api/game/templates/export/${saveId}`);
+        if (!resp.ok) {
+            showToast('导出失败', 'error');
+            return;
+        }
+        const template = await resp.json();
+        exportWorldTemplate(template);
+    } catch(e) {
+        showToast('导出失败: ' + e.message, 'error');
     }
 }

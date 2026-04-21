@@ -436,6 +436,88 @@ router.post('/create', (req, res) => {
 
 router.get('/templates', (req, res) => { res.json(BUILTIN_TEMPLATES); });
 
+// ===================================================================
+// ===== POST /api/game/templates/import — 导入世界模板卡片 =====
+// ===================================================================
+router.post('/templates/import', (req, res) => {
+    const template = req.body;
+    if (!template || !template.name || !template.world) {
+        return res.status(400).json({ error: '无效的世界模板：缺少 name 或 world 字段' });
+    }
+
+    // 验证必要字段
+    if (!template.world.name || !template.world.description) {
+        return res.status(400).json({ error: '无效的世界模板：world 中缺少 name 或 description' });
+    }
+
+    // 生成唯一 ID（如果是导入的模板）
+    const id = template.id || ('custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+
+    const importedTemplate = {
+        id,
+        name: template.name,
+        genre: template.world.genre || '自定义',
+        icon: template.icon || '✨',
+        description: template.world.description.slice(0, 80),
+        world: {
+            name: template.world.name,
+            genre: template.world.genre || '自定义',
+            description: template.world.description,
+            rules: template.world.rules || '',
+            tone: template.world.tone || '史诗',
+            customPrompt: template.world.customPrompt || '',
+        },
+        starterItems: Array.isArray(template.starterItems) ? template.starterItems : [],
+        starterLocation: template.starterLocation || '起始之地',
+        starterLocationDesc: template.starterLocationDesc || '你站在这片陌生土地的起点。',
+        starterGold: template.starterGold || 0,
+        _imported: true, // 标记为导入模板
+    };
+
+    res.json({ success: true, template: importedTemplate });
+});
+
+// ===================================================================
+// ===== GET /api/game/templates/export/:saveId — 从存档导出世界模板 =====
+// ===================================================================
+router.get('/templates/export/:saveId', (req, res) => {
+    const { saveId } = req.params;
+    const row = db.prepare('SELECT data FROM saves WHERE id = ?').get(saveId);
+    if (!row) return res.status(404).json({ error: '存档不存在' });
+
+    let saveData;
+    try { saveData = JSON.parse(row.data); } catch(e) { return res.status(500).json({ error: '存档解析失败' }); }
+
+    const world = saveData.world || {};
+    const template = {
+        id: 'world_' + Date.now(),
+        name: saveData.name || world.name || '未命名世界',
+        genre: world.genre || '自定义',
+        icon: { '奇幻': '⚔️', '科幻': '🚀', '武侠': '🏯', '末日': '☢️' }[world.genre] || '✨',
+        description: world.description || '',
+        world: {
+            name: world.name || '',
+            genre: world.genre || '',
+            description: world.description || '',
+            rules: world.rules || '',
+            tone: world.tone || '',
+            customPrompt: world.customPrompt || '',
+        },
+        starterLocation: saveData.map?.currentLocation || '',
+        starterLocationDesc: '',
+        starterGold: saveData.inventory?.gold || 0,
+        starterItems: [],
+        _exportedFrom: saveData.name,
+        _exportedAt: new Date().toISOString(),
+    };
+
+    // 尝试获取起始地点描述
+    const startLoc = saveData.map?.locations?.[template.starterLocation];
+    if (startLoc) template.starterLocationDesc = startLoc.description || '';
+
+    res.json(template);
+});
+
 router.post('/drop-item', async (req, res) => {
     const { saveId, itemId } = req.body;
     if (!saveId || !itemId) return res.status(400).json({ error: '缺少参数' });

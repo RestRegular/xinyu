@@ -87,6 +87,7 @@ function renderLobby() {
                                 <button class="dropdown-item" onclick="event.stopPropagation();toggleArchive('${save.id}');closeDropdowns()">${save.archived ? '📦 取消归档' : '📦 归档'}</button>
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item" onclick="event.stopPropagation();viewSaveStats('${save.id}');closeDropdowns()">📊 查看统计</button>
+                                <button class="dropdown-item" onclick="event.stopPropagation();exportWorldFromSave('${save.id}');closeDropdowns()">🌍 导出世界</button>
                                 <button class="dropdown-item" onclick="event.stopPropagation();exportSave('${save.id}');closeDropdowns()">📤 导出存档</button>
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item danger" onclick="event.stopPropagation();deleteSave('${save.id}');closeDropdowns()">🗑️ 删除</button>
