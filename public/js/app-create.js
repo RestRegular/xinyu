@@ -105,6 +105,26 @@ function onBackStep() {
 // 开始冒险
 async function onStartAdventure() {
     try {
+        // 检查是否有空字段，自动补全
+        const requiredIds = ['createPlayerName', 'createWorldName', 'createWorldDesc'];
+        const optionalIds = ['createPlayerRace', 'createPlayerClass', 'createPlayerAppearance', 'createPlayerPersonality', 'createPlayerBackstory', 'createWorldRules', 'createStartLocation', 'createStartLocationDesc'];
+        const allIds = [...requiredIds, ...optionalIds];
+        const emptyFields = allIds.filter(id => {
+            const el = document.getElementById(id);
+            return el && !el.value.trim();
+        });
+
+        if (emptyFields.length > 0) {
+            // 有空字段，先自动补全
+            showToast('⏳ 正在智能补全信息...', 'info');
+            try {
+                await autofillForm();
+            } catch(e) {
+                // 补全失败不阻塞，继续用默认值创建
+                console.warn('autofill failed:', e);
+            }
+        }
+
         await createNewGame();
     } catch(err) {
         showToast('创建失败: ' + err.message, 'error');
