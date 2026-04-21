@@ -64,15 +64,24 @@ function renderLobby() {
     saves.forEach(save => {
         const name = save.name || '未命名';
         const worldGenre = save.world_genre || save.worldGenre || '自定义';
+        const worldName = save.world_name || save.worldName || '未知世界';
         const playerName = save.player_name || save.playerName || '?';
         const playerLevel = save.player_level || save.playerLevel || 1;
         const currentLocation = save.current_location || save.currentLocation || '未知';
         const turnCount = save.turn_count || save.turnCount || 0;
         const lastSavedAt = save.last_saved_at || save.lastSavedAt;
         const pinnedClass = save.pinned ? 'save-card-pinned' : '';
+        
+        // 生成SVG图片路径（基于世界名称）
+        const svgFileName = worldName.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_') + '.svg';
+        const svgPath = '../world_cards/' + svgFileName;
+        
+        // 检查SVG文件是否存在（简单的客户端检查）
+        const svgImage = `<div class="save-card-image" style="background-image: url('${svgPath}'); background-size: cover; background-position: center; height: 80px; border-radius: 4px; margin-bottom: 8px;"></div>`;
 
         html += `
             <div class="save-card ${pinnedClass}" ondblclick="continueGame('${save.id}')">
+                ${svgImage}
                 <div class="save-card-header">
                     <div class="save-card-title">${escapeHtml(name)}</div>
                     <div class="save-card-actions">
