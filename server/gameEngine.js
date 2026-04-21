@@ -116,7 +116,7 @@ function handleMoveToLocation(args, saveData) {
         saveData.map.locations[target] = { description: args.description, connections: args.connections || [current], npcs: [], discovered: true, dangerLevel: 0 };
         if (curLoc && !curLoc.connections.includes(target)) curLoc.connections.push(target);
         saveData.stats.locationsDiscovered = (saveData.stats.locationsDiscovered || 0) + 1;
-        notifications.push({ text: `🗺️ 发现新地点：${target}`, type: 'info' });
+        notifications.push({ text: `🗺️ 发现新地点：${target}`, type: 'positive' });
         saveData.eventLog.push({ turn: saveData.stats.turnCount, type: 'discover', text: `发现${target}` });
     } else { saveData.map.locations[target].discovered = true; }
     saveData.map.currentLocation = target;
@@ -169,7 +169,7 @@ function handleCreateLocation(args, saveData) {
     }
 
     saveData.stats.locationsDiscovered = (saveData.stats.locationsDiscovered || 0) + 1;
-    notifications.push({ text: `🗺️ 发现新地点：${name}`, type: 'info' });
+    notifications.push({ text: `🗺️ 发现新地点：${name}`, type: 'positive' });
     saveData.eventLog.push({ turn: saveData.stats.turnCount, type: 'discover', text: `发现${name}` });
 
     return { success: true, location: name, description: args.description, connections, notifications };
@@ -216,7 +216,7 @@ function handleCreateNpc(args, saveData) {
     if (!loc.npcs) loc.npcs = [];
     if (loc.npcs.includes(args.name)) return { success: false, error: `NPC "${args.name}" 已经在此处` };
     loc.npcs.push(args.name);
-    return { success: true, npc: args.name, location: saveData.map.currentLocation, all_npcs: loc.npcs, notifications: [{ text: `👤 遇到新角色：${args.name}`, type: 'info' }] };
+    return { success: true, npc: args.name, location: saveData.map.currentLocation, all_npcs: loc.npcs, notifications: [{ text: `👤 遇到新角色：${args.name}`, type: 'positive' }] };
 }
 
 function handleRemoveNpc(args, saveData) {
@@ -338,8 +338,8 @@ function handleCreateCharacter(args, saveData) {
         characterName: name,
         characterData: character,
         notifications: [{
-            type: 'character_created',
-            text: `🎭 重要角色创建：${name}（${character.role}）`,
+            type: 'positive',
+            text: `🎭 新角色登场：${name}（${character.role}）`,
             character: character,
         }]
     };
