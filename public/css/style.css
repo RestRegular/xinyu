@@ -390,7 +390,6 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 .msg-narrator {
     font-size: 14px; line-height: 1.8; color: var(--text-primary);
-    max-width: 720px;
 }
 
 /* 叙述中的内联对话（引号内容自动转换） */
@@ -402,7 +401,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 
 /* 场景描写 */
-.msg-scene { max-width: 720px; }
+.msg-scene { }
 .scene-card {
     background: linear-gradient(135deg, rgba(94,106,210,0.06), rgba(94,106,210,0.02));
     border-left: 3px solid var(--accent);
@@ -414,7 +413,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 
 /* 对话气泡 */
-.msg-dialogue { max-width: 600px; }
+.msg-dialogue { }
 .dialogue-bubble {
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
@@ -436,7 +435,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 
 /* 动作描写 */
-.msg-action { max-width: 720px; }
+.msg-action { }
 .action-text {
     font-size: 13px;
     line-height: 1.7;
@@ -447,7 +446,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 
 /* 战斗描写 */
-.msg-combat { max-width: 720px; }
+.msg-combat { }
 .combat-text {
     background: linear-gradient(135deg, rgba(220,38,38,0.05), rgba(220,38,38,0.02));
     border-left: 3px solid #DC2626;
@@ -459,7 +458,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 
 /* 获得物品 */
-.msg-loot { max-width: 720px; }
+.msg-loot { }
 .loot-text {
     background: linear-gradient(135deg, rgba(234,179,8,0.08), rgba(234,179,8,0.02));
     border-left: 3px solid #EAB308;
@@ -470,13 +469,13 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     color: #92400E;
 }
 .msg-user {
-    text-align: right; max-width: 720px; margin-left: auto;
 }
 .msg-user-bubble {
     display: inline-block; background: var(--accent-light);
     color: var(--text-primary); padding: 8px 14px;
-    border-radius: 12px 12px 2px 12px; font-size: 14px;
+    border-radius: var(--radius-md); font-size: 14px;
     line-height: 1.6; text-align: left;
+    border: 1px solid var(--accent-light);
 }
 .msg-notification {
     display: flex; align-items: center; gap: 8px;
@@ -490,7 +489,6 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 
 /* 角色卡片消息 */
 .msg-character {
-    max-width: 720px;
 }
 .character-card {
     background: var(--bg-secondary);
