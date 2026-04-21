@@ -383,6 +383,112 @@ const BUILTIN_TEMPLATES = [
     },
 ];
 
+// ===================================================================
+// ===== POST /api/game/autofill — AI 自动补全角色和世界信息 =====
+// ===================================================================
+router.post('/autofill', async (req, res) => {
+    const { worldName, genre, worldDesc, worldRules, tone, startLocation, startLocationDesc, playerName, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, templateId } = req.body;
+
+    // 获取 API 配置
+    const configRow = db.prepare("SELECT value FROM config WHERE key = 'appConfig'").get();
+    const appConfig = configRow ? JSON.parse(configRow.value) : {};
+    const apiKey = req.body.apiKey || appConfig.apiKey;
+    const apiBaseUrl = appConfig.apiBaseUrl || 'https://api.deepseek.com';
+    const model = appConfig.model || 'deepseek-chat';
+
+    if (!apiKey) {
+        return res.status(400).json({ error: '请先配置 API Key' });
+    }
+
+    // 构建需要补全的字段列表
+    const missing = [];
+    if (!playerName) missing.push('playerName');
+    if (!playerRace) missing.push('playerRace');
+    if (!playerClass) missing.push('playerClass');
+    if (!playerAppearance) missing.push('playerAppearance');
+    if (!playerPersonality) missing.push('playerPersonality');
+    if (!playerBackstory) missing.push('playerBackstory');
+    if (!worldName) missing.push('worldName');
+    if (!worldDesc) missing.push('worldDesc');
+    if (!worldRules) missing.push('worldRules');
+    if (!startLocation) missing.push('startLocation');
+    if (!startLocationDesc) missing.push('startLocationDesc');
+
+    if (missing.length === 0) {
+        return res.json({ success: true, filled: {}, message: '所有字段已填写完整' });
+    }
+
+    // 如果选了模板，获取模板信息作为参考
+    let templateInfo = '';
+    if (templateId && templateId !== 'custom') {
+        const tpl = BUILTIN_TEMPLATES.find(t => t.id === templateId);
+        if (tpl) {
+            templateInfo = `\n参考模板：${tpl.name}（${tpl.genre}）\n模板世界：${tpl.world.name}\n模板描述：${tpl.world.description?.slice(0, 200)}`;
+        }
+    }
+
+    const prompt = `你是一个 RPG 游戏的角色创建助手。请根据用户已提供的信息，为缺失的字段生成合适的内容。
+
+## 已提供的信息
+- 世界名称：${worldName || '未填写'}
+- 世界类型：${genre || '未填写'}
+- 世界描述：${worldDesc || '未填写'}
+- 世界规则：${worldRules || '未填写'}
+- 叙事基调：${tone || '未填写'}
+- 起始地点：${startLocation || '未填写'}
+- 起始地点描述：${startLocationDesc || '未填写'}
+- 角色名称：${playerName || '未填写'}
+- 种族：${playerRace || '未填写'}
+- 职业：${playerClass || '未填写'}
+- 外貌：${playerAppearance || '未填写'}
+- 性格：${playerPersonality || '未填写'}
+- 背景故事：${playerBackstory || '未填写'}
+${templateInfo}
+
+## 需要补全的字段
+${missing.join('、')}
+
+## 要求
+1. 只返回 JSON，不要输出任何其他内容
+2. 只包含需要补全的字段，已填写的不要返回
+3. 每个字段的内容要简短精炼（角色名2-4字，种族/职业1-4字，外貌30字内，性格20字内，背景故事50字内，世界名2-6字，世界描述100字内，世界规则100字内，起始地点2-6字，起始地点描述80字内）
+4. 内容要与已填写的信息保持一致和协调
+5. 返回格式：{"playerName":"xxx","playerRace":"xxx",...}
+
+请直接返回 JSON：`;
+
+    try {
+        const response = await fetch(`${apiBaseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify({
+                model,
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.8,
+                max_tokens: 500,
+            }),
+        });
+
+        if (!response.ok) {
+            return res.status(500).json({ error: 'AI 请求失败: ' + response.status });
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '';
+
+        // 解析 JSON
+        let filled = {};
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) filled = JSON.parse(jsonMatch[0]);
+        } catch(e) {}
+
+        res.json({ success: true, filled, message: `已补全 ${Object.keys(filled).length} 个字段` });
+    } catch(err) {
+        res.status(500).json({ error: 'AI 补全失败: ' + err.message });
+    }
+});
+
 router.post('/create', (req, res) => {
     const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, startLocation, startLocationDesc, playerName, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId } = req.body;
 

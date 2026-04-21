@@ -2,6 +2,87 @@
 // ===== 新游戏创建（重构版 - 调用后端 API） =====
 // ===================================================================
 
+// ----- AI 智能补全 -----
+async function autofillForm() {
+    const btn = document.getElementById('autofillBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ AI 补全中...';
+    btn.disabled = true;
+
+    try {
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        const body = {
+            worldName: getVal('createWorldName'),
+            genre: getVal('createWorldGenre'),
+            worldDesc: getVal('createWorldDesc'),
+            worldRules: getVal('createWorldRules'),
+            tone: getVal('createTone'),
+            startLocation: getVal('createStartLocation'),
+            startLocationDesc: getVal('createStartLocationDesc'),
+            playerName: getVal('createPlayerName'),
+            playerRace: getVal('createPlayerRace'),
+            playerClass: getVal('createPlayerClass'),
+            playerAppearance: getVal('createPlayerAppearance'),
+            playerPersonality: getVal('createPlayerPersonality'),
+            playerBackstory: getVal('createPlayerBackstory'),
+            templateId: selectedTemplate || '',
+        };
+
+        const resp = await fetch('/api/game/autofill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        const result = await resp.json();
+
+        if (!resp.ok) {
+            showToast(result.error || '补全失败', 'error');
+            return;
+        }
+
+        if (result.success && result.filled) {
+            // 字段名映射到 input id
+            const fieldMap = {
+                playerName: 'createPlayerName',
+                playerRace: 'createPlayerRace',
+                playerClass: 'createPlayerClass',
+                playerAppearance: 'createPlayerAppearance',
+                playerPersonality: 'createPlayerPersonality',
+                playerBackstory: 'createPlayerBackstory',
+                worldName: 'createWorldName',
+                worldDesc: 'createWorldDesc',
+                worldRules: 'createWorldRules',
+                startLocation: 'createStartLocation',
+                startLocationDesc: 'createStartLocationDesc',
+            };
+
+            let filledCount = 0;
+            for (const [field, value] of Object.entries(result.filled)) {
+                const inputId = fieldMap[field];
+                if (inputId) {
+                    const el = document.getElementById(inputId);
+                    if (el && !el.value.trim()) {
+                        el.value = value;
+                        filledCount++;
+                    }
+                }
+            }
+
+            if (filledCount > 0) {
+                showToast(`✨ 已补全 ${filledCount} 个字段`, 'success');
+            } else {
+                showToast('所有字段已填写完整', 'info');
+            }
+        }
+    } catch(e) {
+        showToast('补全失败: ' + e.message, 'error');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
 function openNewGameModal() {
     window.location.href = 'create.html';
 }

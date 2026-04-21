@@ -348,7 +348,18 @@ function renderGameMessages() {
         if (msg.role === 'system') {
             html += `<div class="msg msg-system">${escapeHtml(msg.content)}</div>`;
         } else if (msg.role === 'user') {
-            html += `<div class="msg msg-user"><div class="msg-user-bubble">${escapeHtml(msg.content)}</div></div>`;
+            const playerName = currentSave?.player?.name || '你';
+            html += `
+                <div class="msg msg-player">
+                    <div class="player-card">
+                        <div class="player-card-header">
+                            <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
+                            <span class="player-card-tag you">你</span>
+                        </div>
+                        <div class="player-card-dialogue">"${escapeHtml(msg.content)}"</div>
+                    </div>
+                </div>
+            `;
         } else if (msg.role === 'assistant') {
             // 支持结构化内容渲染（新格式）
             if (msg.structured && msg.structured.content) {
@@ -431,8 +442,17 @@ function addSystemMessage(text) {
 function addUserMessage(text) {
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
-    div.className = 'msg msg-user';
-    div.innerHTML = `<div class="msg-user-bubble">${escapeHtml(text)}</div>`;
+    div.className = 'msg msg-player';
+    const playerName = currentSave?.player?.name || '你';
+    div.innerHTML = `
+        <div class="player-card">
+            <div class="player-card-header">
+                <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
+                <span class="player-card-tag you">你</span>
+            </div>
+            <div class="player-card-dialogue">"${escapeHtml(text)}"</div>
+        </div>
+    `;
     container.appendChild(div);
     scrollToBottom();
 }
