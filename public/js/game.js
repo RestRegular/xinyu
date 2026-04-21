@@ -393,6 +393,13 @@ function renderGameMessages() {
         }
     });
     container.innerHTML = html;
+
+    // 渲染最后一条 assistant 消息的选项按钮（刷新后恢复）
+    const lastAssistant = history.slice().reverse().find(m => m.role === 'assistant' && m.structured?.options?.length > 0);
+    if (lastAssistant && lastAssistant.structured.options.length > 0) {
+        renderOptions(lastAssistant.structured.options);
+    }
+
     scrollToBottom();
 }
 
@@ -658,6 +665,11 @@ function sendMessage() {
 
     input.value = '';
     input.style.height = 'auto';
+
+    // 清除旧的选项按钮
+    const oldOptions = document.querySelector('.msg-options');
+    if (oldOptions) oldOptions.remove();
+
     sendGameMessage(text);
 }
 
