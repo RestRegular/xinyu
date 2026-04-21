@@ -175,6 +175,16 @@
                     <label class="create-form-label" for="createStartGold">初始金币</label>
                     <input class="input create-form-input" type="number" id="createStartGold" value="0" min="0">
                 </div>
+                <div class="create-form-row">
+                    <label class="create-form-label">初始物品</label>
+                    <div class="create-form-items-container">
+                        <div class="create-form-items-list" id="createStarterItemsList">
+                            <!-- 动态生成物品列表 -->
+                        </div>
+                        <button class="btn btn-sm btn-secondary" onclick="addStarterItem()">+ 添加物品</button>
+                    </div>
+                    <div class="create-form-hint">点击添加物品按钮来设置玩家初始携带的物品</div>
+                </div>
             </div>
         </div>
 

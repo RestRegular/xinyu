@@ -197,6 +197,7 @@ async function createNewGame() {
                 startLocation, startLocationDesc,
                 playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory,
                 startGold, templateId: selectedTemplate,
+                starterItems: starterItems
             }),
         });
 
@@ -386,4 +387,110 @@ async function exportWorldFromSave(saveId) {
     } catch(e) {
         showToast('导出失败: ' + e.message, 'error');
     }
+}
+
+// ===================================================================
+// ===== 初始物品管理 =====
+// ===================================================================
+let starterItems = [];
+
+function addStarterItem() {
+    const newItem = {
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        name: '新物品',
+        type: 'misc',
+        description: '',
+        quantity: 1,
+        effects: {},
+        rarity: 'common'
+    };
+    starterItems.push(newItem);
+    renderStarterItems();
+}
+
+function removeStarterItem(itemId) {
+    starterItems = starterItems.filter(item => item.id !== itemId);
+    renderStarterItems();
+}
+
+function updateStarterItem(itemId, field, value) {
+    const item = starterItems.find(item => item.id === itemId);
+    if (item) {
+        if (field === 'quantity') {
+            item[field] = parseInt(value) || 1;
+        } else if (field === 'effects') {
+            try {
+                item[field] = JSON.parse(value || '{}');
+            } catch (e) {
+                item[field] = {};
+            }
+        } else {
+            item[field] = value;
+        }
+    }
+}
+
+function renderStarterItems() {
+    const container = document.getElementById('createStarterItemsList');
+    if (!container) return;
+    
+    if (starterItems.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-tertiary); font-size: 13px; padding: 16px;">暂无初始物品</div>';
+        return;
+    }
+    
+    let html = '';
+    starterItems.forEach(item => {
+        html += `
+            <div class="create-form-item">
+                <div class="create-form-item-header">
+                    <div class="create-form-item-title">${escapeHtml(item.name)}</div>
+                    <button class="create-form-item-remove" onclick="removeStarterItem('${item.id}')">✕</button>
+                </div>
+                <div class="create-form-item-body">
+                    <div class="create-form-item-row">
+                        <label class="create-form-item-label">物品名称</label>
+                        <input type="text" class="create-form-item-input" value="${escapeHtml(item.name)}" onchange="updateStarterItem('${item.id}', 'name', this.value)">
+                    </div>
+                    <div class="create-form-item-row">
+                        <label class="create-form-item-label">物品类型</label>
+                        <select class="create-form-item-input" onchange="updateStarterItem('${item.id}', 'type', this.value)">
+                            <option value="weapon" ${item.type === 'weapon' ? 'selected' : ''}>武器</option>
+                            <option value="armor" ${item.type === 'armor' ? 'selected' : ''}>防具</option>
+                            <option value="consumable" ${item.type === 'consumable' ? 'selected' : ''}>消耗品</option>
+                            <option value="misc" ${item.type === 'misc' ? 'selected' : ''}>杂物</option>
+                        </select>
+                    </div>
+                    <div class="create-form-item-row">
+                        <label class="create-form-item-label">物品描述</label>
+                        <input type="text" class="create-form-item-input" value="${escapeHtml(item.description)}" onchange="updateStarterItem('${item.id}', 'description', this.value)">
+                    </div>
+                    <div class="create-form-item-row">
+                        <label class="create-form-item-label">数量</label>
+                        <input type="number" class="create-form-item-input" value="${item.quantity}" min="1" onchange="updateStarterItem('${item.id}', 'quantity', this.value)">
+                    </div>
+                    <div class="create-form-item-row">
+                        <label class="create-form-item-label">稀有度</label>
+                        <select class="create-form-item-input" onchange="updateStarterItem('${item.id}', 'rarity', this.value)">
+                            <option value="common" ${item.rarity === 'common' ? 'selected' : ''}>普通</option>
+                            <option value="uncommon" ${item.rarity === 'uncommon' ? 'selected' : ''}> uncommon</option>
+                            <option value="rare" ${item.rarity === 'rare' ? 'selected' : ''}>稀有</option>
+                            <option value="epic" ${item.rarity === 'epic' ? 'selected' : ''}>史诗</option>
+                            <option value="legendary" ${item.rarity === 'legendary' ? 'selected' : ''}>传说</option>
+                        </select>
+                    </div>
+                    <div class="create-form-item-row">
+                        <label class="create-form-item-label">效果 (JSON)</label>
+                        <input type="text" class="create-form-item-input" value="${escapeHtml(JSON.stringify(item.effects || {}))}" placeholder="{\"attack\": 5}" onchange="updateStarterItem('${item.id}', 'effects', this.value)">
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function clearStarterItems() {
+    starterItems = [];
+    renderStarterItems();
 }

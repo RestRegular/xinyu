@@ -342,7 +342,7 @@ ${missing.join('、')}
 });
 
 router.post('/create', (req, res) => {
-    const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId } = req.body;
+    const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId, starterItems: customStarterItems } = req.body;
 
     let playerDesc = '';
     if (playerRace) playerDesc += `种族：${playerRace}。`;
@@ -368,6 +368,9 @@ router.post('/create', (req, res) => {
             effectiveTone = tpl.world.tone;
             effectiveStartLocation = tpl.starterLocation; effectiveStartLocationDesc = tpl.starterLocationDesc;
         }
+    } else if (Array.isArray(customStarterItems)) {
+        // 使用自定义的初始物品
+        starterItems = customStarterItems;
     }
 
     const id = 'save_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
