@@ -126,11 +126,9 @@ function renderOptions(options) {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = opt.text || opt.label || '';
-        btn.style.animationDelay = `${index * 0.06}s`;
+        btn.style.animationDelay = `${index * 0.04}s`;
         btn.onclick = () => {
-            // 点击选项后移除所有选项
             container.innerHTML = '';
-            // 发送选项对应的 action 作为玩家输入
             const actionText = opt.action || opt.text || opt.label || '';
             sendGameMessage(actionText, true);
         };
@@ -138,6 +136,26 @@ function renderOptions(options) {
     });
 
     container.appendChild(wrapper);
+
+    // 超过3个选项时添加折叠按钮
+    if (options.length > 3) {
+        const toggle = document.createElement('div');
+        toggle.className = 'options-toggle';
+        toggle.innerHTML = `<span class="options-toggle-arrow">▼</span> <span>收起选项</span>`;
+        let collapsed = false;
+        toggle.onclick = () => {
+            collapsed = !collapsed;
+            if (collapsed) {
+                wrapper.classList.add('collapsed');
+                toggle.innerHTML = `<span class="options-toggle-arrow up">▼</span> <span>展开选项 (${options.length})</span>`;
+            } else {
+                wrapper.classList.remove('collapsed');
+                toggle.innerHTML = `<span class="options-toggle-arrow">▼</span> <span>收起选项</span>`;
+            }
+        };
+        container.appendChild(toggle);
+    }
+
     scrollToBottom();
 }
 
