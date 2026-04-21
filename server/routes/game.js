@@ -70,6 +70,7 @@ router.post('/action', async (req, res) => {
                     option: userMessage,
                     action: uaResult.action,
                     dialogue: uaResult.dialogue,
+                    timestamp: new Date().toISOString(),
                 };
             } catch (uaErr) {
                 // UA 失败不阻断流程，降级为不显示玩家行为

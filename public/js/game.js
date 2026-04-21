@@ -387,8 +387,9 @@ function renderGameMessages() {
                     if (block.text && typeof block.text === 'string' && block.text.startsWith('{"success"')) return;
                     if (block.type === 'player_action') {
                         const playerName = currentSave?.player?.name || '你';
-                        let dialogueHtml = block.dialogue ? `<div class="player-action-dialogue">"${escapeHtml(block.dialogue)}"</div>` : '';
-                        html += `<div class="msg msg-player-action"><div class="player-action-card"><div class="player-action-header"><span class="player-action-name">👤 ${escapeHtml(playerName)}</span><span class="player-action-option">▸ ${escapeHtml(block.option)}</span></div><div class="player-action-desc">${escapeHtml(block.action)}</div>${dialogueHtml}</div></div>`;
+                        const timeStr = formatMessageTime(block.timestamp);
+                        const displayText = block.dialogue || block.action || '';
+                        html += `<div class="msg msg-player"><div class="player-card"><div class="player-card-header"><span class="player-card-name">👤 ${escapeHtml(playerName)}</span><div class="player-card-header-right">${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}<span class="player-card-tag you">你</span></div></div><div class="player-card-dialogue">"${escapeHtml(displayText)}"</div></div></div>`;
                     } else if (block.type === 'narrative') {
                         html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
                     } else if (block.type === 'scene') {
@@ -598,20 +599,25 @@ function addDialogueMessage(block) {
 function addPlayerActionMessage(block) {
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
-    div.className = 'msg msg-player-action';
+    div.className = 'msg msg-player';
     const playerName = currentSave?.player?.name || '你';
-    let dialogueHtml = '';
+    const timeStr = formatMessageTime(new Date().toISOString());
+    let contentHtml = '';
     if (block.dialogue) {
-        dialogueHtml = `<div class="player-action-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+        contentHtml = `<div class="player-card-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+    } else {
+        contentHtml = `<div class="player-card-dialogue">"${escapeHtml(block.action)}"</div>`;
     }
     div.innerHTML = `
-        <div class="player-action-card">
-            <div class="player-action-header">
-                <span class="player-action-name">👤 ${escapeHtml(playerName)}</span>
-                <span class="player-action-option">▸ ${escapeHtml(block.option)}</span>
+        <div class="player-card">
+            <div class="player-card-header">
+                <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
+                <div class="player-card-header-right">
+                    ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
+                    <span class="player-card-tag you">你</span>
+                </div>
             </div>
-            <div class="player-action-desc">${escapeHtml(block.action)}</div>
-            ${dialogueHtml}
+            ${contentHtml}
         </div>
     `;
     container.appendChild(div);
@@ -756,8 +762,12 @@ async function sendGameMessage(text, isOption = false) {
     isGenerating = true;
     document.getElementById('gameSendBtn').disabled = true;
 
-    // 添加用户消息到 UI（后端也会添加到 chatHistory，但前端先显示）
-    addUserMessage(text);
+    // 选项选择：显示系统提示而非玩家消息卡片
+    if (isOption) {
+        addNotification(`玩家选择了「${text}」`, 'info');
+    } else {
+        addUserMessage(text);
+    }
 
     try {
         await callAI(text, isOption);

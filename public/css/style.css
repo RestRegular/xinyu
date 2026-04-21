@@ -511,36 +511,6 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
 }
 
-/* 玩家行为描写（UserAgent 生成） */
-.msg-player-action { }
-.player-action-card {
-    background: linear-gradient(135deg, rgba(59,130,246,0.04), rgba(99,102,241,0.04));
-    border: 1px solid rgba(99,102,241,0.2);
-    border-left: 3px solid #6366F1;
-    border-radius: var(--radius-lg);
-    padding: 12px 16px;
-}
-.player-action-header {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 8px; flex-wrap: wrap;
-}
-.player-action-name {
-    font-size: 13px; font-weight: 600; color: #6366F1;
-}
-.player-action-option {
-    font-size: 11px; color: var(--text-tertiary);
-    background: var(--bg-tertiary); padding: 1px 8px;
-    border-radius: 10px;
-}
-.player-action-desc {
-    font-size: 14px; color: var(--text-primary); line-height: 1.7;
-}
-.player-action-dialogue {
-    font-size: 14px; color: var(--text-primary); line-height: 1.7;
-    margin-top: 6px; padding-left: 12px;
-    border-left: 3px solid #6366F1;
-}
-
 .msg-notification {
     display: flex; align-items: center; gap: 8px;
     padding: 8px 12px; border-radius: var(--radius-md);
