@@ -89,11 +89,22 @@ async function renderStructuredContent(contentBlocks) {
 
     for (const block of contentBlocks) {
         if (block.type === 'narrative') {
-            // 叙述文本 — 使用流式打字效果
             await simulateStreamingText(block.text);
+        } else if (block.type === 'scene') {
+            addSceneMessage(block);
+        } else if (block.type === 'dialogue') {
+            addDialogueMessage(block);
+        } else if (block.type === 'action') {
+            addActionMessage(block);
+        } else if (block.type === 'combat') {
+            addCombatMessage(block);
+        } else if (block.type === 'loot') {
+            addLootMessage(block);
         } else if (block.type === 'character') {
-            // 角色反应 — 渲染角色卡片
             addCharacterMessage(block);
+        } else {
+            // 未知类型降级为 narrative
+            await simulateStreamingText(block.text);
         }
     }
 }

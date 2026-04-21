@@ -275,6 +275,17 @@ function renderGameMessages() {
                 msg.structured.content.forEach(block => {
                     if (block.type === 'narrative') {
                         html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
+                    } else if (block.type === 'scene') {
+                        html += `<div class="msg msg-scene"><div class="scene-card">${formatNarratorText(block.text)}</div></div>`;
+                    } else if (block.type === 'dialogue') {
+                        const speaker = escapeHtml(block.speaker || '???');
+                        html += `<div class="msg msg-dialogue"><div class="dialogue-bubble"><div class="dialogue-speaker">${speaker}</div><div class="dialogue-text">${escapeHtml(block.text)}</div></div></div>`;
+                    } else if (block.type === 'action') {
+                        html += `<div class="msg msg-action"><div class="action-text">${formatNarratorText(block.text)}</div></div>`;
+                    } else if (block.type === 'combat') {
+                        html += `<div class="msg msg-combat"><div class="combat-text">${formatNarratorText(block.text)}</div></div>`;
+                    } else if (block.type === 'loot') {
+                        html += `<div class="msg msg-loot"><div class="loot-text">${formatNarratorText(block.text)}</div></div>`;
                     } else if (block.type === 'character') {
                         const moodEmoji = getMoodEmoji(block.mood);
                         const moodLabel = getMoodLabel(block.mood);
@@ -287,6 +298,9 @@ function renderGameMessages() {
                         if (block.dialogue) cardHtml += `<div class="character-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
                         cardHtml += `</div></div>`;
                         html += cardHtml;
+                    } else {
+                        // 未知类型降级为 narrative
+                        html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
                     }
                 });
             } else {
@@ -305,7 +319,17 @@ function renderGameMessages() {
 
 function formatNarratorText(text) {
     if (!text) return '';
-    return escapeHtml(text).replace(/\n/g, '<br>');
+    let html = escapeHtml(text);
+    // 将中文引号内的对话转为对话气泡样式
+    // 匹配 "xxx" 或 "xxx"（中文双引号）
+    html = html.replace(/[\u201c\u201d]([^]*?)[\u201c\u201d]/g, (match, content) => {
+        return `<span class="inline-dialogue">"${content}"</span>`;
+    });
+    // 将英文双引号内的对话也转换
+    html = html.replace(/"([^]*?)"/g, (match, content) => {
+        return `<span class="inline-dialogue">"${content}"</span>`;
+    });
+    return html.replace(/\n/g, '<br>');
 }
 
 function addSystemMessage(text) {
@@ -360,6 +384,58 @@ function addCharacterMessage(block) {
 
     html += '</div>';
     div.innerHTML = html;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
+// ----- 新增 content type 渲染函数 -----
+function addSceneMessage(block) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-scene';
+    div.innerHTML = `<div class="scene-card">${formatNarratorText(block.text)}</div>`;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
+function addDialogueMessage(block) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-dialogue';
+    const speaker = escapeHtml(block.speaker || '???');
+    div.innerHTML = `
+        <div class="dialogue-bubble">
+            <div class="dialogue-speaker">${speaker}</div>
+            <div class="dialogue-text">${escapeHtml(block.text)}</div>
+        </div>
+    `;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
+function addActionMessage(block) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-action';
+    div.innerHTML = `<div class="action-text">${formatNarratorText(block.text)}</div>`;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
+function addCombatMessage(block) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-combat';
+    div.innerHTML = `<div class="combat-text">${formatNarratorText(block.text)}</div>`;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
+function addLootMessage(block) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-loot';
+    div.innerHTML = `<div class="loot-text">${formatNarratorText(block.text)}</div>`;
     container.appendChild(div);
     scrollToBottom();
 }

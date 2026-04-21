@@ -395,7 +395,12 @@ ${charsInfo}`;
 你的最终回复必须是合法的 JSON，格式如下（不要输出任何其他内容）：
 {
     "content": [
-        {"type": "narrative", "text": "环境描写文本..."},
+        {"type": "scene", "text": "新场景的环境描写（进入新地点时使用）"},
+        {"type": "narrative", "text": "剧情推进和环境变化的叙述"},
+        {"type": "dialogue", "speaker": "说话者名称", "text": "角色说的话（用中文双引号包裹）"},
+        {"type": "action", "text": "动作、事件的描写"},
+        {"type": "combat", "text": "战斗过程的描写"},
+        {"type": "loot", "text": "获得物品的描写"},
         {"type": "character", "characterId": "char_xxx", "characterName": "角色名", "reaction": "角色动作/表情描写", "dialogue": "角色说的话", "mood": "心情"},
         {"type": "narrative", "text": "更多剧情..."}
     ],
@@ -405,9 +410,24 @@ ${charsInfo}`;
     ]
 }
 
-content 中的段落按时间顺序排列。type 可以是 "narrative"（你的叙述）或 "character"（角色AI返回的反应）。
-options 提供2-4个合理的行动选择，基于当前情境推断。
-如果当前没有重要角色在场，content 中不需要 character 类型的段落。
+## 引号与对话规则（非常重要）
+- 用中文双引号「"」和「"」包裹所有对话内容，例如："你好，冒险者。"
+- narrative/action/combat/scene 中的文本是叙述性内容，不要用引号包裹
+- dialogue 类型专门用于突出展示角色对话，前端会以对话气泡样式渲染
+- 普通NPC的对话可以用 dialogue 类型，也可以在 narrative 中用引号包裹
+- 重要角色的对话必须通过 character 类型返回（由角色AI生成）
+
+## content 类型说明
+- "scene"：进入新地点时的场景描写，前端会以特殊样式突出展示
+- "narrative"：常规剧情叙述，最常用的类型
+- "dialogue"：需要突出展示的对话（speaker 为说话者名称，text 为对话内容）
+- "action"：动作、事件描写（如开门、奔跑、施法等）
+- "combat"：战斗过程描写，前端会以战斗风格渲染
+- "loot"：获得物品/金钱的描写
+- "character"：重要角色的反应（仅由 get_character_reaction 工具返回的数据生成）
+
+## options 说明
+提供2-4个合理的行动选择，基于当前情境推断。如果当前是战斗中，options 应该是战斗相关的选择。
 
 ## 叙事规则
 - ${narrativeHint}
