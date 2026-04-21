@@ -9,6 +9,7 @@ function enterGameView() {
     updateAttributesPanel();
     updateInventoryPanel();
     updateMapPanel();
+    updateCharactersPanel();
     renderGameMessages();
 }
 
