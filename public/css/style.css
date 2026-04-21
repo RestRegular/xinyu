@@ -711,6 +711,18 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .status-tag.negative { background: #FEE2E2; color: #991B1B; }
 .status-tag.positive { background: #F0FDF4; color: #166534; }
 
+/* 背包金币 */
+.inventory-gold {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 8px; margin-bottom: 4px;
+    background: linear-gradient(135deg, rgba(234,179,8,0.08), rgba(234,179,8,0.03));
+    border: 1px solid rgba(234,179,8,0.2);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+}
+.inventory-gold-icon { font-size: 14px; }
+.inventory-gold-value { font-weight: 600; color: #CA8A04; font-variant-numeric: tabular-nums; }
+
 /* 背包列表 */
 .inventory-list { display: flex; flex-direction: column; gap: 4px; }
 .inventory-item {

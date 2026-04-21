@@ -86,7 +86,9 @@ function updateAttributesPanel() {
 
 function updateInventoryPanel() {
     const items = currentSave.inventory.items || [];
+    const gold = currentSave.inventory.gold ?? 0;
     document.getElementById('inventoryCount').textContent = `(${items.length}/${currentSave.inventory.maxSlots})`;
+    document.getElementById('inventoryGold').innerHTML = `<span class="inventory-gold-icon">💰</span><span class="inventory-gold-value">${gold}</span>`;
     const el = document.getElementById('inventoryPanel');
     if (items.length === 0) {
         el.innerHTML = '<span style="font-size:12px;color:var(--text-tertiary);">背包是空的</span>';
