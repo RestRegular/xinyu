@@ -16,6 +16,7 @@ function executeGameFunction(name, args, saveData) {
         case 'add_item': return handleAddItem(args, saveData);
         case 'remove_item': return handleRemoveItem(args, saveData);
         case 'move_to_location': return handleMoveToLocation(args, saveData);
+        case 'create_location': return handleCreateLocation(args, saveData);
         case 'add_status_effect': return handleAddStatusEffect(args, saveData);
         case 'remove_status_effect': return handleRemoveStatusEffect(args, saveData);
         case 'update_gold': return handleUpdateGold(args, saveData);
@@ -120,6 +121,58 @@ function handleMoveToLocation(args, saveData) {
     } else { saveData.map.locations[target].discovered = true; }
     saveData.map.currentLocation = target;
     return { success: true, current_location: target, description: saveData.map.locations[target]?.description, notifications };
+}
+
+/**
+ * 创建新地点（不移动玩家）
+ */
+function handleCreateLocation(args, saveData) {
+    const name = args.location_name;
+    if (!name) return { success: false, error: '地点名称不能为空' };
+    if (!args.description) return { success: false, error: `新地点"${name}"必须提供 description` };
+
+    const notifications = [];
+    const current = saveData.map.currentLocation;
+
+    // 如果地点已存在，更新连接关系
+    if (saveData.map.locations[name]) {
+        const loc = saveData.map.locations[name];
+        // 合并连接关系
+        const newConnections = args.connections || [];
+        for (const conn of newConnections) {
+            if (!loc.connections.includes(conn)) loc.connections.push(conn);
+        }
+        // 确保双向连接
+        for (const conn of newConnections) {
+            if (saveData.map.locations[conn] && !saveData.map.locations[conn].connections.includes(name)) {
+                saveData.map.locations[conn].connections.push(name);
+            }
+        }
+        return { success: true, location: name, message: `地点"${name}"已存在，已更新连接关系`, notifications };
+    }
+
+    // 创建新地点
+    const connections = args.connections || [current];
+    saveData.map.locations[name] = {
+        description: args.description,
+        connections: [...connections],
+        npcs: [],
+        discovered: true,
+        dangerLevel: 0,
+    };
+
+    // 确保双向连接
+    for (const conn of connections) {
+        if (saveData.map.locations[conn] && !saveData.map.locations[conn].connections.includes(name)) {
+            saveData.map.locations[conn].connections.push(name);
+        }
+    }
+
+    saveData.stats.locationsDiscovered = (saveData.stats.locationsDiscovered || 0) + 1;
+    notifications.push({ text: `🗺️ 发现新地点：${name}`, type: 'info' });
+    saveData.eventLog.push({ turn: saveData.stats.turnCount, type: 'discover', text: `发现${name}` });
+
+    return { success: true, location: name, description: args.description, connections, notifications };
 }
 
 function handleAddStatusEffect(args, saveData) {

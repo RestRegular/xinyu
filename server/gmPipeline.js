@@ -274,7 +274,7 @@ class MapAgent extends BaseAgent {
         super({
             name: 'MA',
             label: '地图Agent',
-            toolNames: ['move_to_location'],
+            toolNames: ['move_to_location', 'create_location'],
         });
     }
 
