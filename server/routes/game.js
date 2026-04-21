@@ -49,7 +49,7 @@ router.post('/action', async (req, res) => {
     const appConfig = getAppConfig();
     // 系统消息用 system role，不显示为玩家消息
     const isSystemMsg = userMessage.startsWith('[系统]');
-    saveData.chatHistory.push({ role: isSystemMsg ? 'system' : 'user', content: userMessage });
+    saveData.chatHistory.push({ role: isSystemMsg ? 'system' : 'user', content: userMessage, timestamp: new Date().toISOString() });
     saveData.stats.turnCount++;
 
     const systemPrompt = buildSystemPrompt(saveData, appConfig);
@@ -147,7 +147,7 @@ router.post('/action', async (req, res) => {
     let structuredOutput = parseGMOutput(rawContent);
 
     // 保存到 chatHistory
-    saveData.chatHistory.push({ role: 'assistant', content: rawContent, structured: structuredOutput });
+    saveData.chatHistory.push({ role: 'assistant', content: rawContent, structured: structuredOutput, timestamp: new Date().toISOString() });
 
     // 持久化存档
     await persistSave(saveData, saveId);

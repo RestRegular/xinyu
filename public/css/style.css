@@ -479,8 +479,14 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 8px;
 }
+.player-card-header-right {
+    display: flex; align-items: center; gap: 6px;
+}
 .player-card-name {
     font-size: 13px; font-weight: 600; color: #3B82F6;
+}
+.msg-time {
+    font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
 }
 .player-card-tag {
     font-size: 10px; font-weight: 500; padding: 1px 8px;

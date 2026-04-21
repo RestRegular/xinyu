@@ -1,6 +1,23 @@
 // ===================================================================
 // ===== 游戏界面（重构版 - 纯 UI 展示层） =====
 // ===================================================================
+
+// 格式化时间戳为可读时间
+function formatMessageTime(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    // 如果是今天，只显示时间；否则显示日期+时间
+    if (date.toDateString() === now.toDateString()) {
+        return `${hh}:${mm}`;
+    }
+    const MM = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${MM}-${dd} ${hh}:${mm}`;
+}
+
 function enterGameView() {
     showView('game');
     document.getElementById('gameTopbarName').textContent = currentSave.name || '未命名';
@@ -349,12 +366,16 @@ function renderGameMessages() {
             html += `<div class="msg msg-system">${escapeHtml(msg.content)}</div>`;
         } else if (msg.role === 'user') {
             const playerName = currentSave?.player?.name || '你';
+            const timeStr = formatMessageTime(msg.timestamp);
             html += `
                 <div class="msg msg-player">
                     <div class="player-card">
                         <div class="player-card-header">
                             <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
-                            <span class="player-card-tag you">你</span>
+                            <div class="player-card-header-right">
+                                ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
+                                <span class="player-card-tag you">你</span>
+                            </div>
                         </div>
                         <div class="player-card-dialogue">"${escapeHtml(msg.content)}"</div>
                     </div>
@@ -444,11 +465,15 @@ function addUserMessage(text) {
     const div = document.createElement('div');
     div.className = 'msg msg-player';
     const playerName = currentSave?.player?.name || '你';
+    const timeStr = formatMessageTime(new Date().toISOString());
     div.innerHTML = `
         <div class="player-card">
             <div class="player-card-header">
                 <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
-                <span class="player-card-tag you">你</span>
+                <div class="player-card-header-right">
+                    <span class="msg-time">${timeStr}</span>
+                    <span class="player-card-tag you">你</span>
+                </div>
             </div>
             <div class="player-card-dialogue">"${escapeHtml(text)}"</div>
         </div>
