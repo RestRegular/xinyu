@@ -506,8 +506,6 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     font-size: 14px;
     color: var(--text-primary);
     line-height: 1.7;
-    padding-left: 12px;
-    border-left: 3px solid #3B82F6;
 }
 .msg-time {
     font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
@@ -598,8 +596,6 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     font-size: 14px;
     color: var(--text-primary);
     line-height: 1.7;
-    padding-left: 12px;
-    border-left: 3px solid var(--accent);
 }
 
 /* 选项按钮 */
