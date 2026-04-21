@@ -44,12 +44,7 @@
     <!-- ========== 步骤一：选择世界模板 ========== -->
     <div class="create-step active" id="createStep1">
         <div class="create-step-header">
-            <div class="create-template-intro">
-                <h2>选择一个世界模板开始冒险</h2>
-                <p>选择一个预设模板快速开始，或导入分享的世界卡片</p>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="importWorldTemplate()" style="margin-top:8px;">📥 导入世界卡片</button>
-            <input type="file" id="worldTemplateInput" accept=".json,.svg" style="display:none;" onchange="handleWorldTemplateImport(event)">
+            <h2>选择一个世界模板开始冒险</h2>
         </div>
         <div class="create-step-body">
             <div class="template-grid" id="templateGrid">
@@ -57,7 +52,9 @@
             </div>
         </div>
         <div class="create-step-footer">
+            <button class="btn btn-secondary" onclick="importWorldTemplate()">📥 导入世界卡片</button>
             <button class="btn btn-primary btn-lg" id="nextStepBtn" onclick="onNextStep()" disabled style="opacity:0.5;">下一步</button>
+            <input type="file" id="worldTemplateInput" accept=".json,.svg" style="display:none;" onchange="handleWorldTemplateImport(event)">
         </div>
     </div>
 
