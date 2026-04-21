@@ -24,7 +24,6 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .create-step-body { flex: 1; overflow-y: auto; padding: 16px 20px; width: 100%; box-sizing: border-box; }
 
 /* 步骤二的表单区域保持合理阅读宽度 */
-#createStep2 .create-step-header,
 #createStep2 .create-step-body { max-width: 720px; margin: 0 auto; text-align: left; }
 .create-step-footer { flex-shrink: 0; padding: 12px 20px; border-top: 1px solid var(--border-primary); background: var(--bg-primary); display: flex; justify-content: space-between; align-items: center; }
 
