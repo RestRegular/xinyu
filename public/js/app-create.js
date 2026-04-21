@@ -70,6 +70,11 @@ function populateStep2() {
         document.getElementById('createPlayerPersonality').value = '';
         document.getElementById('createPlayerBackstory').value = '';
         document.getElementById('createStartGold').value = '0';
+        
+        // 清空初始物品
+        if (typeof clearStarterItems === 'function') {
+            clearStarterItems();
+        }
     } else {
         const tpl = BUILTIN_TEMPLATES.find(t => t.id === selectedTemplate);
         if (!tpl) return;
@@ -91,6 +96,20 @@ function populateStep2() {
         document.getElementById('createPlayerPersonality').value = '';
         document.getElementById('createPlayerBackstory').value = '';
         document.getElementById('createStartGold').value = tpl.starterGold || 0;
+        
+        // 加载预定义模板的初始物品
+        if (tpl.starterItems && Array.isArray(tpl.starterItems) && typeof starterItems !== 'undefined' && typeof renderStarterItems === 'function') {
+            starterItems = tpl.starterItems.map(item => ({
+                id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                name: item.name,
+                type: item.type,
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                effects: item.effects || {},
+                rarity: item.rarity || 'common'
+            }));
+            renderStarterItems();
+        }
     }
 }
 

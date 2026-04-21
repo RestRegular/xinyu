@@ -166,6 +166,22 @@ function populateStep2FromTemplate(tpl) {
     setVal('createStartLocation', tpl.starterLocation);
     setVal('createStartLocationDesc', tpl.starterLocationDesc);
     setVal('createStartGold', tpl.starterGold);
+    
+    // 加载初始物品
+    if (tpl.starterItems && Array.isArray(tpl.starterItems)) {
+        starterItems = tpl.starterItems.map(item => ({
+            id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            name: item.name,
+            type: item.type,
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            effects: item.effects || {},
+            rarity: item.rarity || 'common'
+        }));
+        renderStarterItems();
+    } else {
+        clearStarterItems();
+    }
 }
 
 async function createNewGame() {
