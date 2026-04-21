@@ -311,6 +311,8 @@ function handleCreateCharacter(args, saveData) {
         name,
         role: args.role || 'custom',
         // 人设层（GM填写，自由字段）
+        gender: args.gender || '',
+        age: args.age || '',
         appearance: args.appearance || '',
         personality: args.personality || '',
         speechStyle: args.speech_style || '',

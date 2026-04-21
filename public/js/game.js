@@ -249,6 +249,7 @@ async function showCharacterDetail(charId) {
             <div style="margin-bottom:16px;">
                 <h4 style="font-size:16px;font-weight:600;margin-bottom:4px;">${escapeHtml(char.name)}</h4>
                 <span style="font-size:12px;color:var(--text-secondary);">${escapeHtml(char.role || '未知身份')}</span>
+                <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">性别：${escapeHtml(char.gender || '未设定')} | 年龄：${escapeHtml(char.age || '未设定')}</div>
             </div>
             <div style="margin-bottom:12px;">
                 <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">关系</div>

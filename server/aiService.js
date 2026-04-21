@@ -179,6 +179,8 @@ const gameTools = [
                 properties: {
                     name: { type: 'string', description: '角色名称' },
                     role: { type: 'string', description: '角色类型标识（如merchant/blacksmith/mentor/companion/antagonist/guard/noble等）' },
+                    gender: { type: 'string', description: '性别' },
+                    age: { type: 'string', description: '年龄' },
                     appearance: { type: 'string', description: '外貌描述' },
                     personality: { type: 'string', description: '性格特点（如沉稳、暴躁、温柔、狡猾等）' },
                     speech_style: { type: 'string', description: '说话风格（如正式、粗鲁、文雅、幽默等）' },
@@ -313,7 +315,12 @@ ${itemNaming ? '- 物品命名风格：' + itemNaming : ''}`;
     // 第三层：玩家角色
     const layerCharacter = `## 玩家角色
 - 名称：${p.name}
-- 描述：${p.description || '无详细描述'}
+- 性别：${p.gender || '未设定'}
+- 年龄：${p.age || '未设定'}
+- 身份：${p.occupation || '未设定'}
+- 外貌：${p.appearance || '未设定'}
+- 性格：${p.personality || '未设定'}
+- 背景：${p.backstory || '未设定'}
 - 等级：${p.level}（经验 ${p.experience || 0}/${p.experienceToNext || 100}）`;
 
     // 第四层：当前情境
@@ -510,6 +517,8 @@ function buildCharacterPrompt(character, saveData) {
 
     // 人设层
     let personaLines = [];
+    if (character.gender) personaLines.push(`- 性别：${character.gender}`);
+    if (character.age) personaLines.push(`- 年龄：${character.age}`);
     if (character.appearance) personaLines.push(`- 外貌：${character.appearance}`);
     if (character.personality) personaLines.push(`- 性格：${character.personality}`);
     if (character.speechStyle) personaLines.push(`- 说话风格：${character.speechStyle}`);
@@ -678,6 +687,10 @@ function buildUserAgentPrompt(saveData) {
 
 ## 你扮演的角色
 - 名称：${p.name}
+- 性别：${p.gender || '未设定'}
+- 年龄：${p.age || '未设定'}
+- 身份：${p.occupation || '未设定'}
+- 外貌：${p.appearance || '未设定'}
 - 描述：${p.description || '无详细描述'}
 - 等级：${p.level}
 - 性格特征：${p.personality || '根据描述推断'}

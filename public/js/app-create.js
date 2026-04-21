@@ -62,6 +62,8 @@ function populateStep2() {
         document.getElementById('createStartLocationDesc').value = '';
         document.getElementById('createSaveName').value = '';
         document.getElementById('createPlayerName').value = '';
+        document.getElementById('createPlayerGender').value = '未设定';
+        document.getElementById('createPlayerAge').value = '';
         document.getElementById('createPlayerRace').value = '';
         document.getElementById('createPlayerClass').value = '';
         document.getElementById('createPlayerAppearance').value = '';
@@ -81,6 +83,8 @@ function populateStep2() {
         document.getElementById('createStartLocation').value = tpl.starterLocation || '';
         document.getElementById('createStartLocationDesc').value = tpl.starterLocationDesc || '';
         document.getElementById('createPlayerName').value = '';
+        document.getElementById('createPlayerGender').value = '未设定';
+        document.getElementById('createPlayerAge').value = '';
         document.getElementById('createPlayerRace').value = '';
         document.getElementById('createPlayerClass').value = '';
         document.getElementById('createPlayerAppearance').value = '';

@@ -172,6 +172,8 @@ async function createNewGame() {
     const startLocation = document.getElementById('createStartLocation').value.trim() || '起始之地';
     const startLocationDesc = document.getElementById('createStartLocationDesc').value.trim() || '你站在这片陌生土地的起点。';
     const playerName = document.getElementById('createPlayerName').value.trim() || '旅行者';
+    const playerGender = document.getElementById('createPlayerGender').value.trim() || '未设定';
+    const playerAge = document.getElementById('createPlayerAge').value.trim() || '未设定';
     const playerRace = document.getElementById('createPlayerRace').value.trim();
     const playerClass = document.getElementById('createPlayerClass').value.trim();
     const playerAppearance = document.getElementById('createPlayerAppearance').value.trim();
@@ -186,7 +188,7 @@ async function createNewGame() {
             body: JSON.stringify({
                 saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone,
                 startLocation, startLocationDesc,
-                playerName, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory,
+                playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory,
                 startGold, templateId: selectedTemplate,
             }),
         });
