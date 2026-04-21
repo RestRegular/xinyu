@@ -107,12 +107,15 @@ async function renderTemplateGrid() {
     let html = '';
     allTemplates.forEach(tpl => {
         const imported = tpl._imported ? ' data-imported="true"' : '';
+        const deleteBtn = tpl._imported
+            ? `<button class="template-card-delete" onclick="event.stopPropagation();removeImportedTemplate('${tpl.id}')" title="移除此模板">✕</button>`
+            : '';
         html += `
             <div class="template-card"${imported} onclick="selectTemplate('${tpl.id}', this)">
                 <div class="template-card-icon">${tpl.icon}</div>
                 <div class="template-card-name">${escapeHtml(tpl.name)}</div>
                 <div class="template-card-desc">${escapeHtml(tpl.description)}</div>
-                ${tpl._imported ? '<div class="template-card-type" style="right:16px;top:8px;font-size:10px;color:var(--text-tertiary);">已导入</div>' : ''}
+                ${deleteBtn}
             </div>
         `;
     });
@@ -223,6 +226,22 @@ function getImportedTemplates() {
 
 function saveImportedTemplates(templates) {
     localStorage.setItem(IMPORTED_TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+// 移除导入的模板
+function removeImportedTemplate(id) {
+    let templates = getImportedTemplates();
+    const removed = templates.find(t => t.id === id);
+    templates = templates.filter(t => t.id !== id);
+    saveImportedTemplates(templates);
+    // 如果当前选中的是被删除的模板，取消选中
+    if (selectedTemplate === id) {
+        selectedTemplate = null;
+        document.getElementById('nextStepBtn').disabled = true;
+        document.getElementById('nextStepBtn').style.opacity = '0.5';
+    }
+    renderTemplateGrid();
+    if (removed) showToast(`已移除模板「${removed.name}」`, 'info');
 }
 
 // 触发文件选择
