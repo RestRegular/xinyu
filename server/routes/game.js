@@ -367,6 +367,9 @@ router.post('/create', (req, res) => {
             effectiveWorldDesc = tpl.world.description; effectiveWorldRules = tpl.world.rules || '';
             effectiveTone = tpl.world.tone;
             effectiveStartLocation = tpl.starterLocation; effectiveStartLocationDesc = tpl.starterLocationDesc;
+        } else if (Array.isArray(customStarterItems)) {
+            // 对于导入的模板，使用自定义的初始物品
+            starterItems = customStarterItems;
         }
     } else if (Array.isArray(customStarterItems)) {
         // 使用自定义的初始物品
