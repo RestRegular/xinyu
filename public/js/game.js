@@ -6,15 +6,10 @@
 function formatMessageTime(timestamp) {
     if (!timestamp) return '';
     const date = new Date(timestamp);
-    const now = new Date();
-    const hh = String(date.getHours()).padStart(2, '0');
-    const mm = String(date.getMinutes()).padStart(2, '0');
-    // 如果是今天，只显示时间；否则显示日期+时间
-    if (date.toDateString() === now.toDateString()) {
-        return `${hh}:${mm}`;
-    }
     const MM = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
     return `${MM}-${dd} ${hh}:${mm}`;
 }
 
@@ -371,13 +366,13 @@ function renderGameMessages() {
                 <div class="msg msg-player">
                     <div class="player-card">
                         <div class="player-card-header">
-                            <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
+                            <span class="player-card-name">${escapeHtml(playerName)}</span>
                             <div class="player-card-header-right">
-                                ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
                                 <span class="player-card-tag you">你</span>
+                                ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
                             </div>
                         </div>
-                        <div class="player-card-dialogue">"${escapeHtml(msg.content)}"</div>
+                        <div class="player-card-body">"${escapeHtml(msg.content)}"</div>
                     </div>
                 </div>
             `;
@@ -469,13 +464,13 @@ function addUserMessage(text) {
     div.innerHTML = `
         <div class="player-card">
             <div class="player-card-header">
-                <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
+                <span class="player-card-name">${escapeHtml(playerName)}</span>
                 <div class="player-card-header-right">
-                    <span class="msg-time">${timeStr}</span>
                     <span class="player-card-tag you">你</span>
+                    ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
                 </div>
             </div>
-            <div class="player-card-dialogue">"${escapeHtml(text)}"</div>
+            <div class="player-card-body">"${escapeHtml(text)}"</div>
         </div>
     `;
     container.appendChild(div);

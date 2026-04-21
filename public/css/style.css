@@ -470,32 +470,47 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 .msg-player { }
 .player-card {
-    background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(59,130,246,0.02));
+    background: var(--bg-secondary);
     border: 1px solid rgba(59,130,246,0.3);
     border-radius: var(--radius-lg);
-    padding: 12px 16px;
+    padding: 14px 18px;
+    transition: box-shadow 0.15s;
+}
+.player-card:hover {
+    box-shadow: var(--shadow-sm);
 }
 .player-card-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
 }
 .player-card-header-right {
-    display: flex; align-items: center; gap: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 .player-card-name {
-    font-size: 13px; font-weight: 600; color: #3B82F6;
+    font-size: 14px;
+    font-weight: 600;
+    color: #3B82F6;
+}
+.player-card-tag {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 12px;
+}
+.player-card-tag.you { background: #3B82F6; color: #fff; }
+.player-card-body {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.7;
+    padding-left: 12px;
+    border-left: 3px solid #3B82F6;
 }
 .msg-time {
     font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
-}
-.player-card-tag {
-    font-size: 10px; font-weight: 500; padding: 1px 8px;
-    border-radius: 10px;
-}
-.player-card-tag.you { background: #3B82F6; color: #fff; }
-.player-card-dialogue {
-    font-size: 14px; color: var(--text-primary); line-height: 1.7;
-    padding-left: 12px; border-left: 3px solid #3B82F6;
 }
 .msg-notification {
     display: flex; align-items: center; gap: 8px;
