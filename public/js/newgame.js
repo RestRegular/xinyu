@@ -157,8 +157,12 @@ async function handleWorldTemplateImport(event) {
         let data;
 
         if (file.name.endsWith('.svg')) {
-            // 从 SVG 的 <metadata> 中提取嵌入的 JSON 数据
-            const match = text.match(/<xinyu:data>([\s\S]*?)<\/xinyu:data>/);
+            // 从 SVG 中提取嵌入的 JSON 数据
+            // 兼容两种格式：<script type="application/json"> 和 <xinyu:data>
+            let match = text.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
+            if (!match) {
+                match = text.match(/<xinyu:data>([\s\S]*?)<\/xinyu:data>/);
+            }
             if (!match) {
                 showToast('导入失败: SVG 卡片中未找到世界数据', 'error');
                 return;
