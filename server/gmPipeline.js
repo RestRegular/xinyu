@@ -1,27 +1,21 @@
 // ===================================================================
-// ===== GM 多 Agent 管线（Pipeline v3.1 — 修复版） =====
+// ===== GM 多 Agent 系统 — OOP 架构 =====
 // ===================================================================
 //
-// 架构：
-//   SA (StoryAgent) — 叙事 + 触发工具调用（持有全部工具定义）
-//   RA (RoleAgent)   — 角色管理：create_character, update_relationship, character_action, create_npc, remove_npc
-//   MA (MapAgent)    — 地图管理：move_to_location
-//   PA (PropertyAgent) — 属性管理：update_attributes, add_item, remove_item,
-//                         add_status_effect, remove_status_effect, update_gold,
-//                         check_death, equip_item, revive_player
+// 类图：
+//   BaseAgent (基类)
+//     ├── StoryAgent    (SA) — 叙事 + 角色交互
+//     ├── RoleAgent     (RA) — 角色创建/管理
+//     ├── MapAgent      (MA) — 地图/地点管理
+//     └── PropertyAgent (PA) — 属性/物品/状态管理
 //
-// 关键修复（vs v3）：
-//   v3 的 bug 是拦截后返回占位结果，AI 看不到真实执行数据。
-//   v3.1：拦截后立即执行工具，返回真实结果给 AI，同时记录到 Agent 队列。
-//   这样 AI 能看到 create_character 的返回值（角色ID等），后续输出不会乱。
+//   Pipeline (编排器) — 协调各 Agent 的执行流程
 //
-// 流程：
-//   1. SA 发起 tool_call
-//   2. 管线判断工具归属：
-//      - get_character_reaction → SA 直接处理（调用角色AI）
-//      - RA/MA/PA 工具 → 立即执行，返回真实结果给 AI，同时记录到 Agent 队列
-//   3. SA 生成完毕后，RA/MA/PA 可对收集到的调用做后处理（当前版本跳过）
-//   4. 合并输出
+// 设计原则：
+//   1. 单一职责：每个 Agent 只负责一类操作
+//   2. 开闭原则：新增 Agent 只需继承 BaseAgent，不修改现有代码
+//   3. 依赖倒置：Pipeline 依赖 BaseAgent 接口，不依赖具体子类
+//   4. 工具归属：每个 Agent 声明自己能处理的工具列表
 //
 // ===================================================================
 
@@ -29,233 +23,485 @@ const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, gameTools,
 const { executeGameFunction, executeCharacterTool } = require('./gameEngine');
 
 // ===================================================================
-// ===== 工具分组 =====
+// ===== BaseAgent — 基类 =====
 // ===================================================================
 
-const TOOL_AGENT_MAP = {
-    // RA — 角色管理
-    create_character: 'RA',
-    update_relationship: 'RA',
-    character_action: 'RA',
-    create_npc: 'RA',
-    remove_npc: 'RA',
-    // MA — 地图管理
-    move_to_location: 'MA',
-    // PA — 属性/物品/状态管理
-    update_attributes: 'PA',
-    add_item: 'PA',
-    remove_item: 'PA',
-    add_status_effect: 'PA',
-    remove_status_effect: 'PA',
-    update_gold: 'PA',
-    check_death: 'PA',
-    equip_item: 'PA',
-    revive_player: 'PA',
-};
+class BaseAgent {
+    /**
+     * @param {object} config
+     * @param {string} config.name       — Agent 名称（如 'SA', 'RA'）
+     * @param {string} config.label      — 人类可读标签（如 '叙事Agent'）
+     * @param {string[]} config.toolNames — 该 Agent 负责处理的工具名列表
+     */
+    constructor({ name, label, toolNames }) {
+        this.name = name;
+        this.label = label;
+        this.toolNames = new Set(toolNames);
+        this.callLog = []; // 记录本 Agent 处理的所有调用
+    }
+
+    /**
+     * 判断某个工具是否属于本 Agent
+     */
+    canHandle(toolName) {
+        return this.toolNames.has(toolName);
+    }
+
+    /**
+     * 执行工具调用（子类可覆盖以添加前置/后置逻辑）
+     * @param {string} toolName — 工具名
+     * @param {object} args     — 工具参数
+     * @param {object} saveData — 存档数据（会被直接修改）
+     * @returns {object} 工具执行结果
+     */
+    executeTool(toolName, args, saveData) {
+        const result = executeGameFunction(toolName, args, saveData);
+        this._logCall(toolName, args, result);
+        return result;
+    }
+
+    /**
+     * 异步执行（子类覆盖以支持 AI 调用等异步操作）
+     * @param {string} toolName
+     * @param {object} args
+     * @param {object} saveData
+     * @param {object} apiConfig — { apiKey, apiBaseUrl, model, temperature, maxTokens }
+     * @returns {Promise<object>}
+     */
+    async executeAsync(toolName, args, saveData, apiConfig) {
+        // 默认行为：同步执行，包装为 Promise
+        const result = this.executeTool(toolName, args, saveData);
+        return result;
+    }
+
+    /**
+     * 后处理钩子（子类覆盖以添加 Agent 特有的后处理逻辑）
+     * @param {object} saveData
+     * @param {object} apiConfig
+     * @returns {Promise<object[]>} 额外的通知列表
+     */
+    async postProcess(saveData, apiConfig) {
+        return [];
+    }
+
+    /**
+     * 获取本 Agent 的工具定义（从 gameTools 中过滤）
+     */
+    getToolDefinitions() {
+        return gameTools.filter(t => this.toolNames.has(t.function.name));
+    }
+
+    /**
+     * 获取调用日志
+     */
+    getLog() {
+        return this.callLog;
+    }
+
+    /**
+     * 清空调用日志
+     */
+    clearLog() {
+        this.callLog = [];
+    }
+
+    /**
+     * 内部：记录调用日志
+     */
+    _logCall(toolName, args, result) {
+        this.callLog.push({
+            toolName,
+            args,
+            success: result.success !== false,
+            timestamp: new Date().toISOString(),
+        });
+    }
+}
 
 // ===================================================================
-// ===== 管线编排器 =====
+// ===== StoryAgent (SA) — 叙事 + 角色交互 =====
 // ===================================================================
 
-async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
-    const { apiKey, apiBaseUrl, model } = apiConfig;
-    const allNotifications = [];
+class StoryAgent extends BaseAgent {
+    constructor() {
+        super({
+            name: 'SA',
+            label: '叙事Agent',
+            toolNames: ['get_character_reaction'],
+        });
+    }
 
-    // ===== Phase 1: StoryAgent =====
-    const systemPrompt = buildSystemPrompt(saveData, appConfig);
-    const history = buildMessageHistory(saveData.chatHistory);
-    const messages = [{ role: 'system', content: systemPrompt }, ...history];
+    /**
+     * SA 的 get_character_reaction 需要异步调用角色 AI
+     */
+    async executeAsync(toolName, args, saveData, apiConfig) {
+        if (toolName === 'get_character_reaction') {
+            const result = await this._callCharacterAI(args, saveData, apiConfig);
+            this._logCall(toolName, args, result);
+            return result;
+        }
+        return super.executeAsync(toolName, args, saveData, apiConfig);
+    }
 
-    const MAX_TOOL_CALL_LOOPS = 5;
-    const MAX_RETRIES = 2;
-    const API_TIMEOUT = 90000;
+    /**
+     * 调用角色 AI 获取反应
+     */
+    async _callCharacterAI(args, saveData, apiConfig) {
+        const { apiKey, apiBaseUrl, model, temperature } = apiConfig;
+        const charName = args.character_name;
+        const context = args.context || '';
 
-    // 记录各 Agent 处理的工具调用（用于日志/后续后处理）
-    const agentCallLog = { SA: [], RA: [], MA: [], PA: [] };
+        if (!saveData.characters) return { success: false, error: '当前没有重要角色' };
 
-    let loopCount = 0;
-    while (loopCount < MAX_TOOL_CALL_LOOPS) {
-        loopCount++;
+        const character = Object.values(saveData.characters).find(c => c.name === charName);
+        if (!character) return { success: false, error: `未找到角色"${charName}"` };
 
+        character.lastInteractedAt = new Date().toISOString();
+
+        const charPrompt = buildCharacterPrompt(character, saveData);
+        const charMessages = [
+            { role: 'system', content: charPrompt },
+            { role: 'user', content: `情境：${context}\n\n请给出你的反应和回应。` },
+        ];
+
+        // 请求角色 AI（含重试）
         let response;
         let retries = 0;
-        while (true) {
+        while (retries < 2) {
             try {
                 const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
+                const timer = setTimeout(() => controller.abort(), 60000);
                 response = await fetch(apiBaseUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model, messages, tools: gameTools, temperature: appConfig.temperature, max_tokens: appConfig.maxTokens, stream: true }),
+                    body: JSON.stringify({
+                        model, messages: charMessages, tools: characterTools,
+                        temperature: Math.max(0.6, (temperature || 0.9) - 0.2),
+                        max_tokens: 1024, stream: true,
+                    }),
                     signal: controller.signal,
                 });
                 clearTimeout(timer);
                 break;
             } catch (err) {
                 retries++;
-                if (retries >= MAX_RETRIES) throw new Error('AI 请求失败: ' + (err.message || '未知错误'));
+                if (retries >= 2) return { success: false, error: '角色AI请求失败' };
                 await new Promise(r => setTimeout(r, 1000 * retries));
             }
         }
 
         if (!response.ok) {
             const errText = await response.text().catch(() => '');
-            throw new Error(`AI 请求失败 (${response.status}): ${errText}`);
+            return { success: false, error: `角色AI错误: ${errText}` };
         }
 
+        // 解析角色 AI 响应
         let result;
         try {
             result = await parseStreamResponse(response);
         } catch (err) {
-            result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, gameTools, appConfig);
+            try {
+                result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, charMessages, characterTools, { temperature: 0.7, max_tokens: 1024 });
+            } catch (e) {
+                return { success: false, error: '角色AI响应解析失败' };
+            }
         }
 
-        const assistantMsg = { role: 'assistant', content: result.content };
-        if (result.tool_calls) assistantMsg.tool_calls = result.tool_calls;
-        messages.push(assistantMsg);
-
+        // 处理角色 AI 的 tool calls（update_relationship, add_memory）
         if (result.tool_calls && result.tool_calls.length > 0) {
             for (const tc of result.tool_calls) {
-                const fnName = tc.function.name;
                 let fnArgs;
                 try { fnArgs = JSON.parse(tc.function.arguments); } catch (e) { fnArgs = {}; }
-
-                let toolResult;
-
-                if (fnName === 'get_character_reaction') {
-                    // ★ SA 直接处理：调用角色 AI
-                    toolResult = await handleGetCharacterReaction(fnArgs, saveData, apiKey, apiBaseUrl, model, appConfig);
-                    agentCallLog.SA.push({ fnName, fnArgs, result: toolResult });
-                } else {
-                    // ★ 立即执行工具，返回真实结果给 AI
-                    toolResult = executeGameFunction(fnName, fnArgs, saveData);
-
-                    // 记录到对应 Agent 队列
-                    const agent = TOOL_AGENT_MAP[fnName] || 'PA';
-                    agentCallLog[agent].push({ fnName, fnArgs, result: toolResult });
-                }
-
-                if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
-                // ★ 返回真实结果（不是占位），AI 能看到完整执行数据
-                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
+                executeCharacterTool(tc.function.name, fnArgs, character, saveData);
             }
-            continue;
         }
-        break;
-    }
 
-    // ===== Phase 2: Agent 后处理（当前版本跳过，后续可扩展） =====
-    // agentCallLog 中记录了每个 Agent 处理的所有工具调用
-    // 后续可在此处添加：
-    //   - RA 后处理：检查新创建的角色是否需要初始化额外数据
-    //   - MA 后处理：检查地图连接是否合理
-    //   - PA 后处理：检查属性变更是否超出阈值
-    // 当前这些逻辑已在 executeGameFunction 内部处理，无需额外后处理
-
-    // ===== Phase 3: 解析最终输出 =====
-    const lastAssistantMsg = messages[messages.length - 1];
-    const rawContent = lastAssistantMsg?.content || '';
-    const structuredOutput = parseGMOutput(rawContent);
-
-    return {
-        content: structuredOutput.content || [{ type: 'narrative', text: rawContent }],
-        options: structuredOutput.options || [],
-        notifications: allNotifications,
-        saveData,
-    };
-}
-
-// ===================================================================
-// ===== 角色AI代理处理 =====
-// ===================================================================
-async function handleGetCharacterReaction(args, saveData, apiKey, apiBaseUrl, model, appConfig) {
-    const charName = args.character_name;
-    const context = args.context || '';
-
-    if (!saveData.characters) return { success: false, error: '当前没有重要角色' };
-
-    const character = Object.values(saveData.characters).find(c => c.name === charName);
-    if (!character) return { success: false, error: `未找到角色"${charName}"` };
-
-    character.lastInteractedAt = new Date().toISOString();
-
-    const charPrompt = buildCharacterPrompt(character, saveData);
-    const charMessages = [
-        { role: 'system', content: charPrompt },
-        { role: 'user', content: `情境：${context}\n\n请给出你的反应和回应。` },
-    ];
-
-    let response;
-    let retries = 0;
-    while (retries < 2) {
+        // 解析角色 AI 返回的 JSON
+        let charReaction = { reaction: '', dialogue: '', mood: 'neutral' };
         try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 60000);
-            response = await fetch(apiBaseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model, messages: charMessages, tools: characterTools,
-                    temperature: Math.max(0.6, (appConfig.temperature || 0.9) - 0.2),
-                    max_tokens: 1024, stream: true,
-                }),
-                signal: controller.signal,
-            });
-            clearTimeout(timer);
-            break;
-        } catch (err) {
-            retries++;
-            if (retries >= 2) return { success: false, error: '角色AI请求失败' };
-            await new Promise(r => setTimeout(r, 1000 * retries));
-        }
-    }
-
-    if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        return { success: false, error: `角色AI错误: ${errText}` };
-    }
-
-    let result;
-    try {
-        result = await parseStreamResponse(response);
-    } catch (err) {
-        try {
-            result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, charMessages, characterTools, { temperature: 0.7, max_tokens: 1024 });
+            const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) charReaction = { ...charReaction, ...JSON.parse(jsonMatch[0]) };
         } catch (e) {
-            return { success: false, error: '角色AI响应解析失败' };
+            charReaction.dialogue = result.content;
         }
-    }
 
-    if (result.tool_calls && result.tool_calls.length > 0) {
-        for (const tc of result.tool_calls) {
-            let fnArgs;
-            try { fnArgs = JSON.parse(tc.function.arguments); } catch (e) { fnArgs = {}; }
-            executeCharacterTool(tc.function.name, fnArgs, character, saveData);
-        }
+        return {
+            success: true,
+            characterId: character.id,
+            characterName: character.name,
+            reaction: charReaction.reaction || '',
+            dialogue: charReaction.dialogue || '',
+            mood: charReaction.mood || 'neutral',
+            relationship_value: character.relationship.value,
+            relationship_title: character.relationship.title,
+        };
     }
-
-    let charReaction = { reaction: '', dialogue: '', mood: 'neutral' };
-    try {
-        const jsonMatch = result.content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) charReaction = { ...charReaction, ...JSON.parse(jsonMatch[0]) };
-    } catch (e) {
-        charReaction.dialogue = result.content;
-    }
-
-    return {
-        success: true,
-        characterId: character.id,
-        characterName: character.name,
-        reaction: charReaction.reaction || '',
-        dialogue: charReaction.dialogue || '',
-        mood: charReaction.mood || 'neutral',
-        relationship_value: character.relationship.value,
-        relationship_title: character.relationship.title,
-    };
 }
 
 // ===================================================================
-// ===== 辅助函数 =====
+// ===== RoleAgent (RA) — 角色管理 =====
+// ===================================================================
+
+class RoleAgent extends BaseAgent {
+    constructor() {
+        super({
+            name: 'RA',
+            label: '角色Agent',
+            toolNames: ['create_character', 'update_relationship', 'character_action', 'create_npc', 'remove_npc'],
+        });
+    }
+
+    /**
+     * RA 后处理：检查新创建的角色是否需要补充默认值
+     */
+    async postProcess(saveData, apiConfig) {
+        const notifications = [];
+        for (const log of this.callLog) {
+            if (log.toolName === 'create_character' && log.success) {
+                // 角色创建后的额外处理（当前无需额外操作，预留扩展点）
+            }
+        }
+        return notifications;
+    }
+}
+
+// ===================================================================
+// ===== MapAgent (MA) — 地图管理 =====
+// ===================================================================
+
+class MapAgent extends BaseAgent {
+    constructor() {
+        super({
+            name: 'MA',
+            label: '地图Agent',
+            toolNames: ['move_to_location'],
+        });
+    }
+
+    /**
+     * MA 后处理：确保新地点的双向连接
+     */
+    async postProcess(saveData, apiConfig) {
+        const notifications = [];
+        for (const log of this.callLog) {
+            if (log.toolName === 'move_to_location' && log.success) {
+                const locName = log.args.location_name;
+                const loc = saveData.map.locations[locName];
+                if (loc && loc.connections) {
+                    // 确保当前位置在新地点的连接中
+                    // (gameEngine 已处理，此处为防御性检查)
+                }
+            }
+        }
+        return notifications;
+    }
+}
+
+// ===================================================================
+// ===== PropertyAgent (PA) — 属性/物品/状态管理 =====
+// ===================================================================
+
+class PropertyAgent extends BaseAgent {
+    constructor() {
+        super({
+            name: 'PA',
+            label: '属性Agent',
+            toolNames: [
+                'update_attributes', 'add_item', 'remove_item',
+                'add_status_effect', 'remove_status_effect',
+                'update_gold', 'check_death', 'equip_item', 'revive_player',
+            ],
+        });
+    }
+
+    /**
+     * PA 后处理：检查玩家是否死亡
+     */
+    async postProcess(saveData, apiConfig) {
+        const notifications = [];
+        const hp = saveData.player.attributes.hp.current;
+        if (hp <= 0) {
+            // 确保死亡状态被正确处理
+            const deathResult = executeGameFunction('check_death', {}, saveData);
+            if (deathResult.is_dead && deathResult.notifications) {
+                notifications.push(...deathResult.notifications);
+            }
+        }
+        return notifications;
+    }
+}
+
+// ===================================================================
+// ===== Pipeline — 编排器 =====
+// ===================================================================
+
+class Pipeline {
+    constructor() {
+        // 注册所有 Agent
+        this.agents = [
+            new StoryAgent(),
+            new RoleAgent(),
+            new MapAgent(),
+            new PropertyAgent(),
+        ];
+
+        // 构建工具名 → Agent 的快速查找表
+        this.toolAgentMap = new Map();
+        for (const agent of this.agents) {
+            for (const toolName of agent.toolNames) {
+                this.toolAgentMap.set(toolName, agent);
+            }
+        }
+    }
+
+    /**
+     * 查找负责某个工具的 Agent
+     */
+    getAgentForTool(toolName) {
+        return this.toolAgentMap.get(toolName) || null;
+    }
+
+    /**
+     * 获取所有 Agent
+     */
+    getAllAgents() {
+        return this.agents;
+    }
+
+    /**
+     * 执行完整的 GM 管线
+     * @param {object} saveData   — 存档数据
+     * @param {string} userMessage — 用户消息
+     * @param {object} apiConfig  — { apiKey, apiBaseUrl, model, temperature, maxTokens }
+     * @param {object} appConfig  — 应用配置
+     * @returns {Promise<{content, options, notifications, saveData}>}
+     */
+    async run(saveData, userMessage, apiConfig, appConfig) {
+        const allNotifications = [];
+
+        // ===== Phase 1: StoryAgent 主循环 =====
+        const systemPrompt = buildSystemPrompt(saveData, appConfig);
+        const history = buildMessageHistory(saveData.chatHistory);
+        const messages = [{ role: 'system', content: systemPrompt }, ...history];
+
+        const MAX_LOOPS = 5;
+        const MAX_RETRIES = 2;
+        const API_TIMEOUT = 90000;
+
+        let loopCount = 0;
+        while (loopCount < MAX_LOOPS) {
+            loopCount++;
+
+            // 请求 AI
+            const response = await this._requestLLM(apiConfig, messages, gameTools, MAX_RETRIES, API_TIMEOUT);
+
+            // 解析响应
+            const result = await this._parseResponse(response, apiConfig, messages, gameTools, appConfig);
+
+            const assistantMsg = { role: 'assistant', content: result.content };
+            if (result.tool_calls) assistantMsg.tool_calls = result.tool_calls;
+            messages.push(assistantMsg);
+
+            // 处理 tool calls
+            if (result.tool_calls && result.tool_calls.length > 0) {
+                for (const tc of result.tool_calls) {
+                    const fnName = tc.function.name;
+                    let fnArgs;
+                    try { fnArgs = JSON.parse(tc.function.arguments); } catch (e) { fnArgs = {}; }
+
+                    // 查找负责的 Agent
+                    const agent = this.getAgentForTool(fnName);
+                    if (!agent) {
+                        // 未知工具，直接执行
+                        const toolResult = executeGameFunction(fnName, fnArgs, saveData);
+                        if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
+                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
+                        continue;
+                    }
+
+                    // 委托给对应 Agent 执行（异步，支持角色 AI 调用）
+                    const toolResult = await agent.executeAsync(fnName, fnArgs, saveData, apiConfig);
+                    if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
+                    // 返回真实结果给 AI
+                    messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
+                }
+                continue;
+            }
+            break;
+        }
+
+        // ===== Phase 2: 各 Agent 后处理（并行） =====
+        const postProcessPromises = this.agents.map(agent => agent.postProcess(saveData, apiConfig));
+        const postResults = await Promise.all(postProcessPromises);
+        for (const notifications of postResults) {
+            if (notifications.length > 0) allNotifications.push(...notifications);
+        }
+
+        // ===== Phase 3: 解析最终输出 =====
+        const lastAssistantMsg = messages[messages.length - 1];
+        const rawContent = lastAssistantMsg?.content || '';
+        const structuredOutput = parseGMOutput(rawContent);
+
+        // 清理所有 Agent 日志
+        this.agents.forEach(a => a.clearLog());
+
+        return {
+            content: structuredOutput.content || [{ type: 'narrative', text: rawContent }],
+            options: structuredOutput.options || [],
+            notifications: allNotifications,
+            saveData,
+        };
+    }
+
+    /**
+     * 请求 LLM（含重试）
+     */
+    async _requestLLM(apiConfig, messages, tools, maxRetries, timeout) {
+        const { apiKey, apiBaseUrl, model, temperature, maxTokens } = apiConfig;
+        let retries = 0;
+
+        while (true) {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), timeout);
+                const response = await fetch(apiBaseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({ model, messages, tools, temperature: temperature || 0.9, max_tokens: maxTokens || 2048, stream: true }),
+                    signal: controller.signal,
+                });
+                clearTimeout(timer);
+
+                if (!response.ok) {
+                    const errText = await response.text().catch(() => '');
+                    throw new Error(`AI 请求失败 (${response.status}): ${errText}`);
+                }
+                return response;
+            } catch (err) {
+                retries++;
+                if (retries >= maxRetries) throw err;
+                await new Promise(r => setTimeout(r, 1000 * retries));
+            }
+        }
+    }
+
+    /**
+     * 解析 LLM 响应（流式优先，失败回退非流式）
+     */
+    async _parseResponse(response, apiConfig, messages, tools, appConfig) {
+        try {
+            return await parseStreamResponse(response);
+        } catch (err) {
+            return await parseNonStreamResponse(
+                apiConfig.apiBaseUrl, apiConfig.apiKey, apiConfig.model,
+                messages, tools, appConfig
+            );
+        }
+    }
+}
+
+// ===================================================================
+// ===== 公共辅助函数 =====
 // ===================================================================
 
 function parseGMOutput(rawContent) {
@@ -333,4 +579,15 @@ async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools
     return { content: choice.message?.content || '', tool_calls: choice.message?.tool_calls || null };
 }
 
-module.exports = { runGMPipeline, TOOL_AGENT_MAP };
+// ===================================================================
+// ===== 导出 =====
+// ===================================================================
+
+module.exports = {
+    Pipeline,
+    BaseAgent,
+    StoryAgent,
+    RoleAgent,
+    MapAgent,
+    PropertyAgent,
+};

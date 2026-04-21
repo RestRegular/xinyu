@@ -5,8 +5,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { runGMPipeline } = require('../gmPipeline');
+const { Pipeline } = require('../gmPipeline');
 const { executeGameFunction } = require('../gameEngine');
+
+// 单例 Pipeline 实例
+const pipeline = new Pipeline();
 
 // ----- 配置读取辅助 -----
 function getConfigValue(key, defaultValue) {
@@ -50,7 +53,7 @@ router.post('/action', async (req, res) => {
     saveData.stats.turnCount++;
 
     try {
-        const result = await runGMPipeline(saveData, userMessage, {
+        const result = await pipeline.run(saveData, userMessage, {
             apiKey,
             apiBaseUrl: getApiBaseUrl(),
             model: getModel(),
