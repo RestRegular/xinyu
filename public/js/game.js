@@ -368,7 +368,7 @@ function renderGameMessages() {
                 <div class="msg msg-player">
                     <div class="player-card">
                         <div class="player-card-header" style="margin-bottom:0;">
-                            <span class="dialogue-speaker">${escapeHtml(playerName)}</span>
+                            <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
                             <div class="player-card-header-right" style="margin-bottom:6px;">
                                 <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
                                 ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
@@ -466,7 +466,7 @@ function addUserMessage(text) {
     div.innerHTML = `
         <div class="player-card">
             <div class="player-card-header" style="margin-bottom:0;">
-                <span class="dialogue-speaker">${escapeHtml(playerName)}</span>
+                <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
                 <div class="player-card-header-right" style="margin-bottom:6px;">
                     <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
                     ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
