@@ -93,27 +93,106 @@ function updateInventoryPanel() {
 function updateMapPanel() {
     const cur = currentSave.map.currentLocation;
     const loc = currentSave.map.locations[cur];
-    let html = `<div class="map-current">📍 ${escapeHtml(cur)}</div>`;
-    if (loc) html += `<div class="map-desc">${escapeHtml(loc.description)}</div>`;
+    const locations = currentSave.map.locations || {};
 
+    let html = '';
+
+    // 当前位置卡片
+    html += `
+        <div class="map-card map-card-current" onclick="showLocationDetail('${escapeHtml(cur)}')">
+            <div class="map-card-header">
+                <span class="map-card-name">📍 ${escapeHtml(cur)}</span>
+                <span class="map-card-tag current">当前</span>
+            </div>
+            <div class="map-card-desc">${escapeHtml(loc?.description || '').slice(0, 60)}${(loc?.description || '').length > 60 ? '...' : ''}</div>
+        </div>
+    `;
+
+    // 可前往的地点
     const conns = loc?.connections || [];
     if (conns.length > 0) {
-        html += '<div class="map-connections-title">可前往</div>';
+        html += '<div class="map-section-title">可前往</div>';
         conns.forEach(c => {
-            html += `<div class="map-connection" onclick="moveToLocation('${escapeHtml(c)}')">→ ${escapeHtml(c)}</div>`;
+            const cLoc = locations[c];
+            html += `
+                <div class="map-card" onclick="showLocationDetail('${escapeHtml(c)}')">
+                    <div class="map-card-header">
+                        <span class="map-card-name">${escapeHtml(c)}</span>
+                    </div>
+                    <div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div>
+                    <div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div>
+                </div>
+            `;
         });
     }
 
-    const discovered = Object.entries(currentSave.map.locations).filter(([k, v]) => v.discovered && k !== cur);
+    // 已探索的其他地点
+    const discovered = Object.entries(locations).filter(([k, v]) => v.discovered && k !== cur && !conns.includes(k));
     if (discovered.length > 0) {
-        html += '<div class="map-discovered-list"><div class="map-connections-title" style="margin-top:12px;">已探索</div>';
-        discovered.forEach(([name]) => {
-            html += `<div class="map-discovered-item"><span class="map-discovered-dot"></span>${escapeHtml(name)}</div>`;
+        html += '<div class="map-section-title">已探索</div>';
+        discovered.forEach(([name, data]) => {
+            html += `
+                <div class="map-card" onclick="showLocationDetail('${escapeHtml(name)}')">
+                    <div class="map-card-header">
+                        <span class="map-card-name">${escapeHtml(name)}</span>
+                    </div>
+                    <div class="map-card-desc">${escapeHtml(data.description || '').slice(0, 50)}${(data.description || '').length > 50 ? '...' : ''}</div>
+                </div>
+            `;
+        });
+    }
+
+    document.getElementById('mapPanel').innerHTML = html;
+}
+
+function showLocationDetail(locName) {
+    const loc = currentSave.map.locations[locName];
+    if (!loc) return;
+
+    const cur = currentSave.map.currentLocation;
+    const isCurrent = locName === cur;
+    const conns = currentSave.map.locations[cur]?.connections || [];
+    const canGo = conns.includes(locName);
+
+    let html = `
+        <div style="margin-bottom:16px;">
+            <h4 style="font-size:16px;font-weight:600;margin-bottom:4px;">📍 ${escapeHtml(locName)}</h4>
+            ${isCurrent ? '<span style="font-size:11px;color:var(--accent);font-weight:500;">当前所在地</span>' : ''}
+        </div>
+        <div style="margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">描述</div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">${escapeHtml(loc.description || '暂无描述')}</div>
+        </div>
+    `;
+
+    // 该地点的连接
+    const locConns = loc.connections || [];
+    if (locConns.length > 0) {
+        html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">相邻地点</div>`;
+        locConns.forEach(c => {
+            const isCur = c === cur;
+            html += `<div style="font-size:12px;color:${isCur ? 'var(--accent)' : 'var(--text-secondary)'};padding:2px 0;">${isCur ? '📍 ' : '→ '}${escapeHtml(c)}${isCur ? ' (当前)' : ''}</div>`;
         });
         html += '</div>';
     }
 
-    document.getElementById('mapPanel').innerHTML = html;
+    // 该地点的 NPC
+    const npcs = loc.npcs || [];
+    if (npcs.length > 0) {
+        html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">在此的 NPC</div>`;
+        npcs.forEach(n => {
+            html += `<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;">👤 ${escapeHtml(n)}</div>`;
+        });
+        html += '</div>';
+    }
+
+    // 前往按钮
+    if (!isCurrent && canGo) {
+        html += `<button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="closeModal('modalWorldInfo');moveToLocation('${escapeHtml(locName)}')">前往 ${escapeHtml(locName)}</button>`;
+    }
+
+    document.getElementById('worldInfoContent').innerHTML = html;
+    openModal('modalWorldInfo');
 }
 
 function updateCharactersPanel() {
