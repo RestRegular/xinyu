@@ -399,7 +399,7 @@ router.post('/autofill', async (req, res) => {
     const model = appConfig.model || 'deepseek-chat';
 
     if (!apiKey) {
-        return res.status(400).json({ error: '请先配置 API Key' });
+        return res.status(400).json({ error: '请先在设置中配置 API Key' });
     }
 
     // 构建需要补全的字段列表

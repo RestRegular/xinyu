@@ -10,6 +10,8 @@ async function autofillForm() {
     btn.disabled = true;
 
     try {
+        // 从 localStorage 读取 API 配置
+        const configCache = JSON.parse(localStorage.getItem('xinyu_config_cache') || '{}');
         const getVal = (id) => (document.getElementById(id)?.value || '').trim();
         const body = {
             worldName: getVal('createWorldName'),
@@ -26,6 +28,7 @@ async function autofillForm() {
             playerPersonality: getVal('createPlayerPersonality'),
             playerBackstory: getVal('createPlayerBackstory'),
             templateId: selectedTemplate || '',
+            apiKey: configCache.apiKey || '',
         };
 
         const resp = await fetch('/api/game/autofill', {
