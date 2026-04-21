@@ -379,12 +379,22 @@ ${charsInfo}`;
 - 创建时尽量填写完整的人设信息（性格、说话风格、外貌、背景等），这会让角色更加生动
 - 不要等到玩家主动要求才创建，当你引入一个重要的NPC时就应该主动创建
 
+## 地点创建规则（非常重要）
+- 当你在叙事中提到一个新的可前往地点时，必须立即调用 move_to_location 创建该地点
+- 包括但不限于：城镇内的建筑（铁匠铺、酒馆、杂货店、教堂等）、城镇外的区域（森林、洞穴、营地等）、道路连接
+- 即使玩家还没有前往该地点，只要你在叙事中描述了它，就必须创建
+- 创建时必须提供 description（环境描述）和 connections（连接关系）
+- 如果叙事中提到了方向（东/南/西/北），在 connections 中体现
+- 示例：叙事提到"东边是铁匠铺"→ 必须调用 move_to_location(name:"铁匠铺", description:"...", connections:["边境小镇"])
+- 不要只在文字中描述地点而不调用工具，否则地点不会出现在游戏地图中
+
 ## 工具函数使用指南
 - 玩家受伤/治疗 → update_attributes
 - 获得经验 → update_attributes（changes: {experience: +50}）
 - 拾取/购买物品 → add_item
 - 使用/消耗物品 → remove_item
-- 移动到新地点 → move_to_location
+- 描述新地点 → move_to_location（必须调用！叙事中提到的任何新地点都要创建）
+- 玩家实际移动到某地点 → move_to_location
 - 中毒/灼烧/祝福 → add_status_effect
 - 金币变化 → update_gold
 - 战斗结束检查 → check_death
