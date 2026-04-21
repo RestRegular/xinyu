@@ -350,9 +350,8 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
 /* 删除按钮 */
 .template-card-delete {
     position: absolute;
-    top: 50%;
-    right: 8px;
-    transform: translateY(-50%);
+    top: 6px;
+    right: 30px;
     width: 22px;
     height: 22px;
     display: none;
