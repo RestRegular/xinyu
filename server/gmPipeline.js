@@ -1,20 +1,13 @@
 // ===================================================================
-// ===== GM 多 Agent 管线（Pipeline v3 — 工具拆分版） =====
+// ===== GM 多 Agent 管线（Pipeline v2） =====
 // ===================================================================
 //
-// 架构：
-//   SA (StoryAgent) — 纯叙事，只持有 get_character_reaction 工具
-//   RA (RoleAgent)   — 角色管理：create_character, update_relationship, character_action, create_npc, remove_npc
-//   MA (MapAgent)    — 地图管理：move_to_location
-//   PA (PropertyAgent) — 属性管理：update_attributes, add_item, remove_item,
-//                         add_status_effect, remove_status_effect, update_gold,
-//                         check_death, equip_item, revive_player
+// 架构（v2 — 工具调用模式）：
+//   Phase 1: StoryAgent(SA) — 使用工具调用生成剧情+执行游戏操作（和旧版一致，保证可靠性）
+//   Phase 2: 后处理 — 从 SA 的工具调用结果中提取角色创建/属性变更等通知
 //
-// 流程：
-//   1. SA 用精简 prompt + 仅 get_character_reaction 工具生成剧情
-//   2. SA 输出中如果包含需要其他 Agent 处理的操作（通过特殊标记或工具调用），
-//      管线拦截并分发给对应 Agent
-//   3. RA/MA/PA 并行执行，结果合并返回
+// SA 仍然使用 aiService.js 的 buildSystemPrompt + gameTools（工具调用模式）
+// 管线负责编排调用流程、处理角色AI嵌套、解析最终输出
 //
 // ===================================================================
 
@@ -22,42 +15,17 @@ const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, gameTools,
 const { executeGameFunction, executeCharacterTool } = require('./gameEngine');
 
 // ===================================================================
-// ===== 工具分组 =====
-// ===================================================================
-
-// SA 工具：保留所有工具定义（让 AI 知道有哪些操作可以做），但只有 get_character_reaction 由 SA 直接处理
-// 其余工具的调用会被管线拦截并分发给对应 Agent
-const storyAgentTools = gameTools;
-
-// RA 工具：角色管理
-const roleAgentTools = gameTools.filter(t =>
-    ['create_character', 'update_relationship', 'character_action', 'create_npc', 'remove_npc'].includes(t.function.name)
-);
-
-// MA 工具：地图管理
-const mapAgentTools = gameTools.filter(t => t.function.name === 'move_to_location');
-
-// PA 工具：属性/物品/状态管理
-const propertyAgentTools = gameTools.filter(t =>
-    ['update_attributes', 'add_item', 'remove_item', 'add_status_effect',
-     'remove_status_effect', 'update_gold', 'check_death', 'equip_item', 'revive_player'].includes(t.function.name)
-);
-
-// 工具名 → Agent 映射
-const TOOL_AGENT_MAP = {};
-for (const t of roleAgentTools) TOOL_AGENT_MAP[t.function.name] = 'RA';
-for (const t of mapAgentTools) TOOL_AGENT_MAP[t.function.name] = 'MA';
-for (const t of propertyAgentTools) TOOL_AGENT_MAP[t.function.name] = 'PA';
-
-// ===================================================================
 // ===== 管线编排器 =====
 // ===================================================================
 
+/**
+ * 执行完整的 GM 管线
+ */
 async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
     const { apiKey, apiBaseUrl, model } = apiConfig;
     const allNotifications = [];
 
-    // ===== Phase 1: StoryAgent — 纯叙事 + 角色交互 =====
+    // ===== Phase 1: StoryAgent — 工具调用模式 =====
     const systemPrompt = buildSystemPrompt(saveData, appConfig);
     const history = buildMessageHistory(saveData.chatHistory);
     const messages = [{ role: 'system', content: systemPrompt }, ...history];
@@ -66,13 +34,11 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
     const MAX_RETRIES = 2;
     const API_TIMEOUT = 90000;
 
-    // 收集需要分发给其他 Agent 的工具调用
-    const pendingAgentCalls = { RA: [], MA: [], PA: [] };
-
     let loopCount = 0;
     while (loopCount < MAX_TOOL_CALL_LOOPS) {
         loopCount++;
 
+        // 请求 AI（含重试）
         let response;
         let retries = 0;
         while (true) {
@@ -82,14 +48,16 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
                 response = await fetch(apiBaseUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model, messages, tools: storyAgentTools, temperature: appConfig.temperature, max_tokens: appConfig.maxTokens, stream: true }),
+                    body: JSON.stringify({ model, messages, tools: gameTools, temperature: appConfig.temperature, max_tokens: appConfig.maxTokens, stream: true }),
                     signal: controller.signal,
                 });
                 clearTimeout(timer);
                 break;
             } catch (err) {
                 retries++;
-                if (retries >= MAX_RETRIES) throw new Error('AI 请求失败: ' + (err.message || '未知错误'));
+                if (retries >= MAX_RETRIES) {
+                    throw new Error('AI 请求失败: ' + (err.message || '未知错误'));
+                }
                 await new Promise(r => setTimeout(r, 1000 * retries));
             }
         }
@@ -99,72 +67,44 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
             throw new Error(`AI 请求失败 (${response.status}): ${errText}`);
         }
 
+        // 解析流式响应
         let result;
         try {
             result = await parseStreamResponse(response);
         } catch (err) {
-            result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, storyAgentTools, appConfig);
+            // 流式失败，尝试非流式
+            result = await parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, gameTools, appConfig);
         }
 
         const assistantMsg = { role: 'assistant', content: result.content };
         if (result.tool_calls) assistantMsg.tool_calls = result.tool_calls;
         messages.push(assistantMsg);
 
+        // 处理 tool calls
         if (result.tool_calls && result.tool_calls.length > 0) {
             for (const tc of result.tool_calls) {
                 const fnName = tc.function.name;
                 let fnArgs;
                 try { fnArgs = JSON.parse(tc.function.arguments); } catch (e) { fnArgs = {}; }
 
+                let toolResult;
+
                 if (fnName === 'get_character_reaction') {
-                    // ★ SA 直接处理角色交互
-                    const toolResult = await handleGetCharacterReaction(fnArgs, saveData, apiKey, apiBaseUrl, model, appConfig);
-                    if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
-                    messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
+                    // ★ 角色 AI 嵌套调用
+                    toolResult = await handleGetCharacterReaction(fnArgs, saveData, apiKey, apiBaseUrl, model, appConfig);
                 } else {
-                    // ★ 拦截：分发给对应 Agent
-                    const agent = TOOL_AGENT_MAP[fnName];
-                    if (agent && pendingAgentCalls[agent]) {
-                        pendingAgentCalls[agent].push({ fnName, fnArgs, toolCallId: tc.id });
-                        // 返回占位结果让 SA 继续生成
-                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, delegated: true, agent, message: `已委托${agent}处理` }) });
-                    } else {
-                        // 未知工具，直接执行
-                        const toolResult = executeGameFunction(fnName, fnArgs, saveData);
-                        if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
-                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
-                    }
+                    toolResult = executeGameFunction(fnName, fnArgs, saveData);
                 }
+
+                if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
+                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
             }
             continue;
         }
         break;
     }
 
-    // ===== Phase 2: 并行执行 RA/MA/PA =====
-    const agentPromises = [];
-
-    if (pendingAgentCalls.RA.length > 0) {
-        agentPromises.push(
-            executeAgentBatch('RA', pendingAgentCalls.RA, saveData, allNotifications)
-        );
-    }
-    if (pendingAgentCalls.MA.length > 0) {
-        agentPromises.push(
-            executeAgentBatch('MA', pendingAgentCalls.MA, saveData, allNotifications)
-        );
-    }
-    if (pendingAgentCalls.PA.length > 0) {
-        agentPromises.push(
-            executeAgentBatch('PA', pendingAgentCalls.PA, saveData, allNotifications)
-        );
-    }
-
-    if (agentPromises.length > 0) {
-        await Promise.all(agentPromises);
-    }
-
-    // ===== Phase 3: 解析最终输出 =====
+    // ===== Phase 2: 解析最终输出 =====
     const lastAssistantMsg = messages[messages.length - 1];
     const rawContent = lastAssistantMsg?.content || '';
     const structuredOutput = parseGMOutput(rawContent);
@@ -175,22 +115,6 @@ async function runGMPipeline(saveData, userMessage, apiConfig, appConfig) {
         notifications: allNotifications,
         saveData,
     };
-}
-
-// ===================================================================
-// ===== Agent 批量执行器 =====
-// ===================================================================
-
-/**
- * 批量执行某个 Agent 的工具调用
- * 当前版本：直接执行工具函数（同步，无需额外 AI 调用）
- * 后续可升级为：将工具调用打包发给对应 Agent 的独立 AI 实例
- */
-async function executeAgentBatch(agentName, calls, saveData, allNotifications) {
-    for (const call of calls) {
-        const result = executeGameFunction(call.fnName, call.fnArgs, saveData);
-        if (result.notifications) allNotifications.push(...result.notifications);
-    }
 }
 
 // ===================================================================
@@ -254,6 +178,7 @@ async function handleGetCharacterReaction(args, saveData, apiKey, apiBaseUrl, mo
         }
     }
 
+    // 处理角色AI的 tool calls
     if (result.tool_calls && result.tool_calls.length > 0) {
         for (const tc of result.tool_calls) {
             let fnArgs;
@@ -361,4 +286,4 @@ async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools
     return { content: choice.message?.content || '', tool_calls: choice.message?.tool_calls || null };
 }
 
-module.exports = { runGMPipeline, storyAgentTools, roleAgentTools, mapAgentTools, propertyAgentTools };
+module.exports = { runGMPipeline };
