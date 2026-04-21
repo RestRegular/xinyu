@@ -147,14 +147,26 @@ function importWorldTemplate() {
     document.getElementById('worldTemplateInput').click();
 }
 
-// 处理导入的世界模板文件
+// 处理导入的世界模板文件（支持 JSON 和 SVG 格式）
 async function handleWorldTemplateImport(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     try {
         const text = await file.text();
-        const data = JSON.parse(text);
+        let data;
+
+        if (file.name.endsWith('.svg')) {
+            // 从 SVG 的 <metadata> 中提取嵌入的 JSON 数据
+            const match = text.match(/<xinyu:data>([\s\S]*?)<\/xinyu:data>/);
+            if (!match) {
+                showToast('导入失败: SVG 卡片中未找到世界数据', 'error');
+                return;
+            }
+            data = JSON.parse(match[1]);
+        } else {
+            data = JSON.parse(text);
+        }
 
         // 发送到后端验证并标准化
         const resp = await fetch('/api/game/templates/import', {

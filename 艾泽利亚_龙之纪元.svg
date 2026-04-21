@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 600 840" width="600" height="840">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="50%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#b8860b"/>
+      <stop offset="50%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#b8860b"/>
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e6c86e"/>
+      <stop offset="50%" stop-color="#fff4c2"/>
+      <stop offset="100%" stop-color="#e6c86e"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softShadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <clipPath id="cardClip">
+      <rect x="10" y="10" width="580" height="820" rx="16"/>
+    </clipPath>
+  </defs>
+
+  <!-- 卡片背景 -->
+  <rect x="10" y="10" width="580" height="820" rx="16" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="2" filter="url(#softShadow)"/>
+
+  <!-- 内边框装饰 -->
+  <rect x="20" y="20" width="560" height="800" rx="12" fill="none" stroke="#ffd70033" stroke-width="1"/>
+  <rect x="24" y="24" width="552" height="792" rx="10" fill="none" stroke="#ffd70018" stroke-width="0.5"/>
+
+  <!-- 顶部装饰线 -->
+  <line x1="60" y1="60" x2="540" y2="60" stroke="url(#goldGrad)" stroke-width="1" opacity="0.6"/>
+  <circle cx="300" cy="60" r="3" fill="#ffd700" opacity="0.8"/>
+  <circle cx="60" cy="60" r="2" fill="#ffd700" opacity="0.5"/>
+  <circle cx="540" cy="60" r="2" fill="#ffd700" opacity="0.5"/>
+
+  <!-- 类型标签 -->
+  <rect x="230" y="75" width="140" height="28" rx="14" fill="#ffd70015" stroke="#ffd70044" stroke-width="1"/>
+  <text x="300" y="94" text-anchor="middle" fill="#e6c86e" font-family="serif" font-size="13" letter-spacing="4">奇 幻</text>
+
+  <!-- 图标 -->
+  <text x="300" y="155" text-anchor="middle" font-size="56" filter="url(#glow)">🐉</text>
+
+  <!-- 世界名称 -->
+  <text x="300" y="195" text-anchor="middle" fill="url(#titleGrad)" font-family="serif" font-size="28" font-weight="bold" letter-spacing="2">艾泽利亚</text>
+  <text x="300" y="222" text-anchor="middle" fill="#e6c86e" font-family="serif" font-size="16" letter-spacing="6" opacity="0.8">龙 之 纪 元</text>
+
+  <!-- 分隔线 -->
+  <line x1="100" y1="242" x2="500" y2="242" stroke="url(#goldGrad)" stroke-width="0.5" opacity="0.4"/>
+  <text x="300" y="246" text-anchor="middle" fill="#ffd700" font-size="10" opacity="0.5">◆</text>
+
+  <!-- 世界描述 -->
+  <text x="300" y="272" text-anchor="middle" fill="#c8b87a" font-family="sans-serif" font-size="11" opacity="0.9">龙族苏醒、暗影入侵，一个史诗级剑与魔法冒险世界</text>
+
+  <!-- 世界详情区域 -->
+  <text x="50" y="310" fill="#e6c86e" font-family="serif" font-size="13" font-weight="bold" letter-spacing="2">✦ 世界概览</text>
+  <line x1="50" y1="318" x2="180" y2="318" stroke="#ffd70033" stroke-width="0.5"/>
+
+  <text x="50" y="340" fill="#b8a88a" font-family="sans-serif" font-size="10.5" opacity="0.85">
+    <tspan x="50" dy="0">艾泽利亚是一片广袤而古老的大陆，被五座巨龙山脉</tspan>
+    <tspan x="50" dy="16">分割为东西两半。千年前，龙族与人类缔结了「黎明</tspan>
+    <tspan x="50" dy="16">契约」，共同击退了来自虚空深处的暗影军团。如</tspan>
+    <tspan x="50" dy="16">今契约即将到期，沉睡的远古巨龙开始躁动不安，</tspan>
+    <tspan x="50" dy="16">北方荒原上暗影裂隙不断扩大，亡灵大军再次蠢蠢</tspan>
+    <tspan x="50" dy="16">欲动……</tspan>
+  </text>
+
+  <!-- 四大区域 -->
+  <text x="50" y="460" fill="#e6c86e" font-family="serif" font-size="13" font-weight="bold" letter-spacing="2">✦ 四大区域</text>
+  <line x1="50" y1="468" x2="180" y2="468" stroke="#ffd70033" stroke-width="0.5"/>
+
+  <!-- 区域卡片 -->
+  <rect x="50" y="480" width="240" height="52" rx="6" fill="#ffffff08" stroke="#ffd70018" stroke-width="0.5"/>
+  <text x="66" y="500" fill="#e6c86e" font-size="12">🏰 圣光王国</text>
+  <text x="66" y="518" fill="#8a7e6a" font-size="9.5">东部·人类文明中心·王都白鹰城</text>
+
+  <rect x="310" y="480" width="240" height="52" rx="6" fill="#ffffff08" stroke="#ffd70018" stroke-width="0.5"/>
+  <text x="326" y="500" fill="#e6c86e" font-size="12">🌿 翡翠密林</text>
+  <text x="326" y="518" fill="#8a7e6a" font-size="9.5">南部·精灵族领地·世界之根</text>
+
+  <rect x="50" y="542" width="240" height="52" rx="6" fill="#ffffff08" stroke="#ffd70018" stroke-width="0.5"/>
+  <text x="66" y="562" fill="#e6c86e" font-size="12">⚒️ 铁砧堡</text>
+  <text x="66" y="580" fill="#8a7e6a" font-size="9.5">西部·矮人地下王国·秘银矿脉</text>
+
+  <rect x="310" y="542" width="240" height="52" rx="6" fill="#ffffff08" stroke="#ffd70018" stroke-width="0.5"/>
+  <text x="326" y="562" fill="#e6c86e" font-size="12">❄️ 霜狼荒原</text>
+  <text x="326" y="580" fill="#8a7e6a" font-size="9.5">北部·蛮族领地·暗影裂隙</text>
+
+  <!-- 魔法体系 -->
+  <text x="50" y="618" fill="#e6c86e" font-family="serif" font-size="13" font-weight="bold" letter-spacing="2">✦ 魔法体系</text>
+  <line x1="50" y1="626" x2="180" y2="626" stroke="#ffd70033" stroke-width="0.5"/>
+
+  <text fill="#b8a88a" font-family="sans-serif" font-size="10">
+    <tspan x="50" y="646">🔥元素系</tspan>
+    <tspan x="140" y="646">✨神圣系</tspan>
+    <tspan x="230" y="646">🌑暗影系</tspan>
+    <tspan x="320" y="646">💎附魔系</tspan>
+    <tspan x="410" y="646">🌀变化系</tspan>
+    <tspan x="500" y="646">🐉龙语系</tspan>
+  </text>
+
+  <!-- 起始信息 -->
+  <text x="50" y="680" fill="#e6c86e" font-family="serif" font-size="13" font-weight="bold" letter-spacing="2">✦ 冒险起点</text>
+  <line x1="50" y1="688" x2="180" y2="688" stroke="#ffd70033" stroke-width="0.5"/>
+
+  <text x="50" y="708" fill="#c8b87a" font-family="sans-serif" font-size="11">📍 迷雾镇 · 晨星酒馆</text>
+  <text x="50" y="728" fill="#8a7e6a" font-family="sans-serif" font-size="9.5">王国东部边境的冒险者中转站，故事从这里开始</text>
+
+  <!-- 底部信息栏 -->
+  <line x1="60" y1="752" x2="540" y2="752" stroke="url(#goldGrad)" stroke-width="0.5" opacity="0.3"/>
+
+  <text x="50" y="774" fill="#8a7e6a" font-family="sans-serif" font-size="9.5">
+    <tspan>⚔️ 6大职业</tspan>
+    <tspan x="160">🎒 6件初始物品</tspan>
+    <tspan x="310">💰 80金币</tspan>
+    <tspan x="420">📜 史诗基调</tspan>
+  </text>
+
+  <!-- 底部品牌 -->
+  <text x="300" y="806" text-anchor="middle" fill="#ffd700" font-family="serif" font-size="11" opacity="0.4" letter-spacing="3">心 隅 · XINYU</text>
+
+  <!-- ====== 嵌入的世界数据（供导入使用） ====== -->
+  <metadata id="xinyu-world-data">
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+      <rdf:Description>
+        <xinyu:data>{"name":"艾泽利亚：龙之纪元","genre":"奇幻","icon":"🐉","description":"龙族苏醒、暗影入侵，一个史诗级剑与魔法冒险世界","world":{"name":"艾泽利亚大陆","genre":"奇幻","description":"艾泽利亚是一片广袤而古老的大陆，被五座巨龙山脉分割为东西两半。千年前，龙族与人类缔结了「黎明契约」，共同击退了来自虚空深处的暗影军团。如今契约即将到期，沉睡在山脉之下的远古巨龙开始躁动不安，北方荒原上暗影裂隙不断扩大，亡灵大军再次蠢蠢欲动。\n\n大陆东部是人类文明的中心——圣光王国，王都「白鹰城」矗立在金鹰平原之上，繁华而坚固。南部是精灵族世代守护的「翡翠密林」，古老的魔法树「世界之根」扎根于此，维系着整片大陆的魔力平衡。西部是矮人族的地下王国「铁砧堡」，无尽的矿脉中蕴藏着传说中的秘银和精金。北方的「霜狼荒原」则是蛮族和兽人的领地，终年冰雪覆盖。\n\n近年来，各地频繁出现异常事件：边境村庄遭到不明怪物袭击，魔法塔中的占星师观测到不祥的星象，教会的大主教宣称收到了神圣启示……冒险者们纷纷踏上旅途，试图揭开暗影背后的真相。","rules":"【魔法体系】\n魔法分为六大派系：\n- 元素系（火、水、风、土）：最基础的魔法类型，法师的入门必修课\n- 神圣系：治愈、净化、驱邪，牧师和圣骑士的核心能力\n- 暗影系：诅咒、幻术、亡灵术，被教会明令禁止但暗中流传\n- 附魔系：将魔法注入物品，附魔师的高阶技艺\n- 变化系：变形、传送、时间操控，极为罕见的高阶魔法\n- 龙语系：远古龙族的语言魔法，威力巨大但几乎失传\n\n【职业体系】\n- 战士：精通剑术和战术，可转职为骑士、狂战士、剑圣\n- 法师：操控元素之力，可转职为元素师、奥术师、龙语者\n- 游侠：弓箭与潜行兼备，可转职为狙击手、暗影猎手、自然守卫\n- 牧师：神圣治愈之力，可转职为主教、圣骑士、先知\n- 盗贼：敏捷与诡计，可转职为刺客、幻术师、宝藏猎人\n- 吟游诗人：音乐与魔法融合，可转职为战歌者、幻音师\n\n【战斗规则】\n- 回合制对抗，属性和装备决定战斗力\n- 弱点系统：不同怪物有不同元素弱点\n- 魔法消耗MP，强力法术需要吟唱时间\n- 团队协作可获得加成\n\n【经济系统】\n- 铜币、银币、金币三种货币（1金币=100银币=10000铜币）\n- 公会系统：冒险者可加入公会接受委托\n- 商店买卖、物品合成、装备强化","tone":"史诗","customPrompt":"1. 世界观要保持史诗感和沉浸感，多用感官描写（视觉、听觉、嗅觉）\n2. NPC要有鲜明的个性和说话风格，不要千篇一律\n3. 战斗描写要有策略感和紧张感，不要流水账\n4. 每个重要地点都要有独特的氛围和环境描写\n5. 适当埋下伏笔和悬念，引导玩家探索\n6. 玩家的选择应该有实质性的影响和后果\n7. 不要让玩家轻易死亡，但要让危险感真实存在\n8. 龙族是中立存在，不是单纯的敌人或盟友"},"starterItems":[{"name":"学徒铁剑","type":"weapon","description":"冒险者公会的标准配剑，剑刃上刻有微弱的附魔符文","quantity":1,"effects":{"attack":5},"rarity":"common"},{"name":"治疗药水","type":"consumable","description":"教会炼金房出品的标准恢复药剂，散发淡淡的草药清香","quantity":3,"effects":{"hp":40},"rarity":"common"},{"name":"魔力药水","type":"consumable","description":"蓝色的透明液体，饮后可恢复部分魔力值","quantity":2,"effects":{"mp":30},"rarity":"common"},{"name":"硬皮甲","type":"armor","description":"用硬化皮革制成的护甲，轻便但防护有限","quantity":1,"effects":{"defense":3},"rarity":"common"},{"name":"冒险者徽章","type":"misc","description":"铜制的冒险者公会徽章，背面刻着你的注册编号。持有此徽章可在各城镇的公会分部接受委托","quantity":1,"rarity":"uncommon"},{"name":"旧皮地图","type":"misc","description":"一张泛黄的羊皮地图，标注了艾泽利亚东部的主要城镇和道路，但西部和北方的区域模糊不清","quantity":1,"rarity":"common"}],"starterLocation":"迷雾镇·晨星酒馆","starterLocationDesc":"迷雾镇坐落在圣光王国东部边境，因常年被晨雾笼罩而得名。镇子不大，但地处通往翡翠密林和霜狼荒原的十字路口，商旅往来频繁，是冒险者们补给歇脚的热门中转站。\n\n你推开了「晨星酒馆」厚重的橡木门。温暖的烛光和嘈杂的人声扑面而来，空气中弥漫着烤肉和麦酒的香气。酒馆里坐满了各色人等——背着巨剑的战士、裹着灰色斗篷的神秘旅人、大声吹嘘自己猎龙经历的矮人、角落里安静独饮的精灵游侠。\n\n吧台后面，老板娘——一位身材丰满的中年人类女性——正在擦拭酒杯。墙上挂着一块巨大的告示板，上面钉满了各种委托任务和赏金海报。门口的布告栏上贴着一张崭新的王国通告，用鲜红的墨水写着：「征召冒险者——北方霜狼荒原出现暗影裂隙，教会悬赏调查此事，报酬丰厚。」\n\n你的冒险，从这里开始。","starterGold":80,"_app":"心隅","_version":"1.0"}</xinyu:data>
+      </rdf:Description>
+    </rdf:RDF>
+  </metadata>
+</svg>
