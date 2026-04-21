@@ -19,7 +19,7 @@
 //
 // ===================================================================
 
-const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, gameTools, characterTools } = require('./aiService');
+const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, buildUserAgentPrompt, gameTools, characterTools } = require('./aiService');
 const { executeGameFunction, executeCharacterTool } = require('./gameEngine');
 
 // ===================================================================
@@ -580,6 +580,86 @@ async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools
 }
 
 // ===================================================================
+// ===== UserAgent (UA) — 玩家角色扮演代理 =====
+// ===================================================================
+
+/**
+ * 运行 UserAgent：根据玩家选择的选项生成角色行为描述和对话
+ * @param {object} saveData - 存档数据
+ * @param {string} optionText - 玩家选择的选项文本
+ * @param {object} apiConfig - AI 配置
+ * @returns {Promise<{action: string, dialogue: string|null}>}
+ */
+async function runUserAgent(saveData, optionText, apiConfig) {
+    const { apiKey, apiBaseUrl, model, temperature } = apiConfig;
+    const systemPrompt = buildUserAgentPrompt(saveData);
+
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `玩家选择了以下行动选项，请生成角色行为描写：\n\n"${optionText}"` },
+    ];
+
+    // 请求 AI（含重试，最多2次）
+    let response;
+    let retries = 0;
+    while (retries < 2) {
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 30000);
+            response = await fetch(apiBaseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    model,
+                    messages,
+                    temperature: Math.max(0.6, (temperature || 0.9) - 0.1),
+                    max_tokens: 512,
+                    stream: false,
+                }),
+                signal: controller.signal,
+            });
+            clearTimeout(timer);
+            break;
+        } catch (err) {
+            retries++;
+            if (retries >= 2) throw new Error('UserAgent 请求失败: ' + err.message);
+            await new Promise(r => setTimeout(r, 1000 * retries));
+        }
+    }
+
+    if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`UserAgent AI 请求失败 (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    // 解析 JSON 输出
+    try {
+        const parsed = JSON.parse(content);
+        return {
+            action: parsed.action || optionText,
+            dialogue: parsed.dialogue || null,
+        };
+    } catch (e) {
+        // JSON 解析失败，尝试从文本中提取
+        const jsonMatch = content.match(/\{[\s\S]*"action"[\s\S]*\}/);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                return {
+                    action: parsed.action || optionText,
+                    dialogue: parsed.dialogue || null,
+                };
+            } catch (e2) {}
+        }
+        // 降级：直接使用选项文本作为行为描述
+        return { action: optionText, dialogue: null };
+    }
+}
+
+// ===================================================================
 // ===== 导出 =====
 // ===================================================================
 
@@ -590,4 +670,5 @@ module.exports = {
     RoleAgent,
     MapAgent,
     PropertyAgent,
+    runUserAgent,
 };

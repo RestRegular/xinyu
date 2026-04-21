@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { Pipeline } = require('../gmPipeline');
+const { Pipeline, runUserAgent } = require('../gmPipeline');
 const { executeGameFunction } = require('../gameEngine');
 
 // 单例 Pipeline 实例
@@ -33,7 +33,7 @@ function getAppConfig() {
 // ===== POST /api/game/action — 统一游戏动作（核心接口） =====
 // ===================================================================
 router.post('/action', async (req, res) => {
-    const { saveId, userMessage } = req.body;
+    const { saveId, userMessage, isOption } = req.body;
     if (!saveId || !userMessage) return res.status(400).json({ error: '缺少 saveId 或 userMessage' });
 
     const apiKey = getApiKey();
@@ -53,6 +53,30 @@ router.post('/action', async (req, res) => {
     saveData.stats.turnCount++;
 
     try {
+        // 如果是选项选择，先调用 UserAgent 生成玩家行为描述
+        let playerActionContent = null;
+        if (isOption) {
+            try {
+                const apiConfig = {
+                    apiKey,
+                    apiBaseUrl: getApiBaseUrl(),
+                    model: getModel(),
+                    temperature: appConfig.temperature,
+                    maxTokens: appConfig.maxTokens,
+                };
+                const uaResult = await runUserAgent(saveData, userMessage, apiConfig);
+                playerActionContent = {
+                    type: 'player_action',
+                    option: userMessage,
+                    action: uaResult.action,
+                    dialogue: uaResult.dialogue,
+                };
+            } catch (uaErr) {
+                // UA 失败不阻断流程，降级为不显示玩家行为
+                console.error('UserAgent 执行失败:', uaErr.message);
+            }
+        }
+
         const result = await pipeline.run(saveData, userMessage, {
             apiKey,
             apiBaseUrl: getApiBaseUrl(),
@@ -61,10 +85,15 @@ router.post('/action', async (req, res) => {
             maxTokens: appConfig.maxTokens,
         }, appConfig);
 
+        // 将 player_action 插入到 content 最前面
+        const finalContent = playerActionContent
+            ? [playerActionContent, ...(result.content || [])]
+            : result.content;
+
         saveData.chatHistory.push({
             role: 'assistant',
-            content: JSON.stringify({ content: result.content, options: result.options }),
-            structured: { content: result.content, options: result.options },
+            content: JSON.stringify({ content: finalContent, options: result.options }),
+            structured: { content: finalContent, options: result.options },
             timestamp: new Date().toISOString(),
         });
 
@@ -84,7 +113,7 @@ router.post('/action', async (req, res) => {
         await persistSave(saveData, saveId);
 
         res.json({
-            content: result.content,
+            content: finalContent,
             options: result.options,
             notifications: result.notifications,
             saveData,

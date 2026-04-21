@@ -383,9 +383,13 @@ function renderGameMessages() {
             if (msg.structured && msg.structured.content) {
                 msg.structured.content.forEach(block => {
                     // 过滤掉工具返回的JSON（AI有时会错误地把工具结果写入content）
-                    if (block.type && !['narrative','scene','dialogue','action','combat','loot','character'].includes(block.type)) return;
+                    if (block.type && !['narrative','scene','dialogue','action','combat','loot','character','player_action'].includes(block.type)) return;
                     if (block.text && typeof block.text === 'string' && block.text.startsWith('{"success"')) return;
-                    if (block.type === 'narrative') {
+                    if (block.type === 'player_action') {
+                        const playerName = currentSave?.player?.name || '你';
+                        let dialogueHtml = block.dialogue ? `<div class="player-action-dialogue">"${escapeHtml(block.dialogue)}"</div>` : '';
+                        html += `<div class="msg msg-player-action"><div class="player-action-card"><div class="player-action-header"><span class="player-action-name">👤 ${escapeHtml(playerName)}</span><span class="player-action-option">▸ ${escapeHtml(block.option)}</span></div><div class="player-action-desc">${escapeHtml(block.action)}</div>${dialogueHtml}</div></div>`;
+                    } else if (block.type === 'narrative') {
                         html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
                     } else if (block.type === 'scene') {
                         html += `<div class="msg msg-scene"><div class="scene-card">${formatNarratorText(block.text)}</div></div>`;
@@ -591,6 +595,29 @@ function addDialogueMessage(block) {
     scrollToBottom();
 }
 
+function addPlayerActionMessage(block) {
+    const container = document.getElementById('gameMessages');
+    const div = document.createElement('div');
+    div.className = 'msg msg-player-action';
+    const playerName = currentSave?.player?.name || '你';
+    let dialogueHtml = '';
+    if (block.dialogue) {
+        dialogueHtml = `<div class="player-action-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+    }
+    div.innerHTML = `
+        <div class="player-action-card">
+            <div class="player-action-header">
+                <span class="player-action-name">👤 ${escapeHtml(playerName)}</span>
+                <span class="player-action-option">▸ ${escapeHtml(block.option)}</span>
+            </div>
+            <div class="player-action-desc">${escapeHtml(block.action)}</div>
+            ${dialogueHtml}
+        </div>
+    `;
+    container.appendChild(div);
+    scrollToBottom();
+}
+
 function addActionMessage(block) {
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
@@ -724,7 +751,7 @@ function sendMessage() {
     sendGameMessage(text);
 }
 
-async function sendGameMessage(text) {
+async function sendGameMessage(text, isOption = false) {
     if (isGenerating) return;
     isGenerating = true;
     document.getElementById('gameSendBtn').disabled = true;
@@ -733,7 +760,7 @@ async function sendGameMessage(text) {
     addUserMessage(text);
 
     try {
-        await callAI(text);
+        await callAI(text, isOption);
     } catch(err) {
         addNotification('发生错误: ' + err.message, 'negative');
         showToast('请求失败: ' + err.message, 'error');

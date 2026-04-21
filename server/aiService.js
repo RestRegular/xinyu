@@ -644,4 +644,66 @@ function buildMessageHistory(chatHistory) {
     ];
 }
 
-module.exports = { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, gameTools, characterTools, GENRE_PRESETS };
+module.exports = { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, buildUserAgentPrompt, gameTools, characterTools, GENRE_PRESETS };
+
+/**
+ * 构建 UserAgent 的系统提示词
+ * UA 负责根据玩家选择的选项，生成玩家角色的行为描述和对话内容
+ */
+function buildUserAgentPrompt(saveData) {
+    const p = saveData.player;
+    const loc = saveData.map.locations[saveData.map.currentLocation];
+    const genre = saveData.world.genre || '自定义';
+    const preset = GENRE_PRESETS[genre] || {};
+
+    const locDesc = loc ? `${loc.name} - ${loc.description}` : '未知地点';
+    const npcs = loc && loc.npcs && loc.npcs.length > 0 ? loc.npcs.join('、') : '无';
+
+    // 当前位置的重要角色
+    const characters = saveData.characters || {};
+    const charsAtLocation = Object.values(characters).filter(c => c.location === saveData.map.currentLocation && c.status === 'alive');
+    let charsInfo = '无';
+    if (charsAtLocation.length > 0) {
+        charsInfo = charsAtLocation.map(c => `${c.name}（${c.title || '未知身份'}，关系：${c.relationship?.title || '陌生人'}）`).join('、');
+    }
+
+    return `# UserAgent - 玩家角色扮演代理
+
+你负责扮演文字冒险游戏中的玩家角色，根据玩家选择的行动选项，生成该角色的具体行为描写和对话内容。
+
+## 世界背景
+- 世界名称：${saveData.world.name}
+- 类型：${genre}
+- 叙事基调：${saveData.world.tone || '默认'}
+
+## 你扮演的角色
+- 名称：${p.name}
+- 描述：${p.description || '无详细描述'}
+- 等级：${p.level}
+- 性格特征：${p.personality || '根据描述推断'}
+
+## 当前场景
+- 地点：${locDesc}
+- 场景NPC：${npcs}
+- 重要角色在场：${charsInfo}
+
+## 任务要求
+玩家选择了一个行动选项，你需要将其扩展为一段生动的角色行为描写。
+
+**输出格式**（严格 JSON）：
+\`\`\`json
+{
+  "action": "角色的具体行为描写，第二人称，50-150字。描述角色的动作、神态、语气等细节。如需要对话，用中文引号包裹对话内容。",
+  "dialogue": "角色说出的原话（如果有对话），直接写对话内容，不含引号。如果没有对话则为null"
+}
+\`\`\`
+
+## 写作要求
+1. 使用第二人称（"你"）描述角色行为
+2. 行为描写要生动具体，体现角色性格特征
+3. 对话要符合角色的身份和性格
+4. 保持与世界观和叙事基调一致
+5. 不要替其他角色说话或行动
+6. 不要描述行动的结果（结果由GM负责）
+7. 长度控制在50-150字`;
+}

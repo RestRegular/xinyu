@@ -28,7 +28,7 @@ function classifyError(status, body) {
 // ===================================================================
 // ===== 核心游戏消息发送（重构版 - 调用后端统一 API） =====
 // ===================================================================
-async function callAI(userText) {
+async function callAI(userText, isOption = false) {
     addTypingIndicator();
 
     try {
@@ -38,6 +38,7 @@ async function callAI(userText) {
             body: JSON.stringify({
                 saveId: currentSaveId,
                 userMessage: userText,
+                isOption: isOption || undefined,
             }),
         });
 
@@ -88,7 +89,9 @@ async function renderStructuredContent(contentBlocks) {
     const container = document.getElementById('gameMessages');
 
     for (const block of contentBlocks) {
-        if (block.type === 'narrative') {
+        if (block.type === 'player_action') {
+            addPlayerActionMessage(block);
+        } else if (block.type === 'narrative') {
             await simulateStreamingText(block.text);
         } else if (block.type === 'scene') {
             addSceneMessage(block);
@@ -132,7 +135,7 @@ function renderOptions(options) {
             wrapper.remove();
             // 发送选项对应的 action 作为玩家输入
             const actionText = opt.action || opt.text || opt.label || '';
-            sendGameMessage(actionText);
+            sendGameMessage(actionText, true);
         };
         btnContainer.appendChild(btn);
     });
