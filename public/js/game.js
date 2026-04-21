@@ -367,14 +367,14 @@ function renderGameMessages() {
             html += `
                 <div class="msg msg-player">
                     <div class="player-card">
-                        <div class="player-card-header">
-                            <span class="player-card-name">${escapeHtml(playerName)}</span>
-                            <div class="player-card-header-right">
-                                <span class="player-card-tag you">你</span>
+                        <div class="player-card-header" style="margin-bottom:0;">
+                            <span class="dialogue-speaker">${escapeHtml(playerName)}</span>
+                            <div class="player-card-header-right" style="margin-bottom:6px;">
+                                <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
                                 ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
                             </div>
                         </div>
-                        <div class="player-card-body">"${escapeHtml(msg.content)}"</div>
+                        <div class="dialogue-text">"${escapeHtml(msg.content)}"</div>
                     </div>
                 </div>
             `;
@@ -465,14 +465,14 @@ function addUserMessage(text) {
     const timeStr = formatMessageTime(new Date().toISOString());
     div.innerHTML = `
         <div class="player-card">
-            <div class="player-card-header">
-                <span class="player-card-name">${escapeHtml(playerName)}</span>
-                <div class="player-card-header-right">
-                    <span class="player-card-tag you">你</span>
+            <div class="player-card-header" style="margin-bottom:0;">
+                <span class="dialogue-speaker">${escapeHtml(playerName)}</span>
+                <div class="player-card-header-right" style="margin-bottom:6px;">
+                    <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
                     ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
                 </div>
             </div>
-            <div class="player-card-body">"${escapeHtml(text)}"</div>
+            <div class="dialogue-text">"${escapeHtml(text)}"</div>
         </div>
     `;
     container.appendChild(div);
