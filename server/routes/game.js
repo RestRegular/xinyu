@@ -221,7 +221,7 @@ const BUILTIN_TEMPLATES = [
 // ===== POST /api/game/autofill — AI 自动补全角色和世界信息 =====
 // ===================================================================
 router.post('/autofill', async (req, res) => {
-    const { worldName, genre, worldDesc, worldRules, tone, startLocation, startLocationDesc, playerName, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, templateId } = req.body;
+    const { worldName, genre, worldDesc, worldRules, tone, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, templateId } = req.body;
 
     const apiKey = getApiKey();
     const apiBaseUrl = getApiBaseUrl();
@@ -234,6 +234,8 @@ router.post('/autofill', async (req, res) => {
     // 构建需要补全的字段列表
     const missing = [];
     if (!playerName) missing.push('playerName');
+    if (!playerGender) missing.push('playerGender');
+    if (!playerAge) missing.push('playerAge');
     if (!playerRace) missing.push('playerRace');
     if (!playerClass) missing.push('playerClass');
     if (!playerAppearance) missing.push('playerAppearance');
@@ -269,6 +271,8 @@ router.post('/autofill', async (req, res) => {
 - 起始地点：${startLocation || '未填写'}
 - 起始地点描述：${startLocationDesc || '未填写'}
 - 角色名称：${playerName || '未填写'}
+- 性别：${playerGender || '未填写'}
+- 年龄：${playerAge || '未填写'}
 - 种族：${playerRace || '未填写'}
 - 职业：${playerClass || '未填写'}
 - 外貌：${playerAppearance || '未填写'}
@@ -282,7 +286,7 @@ ${missing.join('、')}
 ## 要求
 1. 只返回 JSON，不要输出任何其他内容
 2. 只包含需要补全的字段，已填写的不要返回
-3. 每个字段的内容要简短精炼（角色名2-4字，种族/职业1-4字，外貌30字内，性格20字内，背景故事50字内，世界名2-6字，世界描述100字内，世界规则100字内，起始地点2-6字，起始地点描述80字内）
+3. 每个字段的内容要简短精炼（角色名2-4字，性别1-2字，年龄1-3字，种族/职业1-4字，外貌30字内，性格20字内，背景故事50字内，世界名2-6字，世界描述100字内，世界规则100字内，起始地点2-6字，起始地点描述80字内）
 4. 内容要与已填写的信息保持一致和协调
 5. 返回格式：{"playerName":"xxx","playerRace":"xxx",...}
 

@@ -20,6 +20,8 @@ async function autofillForm() {
             startLocation: getVal('createStartLocation'),
             startLocationDesc: getVal('createStartLocationDesc'),
             playerName: getVal('createPlayerName'),
+            playerGender: getVal('createPlayerGender'),
+            playerAge: getVal('createPlayerAge'),
             playerRace: getVal('createPlayerRace'),
             playerClass: getVal('createPlayerClass'),
             playerAppearance: getVal('createPlayerAppearance'),
@@ -45,6 +47,8 @@ async function autofillForm() {
             // 字段名映射到 input id
             const fieldMap = {
                 playerName: 'createPlayerName',
+                playerGender: 'createPlayerGender',
+                playerAge: 'createPlayerAge',
                 playerRace: 'createPlayerRace',
                 playerClass: 'createPlayerClass',
                 playerAppearance: 'createPlayerAppearance',
