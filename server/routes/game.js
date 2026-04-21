@@ -457,7 +457,9 @@ ${missing.join('、')}
 请直接返回 JSON：`;
 
     try {
-        const response = await fetch(`${apiBaseUrl}/chat/completions`, {
+        // apiBaseUrl 可能是完整端点或基础URL，统一处理
+        const endpoint = apiBaseUrl.includes('/chat/completions') ? apiBaseUrl : `${apiBaseUrl}/chat/completions`;
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify({
