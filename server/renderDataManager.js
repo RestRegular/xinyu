@@ -24,10 +24,12 @@ class RenderDataManager {
      */
     appendAssistantContent(contentBlocks) {
         for (const block of contentBlocks) {
+            const converted = this._convertContentBlock(block);
+            if (!converted) continue; // 跳过空块
             const renderBlock = {
                 id: this._generateId(),
                 timestamp: new Date().toISOString(),
-                ...this._convertContentBlock(block),
+                ...converted,
             };
             this.renderBlocks.push(renderBlock);
         }
@@ -169,18 +171,25 @@ class RenderDataManager {
     _convertContentBlock(block) {
         switch (block.type) {
             case 'narrative':
+                if (!block.text) return null;
                 return { type: 'narrative', data: { text: block.text } };
             case 'scene':
+                if (!block.text) return null;
                 return { type: 'scene', data: { text: block.text } };
             case 'dialogue':
+                if (!block.text) return null;
                 return { type: 'dialogue', data: { speaker: block.speaker, text: block.text } };
             case 'action':
+                if (!block.text) return null;
                 return { type: 'action', data: { text: block.text } };
             case 'combat':
+                if (!block.text) return null;
                 return { type: 'combat', data: { text: block.text } };
             case 'loot':
+                if (!block.text) return null;
                 return { type: 'loot', data: { text: block.text } };
             case 'character':
+                if (!block.dialogue && !block.reaction) return null;
                 return {
                     type: 'character',
                     data: {
@@ -191,13 +200,15 @@ class RenderDataManager {
                     },
                 };
             case 'player_action':
+                if (!block.action && !block.dialogue) return null;
                 return {
                     type: 'player',
                     data: { action: block.action, dialogue: block.dialogue },
                 };
             default:
                 logger.debug(`[RDM] Unknown block type: ${block.type}, falling back to narrative`);
-                return { type: 'narrative', data: { text: block.text || '' } };
+                if (!block.text) return null;
+                return { type: 'narrative', data: { text: block.text } };
         }
     }
 

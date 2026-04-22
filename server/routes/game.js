@@ -204,7 +204,8 @@ router.post('/action', async (req, res) => {
     chm.addUserMessage(userMessage, isSystemMsg);
     if (isSystemMsg) {
         rdm.appendSystemMessage(userMessage);
-    } else {
+    } else if (!isOption) {
+        // 自由输入直接写入 RDM；选项选择等 UA 完成后再写入
         rdm.appendUserMessage(userMessage);
     }
 
@@ -233,6 +234,8 @@ router.post('/action', async (req, res) => {
                     dialogue: uaResult.dialogue,
                     timestamp: new Date().toISOString(),
                 };
+                // UA 完成后写入完整的 player 块到 RDM
+                rdm.appendUserMessage(userMessage, { action: uaResult.action, dialogue: uaResult.dialogue });
                 // 处理 UA 返回的通知（由调用方写入 CHM 和 RDM）
                 if (uaResult.notifications && uaResult.notifications.length > 0) {
                     for (const notif of uaResult.notifications) {
@@ -263,7 +266,7 @@ router.post('/action', async (req, res) => {
             ? [playerActionContent, ...(result.content || [])]
             : result.content;
 
-        // 写入 AI 响应到 CHM
+        // 写入 AI 响应到 CHM（包含 player_action 用于 AI 上下文）
         chm.addAssistantResponse(
             result.content ? JSON.stringify({ content: result.content, options: result.options }) : '',
             finalContent,
@@ -271,8 +274,9 @@ router.post('/action', async (req, res) => {
             playerActionContent
         );
 
-        // 写入 AI 响应到 RDM
-        rdm.appendAssistantContent(finalContent);
+        // 写入 AI 响应到 RDM（排除 player_action，已由 UA 写入）
+        const aiOnlyContent = finalContent.filter(b => b.type !== 'player_action');
+        rdm.appendAssistantContent(aiOnlyContent);
         rdm.updateOptions(result.options);
 
         // 将通知持久化到 CHM 和 RDM
