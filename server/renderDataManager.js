@@ -24,6 +24,7 @@ class RenderDataManager {
      */
     appendAssistantContent(contentBlocks) {
         for (const block of contentBlocks) {
+            if (!this._isRenderableBlock(block)) continue;
             const converted = this._convertContentBlock(block);
             if (!converted) continue; // 跳过空块
             const renderBlock = {
@@ -130,6 +131,7 @@ class RenderDataManager {
                 });
             } else if (msg.role === 'assistant' && msg.structured && msg.structured.content) {
                 for (const block of msg.structured.content) {
+                    if (!this._isRenderableBlock(block)) continue;
                     allBlocks.push({
                         id: this._generateId(),
                         timestamp: msg.timestamp || new Date().toISOString(),
@@ -163,6 +165,18 @@ class RenderDataManager {
 
         this.renderBlocks = allBlocks;
         return this.renderBlocks;
+    }
+
+    /**
+     * 内部：判断 content block 是否应该被渲染（过滤工具结果等）
+     */
+    _isRenderableBlock(block) {
+        if (!block || typeof block !== 'object' || !block.type) return false;
+        // 工具结果 JSON 被误当 narrative
+        if (block.type === 'narrative' && block.text && block.text.startsWith('{')) {
+            try { JSON.parse(block.text); return false; } catch(e) {}
+        }
+        return true;
     }
 
     /**
