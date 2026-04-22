@@ -617,7 +617,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     background: var(--bg-tertiary);
     color: var(--text-tertiary);
 }
-.character-reaction {
+.character-reaction, .player-action {
     font-size: 13px;
     color: var(--text-secondary);
     font-style: italic;

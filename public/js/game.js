@@ -271,7 +271,8 @@ async function showCharacterDetail(charId) {
 
         document.getElementById('worldInfoContent').innerHTML = html;
         openModal('modalWorldInfo');
-    } catch(e) {}
+    } catch (e) {
+    }
 }
 
 function showItemDetail(itemId) {
@@ -282,7 +283,7 @@ function showItemDetail(itemId) {
     actions.push(`<button class="btn btn-secondary btn-sm" onclick="dropItem('${itemId}');closeDropdowns()">丢弃</button>`);
     let msg = `${item.name} — ${item.description}`;
     if (item.effects) {
-        const effs = Object.entries(item.effects).map(([k,v]) => `${k.toUpperCase()} ${v>0?'+':''}${v}`).join(', ');
+        const effs = Object.entries(item.effects).map(([k, v]) => `${k.toUpperCase()} ${v > 0 ? '+' : ''}${v}`).join(', ');
         if (effs) msg += ` (${effs})`;
     }
     showToast(msg);
@@ -303,8 +304,8 @@ async function dropItem(itemId) {
     try {
         const resp = await fetch('/api/game/drop-item', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ saveId: currentSaveId, itemId }),
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({saveId: currentSaveId, itemId}),
         });
         if (resp.ok) {
             const result = await resp.json();
@@ -315,7 +316,7 @@ async function dropItem(itemId) {
             addNotification(`丢弃了 ${item.name}`, 'info');
             showToast(`已丢弃 ${item.name}`);
         }
-    } catch(e) {
+    } catch (e) {
         showToast('丢弃失败', 'error');
     }
 }
@@ -330,7 +331,10 @@ function toggleRightPanel(section) {
 }
 
 function backToLobby() {
-    if (isGenerating) { showToast('请等待AI回复完成', 'warning'); return; }
+    if (isGenerating) {
+        showToast('请等待AI回复完成', 'warning');
+        return;
+    }
     currentSave = null;
     window.location.href = 'lobby.html';
 }
@@ -365,32 +369,68 @@ function renderGameMessages() {
         } else if (msg.role === 'user') {
             const playerName = currentSave?.player?.name || '你';
             const timeStr = formatMessageTime(msg.timestamp);
-            html += `
-                <div class="msg msg-player">
-                    <div class="player-card">
-                        <div class="player-card-header" style="margin-bottom:0;">
-                            <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
-                            <div class="player-card-header-right" style="margin-bottom:6px;">
-                                <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
-                                ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
+
+            // 检查是否是结构化消息
+            if (msg.structured && msg.structured.content) {
+                let contentHtml;
+                const block = msg.structured.content[0];
+                if (block.action) {
+                    contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
+                } else if (block.dialogue) {
+                    contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+                } else {
+                    contentHtml = `<div class="dialogue-text">"${escapeHtml(msg.content)}"</div>`;
+                }
+
+                html += `
+                    <div class="msg msg-player">
+                        <div class="player-card">
+                            <div class="player-card-header" style="margin-bottom:0;">
+                                <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
+                                <div class="player-card-header-right" style="margin-bottom:6px;">
+                                    <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
+                                    ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
+                                </div>
                             </div>
+                            ${contentHtml}
                         </div>
-                        <div class="dialogue-text">"${escapeHtml(msg.content)}"</div>
                     </div>
-                </div>
-            `;
+                `;
+            }
         } else if (msg.role === 'assistant') {
             // 支持结构化内容渲染（新格式）
             if (msg.structured && msg.structured.content) {
                 msg.structured.content.forEach(block => {
                     // 过滤掉工具返回的JSON（AI有时会错误地把工具结果写入content）
-                    if (block.type && !['narrative','scene','dialogue','action','combat','loot','character','player_action'].includes(block.type)) return;
+                    if (block.type && !['narrative', 'scene', 'dialogue', 'action', 'combat', 'loot', 'character', 'player_action'].includes(block.type)) return;
                     if (block.text && typeof block.text === 'string' && block.text.startsWith('{"success"')) return;
                     if (block.type === 'player_action') {
                         const playerName = currentSave?.player?.name || '你';
                         const timeStr = formatMessageTime(block.timestamp);
-                        const displayText = block.dialogue || block.action || '';
-                        html += `<div class="msg msg-player"><div class="player-card"><div class="player-card-header"><span class="player-card-name">👤 ${escapeHtml(playerName)}</span><div class="player-card-header-right">${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}<span class="player-card-tag you">你</span></div></div><div class="player-card-dialogue">"${escapeHtml(displayText)}"</div></div></div>`;
+
+                        let contentHtml = '';
+                        if (block.action) {
+                            contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
+                        } else if (block.dialogue) {
+                            contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+                        } else {
+                            contentHtml = `<div class="dialogue-text">"${escapeHtml(block.action || block.dialogue || '')}"</div>`;
+                        }
+
+                        html += `
+                            <div class="msg msg-player">
+                                <div class="player-card">
+                                    <div class="player-card-header" style="margin-bottom:0;">
+                                        <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
+                                        <div class="player-card-header-right" style="margin-bottom:6px;">
+                                            <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
+                                            ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
+                                        </div>
+                                    </div>
+                                    ${contentHtml}
+                                </div>
+                            </div>
+                        `;
                     } else if (block.type === 'narrative') {
                         html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
                     } else if (block.type === 'scene') {
@@ -471,12 +511,28 @@ function addSystemMessage(text) {
     scrollToBottom();
 }
 
-function addUserMessage(text) {
+function addUserMessage(block) {
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
     div.className = 'msg msg-player';
+
     const playerName = currentSave?.player?.name || '你';
     const timeStr = formatMessageTime(new Date().toISOString());
+
+    let contentHtml = '';
+
+    // 支持动作（action）或对话（dialogue）
+    if (block.action) {
+        // 动作：不带引号，用斜体或特殊样式表示
+        contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
+    } else if (block.dialogue) {
+        // 对话：带引号
+        contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+    } else if (typeof block === 'string') {
+        // 兼容旧的字符串调用方式
+        contentHtml = `<div class="dialogue-text">"${escapeHtml(block)}"</div>`;
+    }
+
     div.innerHTML = `
         <div class="player-card">
             <div class="player-card-header" style="margin-bottom:0;">
@@ -486,9 +542,10 @@ function addUserMessage(text) {
                     ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
                 </div>
             </div>
-            <div class="dialogue-text">"${escapeHtml(text)}"</div>
+            ${contentHtml}
         </div>
     `;
+
     container.appendChild(div);
     scrollToBottom();
 }
@@ -533,46 +590,6 @@ function addCharacterMessage(block) {
 
 // ----- 新增 content type 渲染函数 -----
 
-// 角色创建卡片（实时渲染到消息流）
-function addCharacterCreatedCard(character) {
-    const container = document.getElementById('gameMessages');
-    const div = document.createElement('div');
-    div.className = 'msg msg-character-created';
-
-    const roleLabels = {
-        merchant: '商人', blacksmith: '铁匠', mentor: '导师', companion: '同伴',
-        antagonist: '反派', guard: '守卫', noble: '贵族', healer: '治疗师',
-        quest_giver: '任务发布者', trainer: '训练师',
-    };
-    const roleLabel = roleLabels[character.role] || character.role || '未知';
-
-    let extraInfo = '';
-    if (character.extra) {
-        const keys = Object.keys(character.extra);
-        if (keys.length > 0) {
-            extraInfo = `<div class="created-card-extra">${keys.map(k => `<span class="created-card-tag">${escapeHtml(k)}</span>`).join('')}</div>`;
-        }
-    }
-
-    div.innerHTML = `
-        <div class="created-card">
-            <div class="created-card-header">
-                <span class="created-card-icon">🎭</span>
-                <span class="created-card-title">新角色登场</span>
-            </div>
-            <div class="created-card-body">
-                <div class="created-card-name">${escapeHtml(character.name)}</div>
-                <div class="created-card-role">${escapeHtml(roleLabel)}</div>
-                ${character.personality ? `<div class="created-card-personality">${escapeHtml(character.personality)}</div>` : ''}
-                ${character.speechStyle ? `<div class="created-card-speech">"${escapeHtml(character.speechStyle)}"</div>` : ''}
-                ${extraInfo}
-            </div>
-        </div>
-    `;
-    container.appendChild(div);
-    scrollToBottom();
-}
-
 function addSceneMessage(block) {
     const container = document.getElementById('gameMessages');
     const div = document.createElement('div');
@@ -591,34 +608,6 @@ function addDialogueMessage(block) {
         <div class="dialogue-bubble">
             <div class="dialogue-speaker">${speaker}</div>
             <div class="dialogue-text">${escapeHtml(block.text)}</div>
-        </div>
-    `;
-    container.appendChild(div);
-    scrollToBottom();
-}
-
-function addPlayerActionMessage(block) {
-    const container = document.getElementById('gameMessages');
-    const div = document.createElement('div');
-    div.className = 'msg msg-player';
-    const playerName = currentSave?.player?.name || '你';
-    const timeStr = formatMessageTime(new Date().toISOString());
-    let contentHtml = '';
-    if (block.dialogue) {
-        contentHtml = `<div class="player-card-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
-    } else {
-        contentHtml = `<div class="player-card-dialogue">"${escapeHtml(block.action)}"</div>`;
-    }
-    div.innerHTML = `
-        <div class="player-card">
-            <div class="player-card-header">
-                <span class="player-card-name">👤 ${escapeHtml(playerName)}</span>
-                <div class="player-card-header-right">
-                    ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
-                    <span class="player-card-tag you">你</span>
-                </div>
-            </div>
-            ${contentHtml}
         </div>
     `;
     container.appendChild(div);
@@ -718,7 +707,9 @@ function appendToLastAssistantMessage(text) {
 
 function scrollToBottom() {
     const container = document.getElementById('gameMessages');
-    requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
+    requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+    });
 }
 
 // ===================================================================
@@ -772,7 +763,7 @@ async function sendGameMessage(text, isOption = false) {
 
     try {
         await callAI(text, isOption);
-    } catch(err) {
+    } catch (err) {
         addNotification('发生错误: ' + err.message, 'negative');
         showToast('请求失败: ' + err.message, 'error');
     }

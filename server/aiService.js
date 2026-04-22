@@ -308,7 +308,8 @@ function buildSystemPrompt(saveData, appConfig) {
 - 类型：${genre}
 - 描述：${s.world.description}
 - 叙事基调：${s.world.tone}（${toneGuide}）
-- 世界规则：${worldRules}
+- 世界规则：
+${worldRules}
 ${narrativeTips ? '- 叙事技巧：' + narrativeTips : ''}
 ${itemNaming ? '- 物品命名风格：' + itemNaming : ''}`;
 
@@ -404,7 +405,6 @@ ${charsInfo}`;
   3. 有性格特征（如"热情"、"冷漠"）
   4. 玩家可以与其互动（如选项中出现了与该NPC互动的选项）
 - 如果NPC没有正式名字，用特征作为名字（如"红胡子矮人战士"、"角落的精灵游侠"）
-- 酒馆老板、商店店主、任务发布者、导师、同伴等必须创建
 - 创建时必须填写：name, role, personality, speech_style, appearance
 - 必须在描写NPC之前或同时调用 create_character，不要先写一大段描写再补创建
 - 示例：叙事提到酒馆老板娘玛莎 → 立即调用 create_character(name:"玛莎", role:"tavern_keeper", personality:"热情好客", speech_style:"温暖亲切", appearance:"中年女性，温暖的笑容")
@@ -458,7 +458,7 @@ ${charsInfo}`;
         {"type": "scene", "text": "新场景的环境描写（进入新地点时使用）"},
         {"type": "narrative", "text": "剧情推进和环境变化的叙述"},
         {"type": "dialogue", "speaker": "说话者名称", "text": "角色说的话（用中文双引号包裹）"},
-        {"type": "action", "text": "动作、事件的描写"},
+        {"type": "player_action", "text": "玩家的动作描写"},
         {"type": "combat", "text": "战斗过程的描写"},
         {"type": "loot", "text": "获得物品的描写"},
         {"type": "character", "characterId": "char_xxx", "characterName": "角色名", "reaction": "角色动作/表情描写", "dialogue": "角色说的话", "mood": "心情"},
@@ -489,7 +489,7 @@ ${charsInfo}`;
 - "scene"：进入新地点时的场景描写，前端会以特殊样式突出展示
 - "narrative"：常规剧情叙述，最常用的类型
 - "dialogue"：需要突出展示的对话（speaker 为说话者名称，text 为对话内容）
-- "action"：动作、事件描写（如开门、奔跑、施法等）
+- "player_action"：玩家的动作、事件描写（如开门、奔跑、施法等）
 - "combat"：战斗过程描写，前端会以战斗风格渲染
 - "loot"：获得物品/金钱的描写
 - "character"：重要角色的反应（仅由 get_character_reaction 工具返回的数据生成）
@@ -665,7 +665,7 @@ function buildUserAgentPrompt(saveData) {
     const genre = saveData.world.genre || '自定义';
     const preset = GENRE_PRESETS[genre] || {};
 
-    const locDesc = loc ? `${loc.name} - ${loc.description}` : '未知地点';
+    const locDesc = loc ? `${saveData.map.currentLocation} - ${loc.description}` : '未知地点';
     const npcs = loc && loc.npcs && loc.npcs.length > 0 ? loc.npcs.join('、') : '无';
 
     // 当前位置的重要角色

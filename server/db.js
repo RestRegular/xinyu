@@ -35,6 +35,18 @@ db.exec(`
         created_at TEXT NOT NULL,
         last_saved_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS world_templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        genre TEXT DEFAULT '自定义',
+        icon TEXT DEFAULT '✨',
+        description TEXT DEFAULT '',
+        data TEXT NOT NULL,
+        is_builtin INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
 `);
 
 module.exports = db;

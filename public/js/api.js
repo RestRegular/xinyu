@@ -90,7 +90,7 @@ async function renderStructuredContent(contentBlocks) {
 
     for (const block of contentBlocks) {
         if (block.type === 'player_action') {
-            addPlayerActionMessage(block);
+            addUserMessage(block);
         } else if (block.type === 'narrative') {
             await simulateStreamingText(block.text);
         } else if (block.type === 'scene') {

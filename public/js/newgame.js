@@ -91,12 +91,12 @@ function openNewGameModal() {
     window.location.href = 'create.html';
 }
 
-// 从后端加载模板列表
+// 从服务器加载所有模板
 async function loadTemplates() {
     try {
         const resp = await fetch('/api/game/templates');
         if (resp.ok) return await resp.json();
-    } catch(e) {}
+    } catch(e) { console.error('加载模板失败', e); }
     return [];
 }
 
@@ -104,18 +104,14 @@ async function renderTemplateGrid() {
     const grid = document.getElementById('templateGrid');
     const templates = await loadTemplates();
 
-    // 合并本地存储的导入模板
-    const importedTemplates = getImportedTemplates();
-    const allTemplates = [...templates, ...importedTemplates];
-
     let html = '';
-    allTemplates.forEach(tpl => {
-        const imported = tpl._imported ? ' data-imported="true"' : '';
-        const deleteBtn = tpl._imported
-            ? `<button class="template-card-delete" onclick="event.stopPropagation();removeImportedTemplate('${tpl.id}')" title="移除此模板">✕</button>`
+    templates.forEach(tpl => {
+        const isCustom = !tpl.is_builtin;
+        const deleteBtn = isCustom
+            ? `<button class="template-card-delete" onclick="event.stopPropagation();(async () => { await removeImportedTemplate('${tpl.id}') })()" title="移除此模板">✕</button>`
             : '';
         html += `
-            <div class="template-card"${imported} onclick="selectTemplate('${tpl.id}', this)">
+            <div class="template-card" onclick="selectTemplate('${tpl.id}', this)">
                 <div class="template-card-icon">${tpl.icon}</div>
                 <div class="template-card-name">${escapeHtml(tpl.name)}</div>
                 <div class="template-card-desc">${escapeHtml(tpl.description)}</div>
@@ -133,16 +129,21 @@ async function renderTemplateGrid() {
     grid.innerHTML = html;
 }
 
+let currentTemplates = []; // 存储从服务器获取的所有模板
+
 function selectTemplate(id, el) {
     selectedTemplate = id;
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
 
-    // 如果选中的是导入模板，自动填充步骤二的表单
-    const importedTemplates = getImportedTemplates();
-    const imported = importedTemplates.find(t => t.id === id);
-    if (imported) {
-        populateStep2FromTemplate(imported);
+    // 查找并填充模板数据
+    if (id !== 'custom') {
+        loadTemplates().then(templates => {
+            const tpl = templates.find(t => t.id === id);
+            if (tpl) {
+                populateStep2FromTemplate(tpl);
+            }
+        });
     }
 
     // 启用下一步按钮
@@ -237,32 +238,30 @@ async function createNewGame() {
 // ===================================================================
 // ===== 世界模板导入/导出 =====
 // ===================================================================
-const IMPORTED_TEMPLATES_KEY = 'xinyu_imported_templates';
-
-function getImportedTemplates() {
-    try {
-        return JSON.parse(localStorage.getItem(IMPORTED_TEMPLATES_KEY) || '[]');
-    } catch(e) { return []; }
-}
-
-function saveImportedTemplates(templates) {
-    localStorage.setItem(IMPORTED_TEMPLATES_KEY, JSON.stringify(templates));
-}
 
 // 移除导入的模板
-function removeImportedTemplate(id) {
-    let templates = getImportedTemplates();
-    const removed = templates.find(t => t.id === id);
-    templates = templates.filter(t => t.id !== id);
-    saveImportedTemplates(templates);
-    // 如果当前选中的是被删除的模板，取消选中
-    if (selectedTemplate === id) {
-        selectedTemplate = null;
-        document.getElementById('nextStepBtn').disabled = true;
-        document.getElementById('nextStepBtn').style.opacity = '0.5';
+async function removeImportedTemplate(id) {
+    try {
+        const resp = await fetch(`/api/game/templates/${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+        
+        if (resp.ok) {
+            // 如果当前选中的是被删除的模板，取消选中
+            if (selectedTemplate === id) {
+                selectedTemplate = null;
+                document.getElementById('nextStepBtn').disabled = true;
+                document.getElementById('nextStepBtn').style.opacity = '0.5';
+            }
+            await renderTemplateGrid();
+            showToast('已移除模板', 'info');
+        } else {
+            const err = await resp.json().catch(() => ({}));
+            showToast(err.error || '删除失败', 'error');
+        }
+    } catch(e) {
+        showToast('删除失败', 'error');
     }
-    renderTemplateGrid();
-    if (removed) showToast(`已移除模板「${removed.name}」`, 'info');
 }
 
 // 触发文件选择
@@ -280,8 +279,6 @@ async function handleWorldTemplateImport(event) {
         let svgFile = null;
 
         if (file.name.endsWith('.svg')) {
-            // 从 SVG 中提取嵌入的 JSON 数据
-            // 兼容两种格式：<script type="application/json"> 和 <xinyu:data>
             const text = await file.text();
             let match = text.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
             if (!match) {
@@ -327,22 +324,10 @@ async function handleWorldTemplateImport(event) {
                 if (uploadResp.ok) {
                     const uploadResult = await uploadResp.json();
                     if (uploadResult.success) {
-                        // 将 SVG 图片 URL 保存到模板中
                         result.template.svgUrl = uploadResult.url;
                     }
                 }
             }
-
-            // 保存到本地存储
-            const imported = getImportedTemplates();
-            // 避免重复导入（按 name 去重）
-            const exists = imported.findIndex(t => t.name === result.template.name);
-            if (exists >= 0) {
-                imported[exists] = result.template;
-            } else {
-                imported.push(result.template);
-            }
-            saveImportedTemplates(imported);
 
             // 重新渲染模板网格
             await renderTemplateGrid();
@@ -489,7 +474,7 @@ function renderStarterItems() {
                         <label class="create-form-item-label">稀有度</label>
                         <select class="create-form-item-input" onchange="updateStarterItem('${item.id}', 'rarity', this.value)">
                             <option value="common" ${item.rarity === 'common' ? 'selected' : ''}>普通</option>
-                            <option value="uncommon" ${item.rarity === 'uncommon' ? 'selected' : ''}> uncommon</option>
+                            <option value="uncommon" ${item.rarity === 'uncommon' ? 'selected' : ''}>优秀</option>
                             <option value="rare" ${item.rarity === 'rare' ? 'selected' : ''}>稀有</option>
                             <option value="epic" ${item.rarity === 'epic' ? 'selected' : ''}>史诗</option>
                             <option value="legendary" ${item.rarity === 'legendary' ? 'selected' : ''}>传说</option>

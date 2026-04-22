@@ -20,7 +20,7 @@ const upload = multer({
         } else {
             cb(new Error('只支持 SVG 格式的文件'), false);
         }
-    }
+    },
 });
 
 // 单例 Pipeline 实例
@@ -41,6 +41,117 @@ function getAppConfig() {
         maxTokens: getConfigValue('maxTokens', 2048),
         ui: getConfigValue('ui', { fontSize: 'medium', narrativeLength: 'medium' }),
         customInstructions: getConfigValue('customInstructions', ''),
+    };
+}
+
+// ===================================================================
+// ===== 世界模板管理 =====
+// ===================================================================
+
+const BUILTIN_TEMPLATES = [
+    {
+        id: 'tpl_sword_magic', name: '剑与魔法', genre: '奇幻', icon: '⚔️', description: '标准奇幻设定，适合初次体验',
+        world: { name: '艾泽利亚', genre: '奇幻', description: '一个充满魔法与剑的大陆，古老的龙族沉睡在山脉之下，精灵守护着古老的森林，人类王国在平原上繁荣发展。暗影势力正在北方蠢蠢欲动...', rules: '魔法分为元素系（火、水、风、土）、暗影系和神圣系三大体系。战士、法师、游侠、牧师是常见的职业。', tone: '史诗' },
+        starterItems: [
+            { name: '生锈的铁剑', type: 'weapon', description: '一把老旧但还能用的铁剑', quantity: 1, effects: { attack: 3 }, rarity: 'common' },
+            { name: '治疗药水', type: 'consumable', description: '恢复30点生命值', quantity: 3, effects: { hp: 30 }, rarity: 'common' },
+            { name: '皮甲', type: 'armor', description: '简单的皮制护甲', quantity: 1, effects: { defense: 2 }, rarity: 'common' },
+        ],
+        starterLocation: '边境小镇', starterLocationDesc: '一座位于王国边境的小镇，是冒险者们的起点。镇上有酒馆、铁匠铺和杂货店。', starterGold: 50,
+    },
+    {
+        id: 'tpl_star_trek', name: '星际迷途', genre: '科幻', icon: '🚀', description: '太空探索，与外星文明接触',
+        world: { name: '银河联邦', genre: '科幻', description: '公元3247年，人类已建立横跨银河的联邦文明。你是联邦探索舰"曙光号"的舰长，在一次超空间跳跃事故后，舰队被困在了未知星域...', rules: '科技水平高度发达，拥有超光速航行、能量护盾、等离子武器。外星文明分为碳基和硅基两大类。', tone: '严肃' },
+        starterItems: [
+            { name: '标准激光手枪', type: 'weapon', description: '联邦制式激光手枪', quantity: 1, effects: { attack: 5 }, rarity: 'common' },
+            { name: '纳米修复包', type: 'consumable', description: '恢复40点生命值', quantity: 2, effects: { hp: 40 }, rarity: 'common' },
+            { name: '通用翻译器', type: 'misc', description: '可以翻译大多数已知语言', quantity: 1, rarity: 'uncommon' },
+        ],
+        starterLocation: '空间站Alpha-7', starterLocationDesc: '一座废弃的空间站，闪烁的应急灯照亮了锈迹斑斑的走廊。控制室似乎还有部分系统在运行。', starterGold: 100,
+    },
+    {
+        id: 'tpl_wuxia', name: '江湖风云', genre: '武侠', icon: '🏯', description: '快意恩仇的武侠世界',
+        world: { name: '中原武林', genre: '武侠', description: '天下大势，分久必合。江湖中正邪两道对峙百年，如今一本失传的武功秘籍重现人间，各方势力蠢蠢欲动。你是一名初入江湖的少侠...', rules: '武功分为内功、外功、轻功三大类。门派有少林、武当、峨眉、丐帮、魔教等。江湖中有"侠义道"和"魔道"之分。', tone: '史诗' },
+        starterItems: [
+            { name: '精钢长剑', type: 'weapon', description: '一把锋利的精钢长剑', quantity: 1, effects: { attack: 4 }, rarity: 'common' },
+            { name: '金创药', type: 'consumable', description: '恢复25点生命值', quantity: 5, effects: { hp: 25 }, rarity: 'common' },
+            { name: '银两', type: 'misc', description: '江湖通用货币', quantity: 30, rarity: 'common' },
+        ],
+        starterLocation: '洛阳城', starterLocationDesc: '天下第一城洛阳，繁华热闹。城中有武林盟的分舵，各路英雄豪杰在此汇聚。', starterGold: 30,
+    },
+    {
+        id: 'tpl_apocalypse', name: '末日求生', genre: '末日', icon: '☢️', description: '后启示录生存挑战',
+        world: { name: '废土', genre: '末日', description: '核战之后的废土世界，文明已经崩塌。幸存者在废墟中艰难求生，变异生物横行，资源极度匮乏。你从一座地下避难所中醒来...', rules: '辐射无处不在，需要盖革计数器监测。物资极度稀缺，以物易物是主要交易方式。变异生物具有不同的弱点。', tone: '黑暗' },
+        starterItems: [
+            { name: '自制匕首', type: 'weapon', description: '用废铁打磨的匕首', quantity: 1, effects: { attack: 2 }, rarity: 'common' },
+            { name: '脏水', type: 'consumable', description: '恢复10点生命值，有概率生病', quantity: 3, effects: { hp: 10 }, rarity: 'common' },
+            { name: '防毒面具', type: 'armor', description: '过滤部分辐射尘埃', quantity: 1, effects: { defense: 1 }, rarity: 'uncommon' },
+        ],
+        starterLocation: '避难所', starterLocationDesc: '一座破旧的地下避难所，应急灯忽明忽暗。储物柜里还有一些残余物资，大门通向未知的废土。', starterGold: 0,
+    },
+];
+
+// 初始化内建模板到数据库
+function initBuiltinTemplates() {
+    const now = new Date().toISOString();
+    const insertOrReplace = db.prepare(`
+        INSERT OR REPLACE INTO world_templates (id, name, genre, icon, description, data, is_builtin, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+    `);
+    
+    BUILTIN_TEMPLATES.forEach(tpl => {
+        const data = JSON.stringify({
+            world: tpl.world,
+            starterItems: tpl.starterItems,
+            starterLocation: tpl.starterLocation,
+            starterLocationDesc: tpl.starterLocationDesc,
+            starterGold: tpl.starterGold
+        });
+        insertOrReplace.run(tpl.id, tpl.name, tpl.genre, tpl.icon, tpl.description, data, now, now);
+    });
+}
+
+// 执行初始化
+initBuiltinTemplates();
+
+// 获取所有模板
+function getAllTemplates() {
+    const rows = db.prepare('SELECT id, name, genre, icon, description, data, is_builtin, created_at FROM world_templates ORDER BY is_builtin DESC, name ASC').all();
+    return rows.map(row => {
+        const data = JSON.parse(row.data);
+        return {
+            id: row.id,
+            name: row.name,
+            genre: row.genre,
+            icon: row.icon,
+            description: row.description,
+            world: data.world,
+            starterItems: data.starterItems || [],
+            starterLocation: data.starterLocation,
+            starterLocationDesc: data.starterLocationDesc,
+            starterGold: data.starterGold,
+            is_builtin: row.is_builtin === 1
+        };
+    });
+}
+
+// 根据 ID 获取模板
+function getTemplateById(id) {
+    const row = db.prepare('SELECT id, name, genre, icon, description, data, is_builtin, created_at FROM world_templates WHERE id = ?').get(id);
+    if (!row) return null;
+    const data = JSON.parse(row.data);
+    return {
+        id: row.id,
+        name: row.name,
+        genre: row.genre,
+        icon: row.icon,
+        description: row.description,
+        world: data.world,
+        starterItems: data.starterItems || [],
+        starterLocation: data.starterLocation,
+        starterLocationDesc: data.starterLocationDesc,
+        starterGold: data.starterGold,
+        is_builtin: row.is_builtin === 1
     };
 }
 
@@ -88,7 +199,6 @@ router.post('/action', async (req, res) => {
                     timestamp: new Date().toISOString(),
                 };
             } catch (uaErr) {
-                // UA 失败不阻断流程，降级为不显示玩家行为
                 console.error('UserAgent 执行失败:', uaErr.message);
             }
         }
@@ -113,7 +223,7 @@ router.post('/action', async (req, res) => {
             timestamp: new Date().toISOString(),
         });
 
-        // 将通知持久化到 chatHistory，刷新后可恢复显示
+        // 将通知持久化到 chatHistory
         if (result.notifications && result.notifications.length > 0) {
             const now = new Date().toISOString();
             for (const notif of result.notifications) {
@@ -187,52 +297,6 @@ router.get('/characters/:id', (req, res) => {
 });
 
 // ===================================================================
-// ===== POST /api/game/create — 创建新游戏 =====
-// ===================================================================
-const BUILTIN_TEMPLATES = [
-    {
-        id: 'tpl_sword_magic', name: '剑与魔法', genre: '奇幻', icon: '⚔️', description: '标准奇幻设定，适合初次体验',
-        world: { name: '艾泽利亚', genre: '奇幻', description: '一个充满魔法与剑的大陆，古老的龙族沉睡在山脉之下，精灵守护着古老的森林，人类王国在平原上繁荣发展。暗影势力正在北方蠢蠢欲动...', rules: '魔法分为元素系（火、水、风、土）、暗影系和神圣系三大体系。战士、法师、游侠、牧师是常见的职业。', tone: '史诗' },
-        starterItems: [
-            { name: '生锈的铁剑', type: 'weapon', description: '一把老旧但还能用的铁剑', quantity: 1, effects: { attack: 3 }, rarity: 'common' },
-            { name: '治疗药水', type: 'consumable', description: '恢复30点生命值', quantity: 3, effects: { hp: 30 }, rarity: 'common' },
-            { name: '皮甲', type: 'armor', description: '简单的皮制护甲', quantity: 1, effects: { defense: 2 }, rarity: 'common' },
-        ],
-        starterLocation: '边境小镇', starterLocationDesc: '一座位于王国边境的小镇，是冒险者们的起点。镇上有酒馆、铁匠铺和杂货店。', starterGold: 50,
-    },
-    {
-        id: 'tpl_star_trek', name: '星际迷途', genre: '科幻', icon: '🚀', description: '太空探索，与外星文明接触',
-        world: { name: '银河联邦', genre: '科幻', description: '公元3247年，人类已建立横跨银河的联邦文明。你是联邦探索舰"曙光号"的舰长，在一次超空间跳跃事故后，舰队被困在了未知星域...', rules: '科技水平高度发达，拥有超光速航行、能量护盾、等离子武器。外星文明分为碳基和硅基两大类。', tone: '严肃' },
-        starterItems: [
-            { name: '标准激光手枪', type: 'weapon', description: '联邦制式激光手枪', quantity: 1, effects: { attack: 5 }, rarity: 'common' },
-            { name: '纳米修复包', type: 'consumable', description: '恢复40点生命值', quantity: 2, effects: { hp: 40 }, rarity: 'common' },
-            { name: '通用翻译器', type: 'misc', description: '可以翻译大多数已知语言', quantity: 1, rarity: 'uncommon' },
-        ],
-        starterLocation: '空间站Alpha-7', starterLocationDesc: '一座废弃的空间站，闪烁的应急灯照亮了锈迹斑斑的走廊。控制室似乎还有部分系统在运行。', starterGold: 100,
-    },
-    {
-        id: 'tpl_wuxia', name: '江湖风云', genre: '武侠', icon: '🏯', description: '快意恩仇的武侠世界',
-        world: { name: '中原武林', genre: '武侠', description: '天下大势，分久必合。江湖中正邪两道对峙百年，如今一本失传的武功秘籍重现人间，各方势力蠢蠢欲动。你是一名初入江湖的少侠...', rules: '武功分为内功、外功、轻功三大类。门派有少林、武当、峨眉、丐帮、魔教等。江湖中有"侠义道"和"魔道"之分。', tone: '史诗' },
-        starterItems: [
-            { name: '精钢长剑', type: 'weapon', description: '一把锋利的精钢长剑', quantity: 1, effects: { attack: 4 }, rarity: 'common' },
-            { name: '金创药', type: 'consumable', description: '恢复25点生命值', quantity: 5, effects: { hp: 25 }, rarity: 'common' },
-            { name: '银两', type: 'misc', description: '江湖通用货币', quantity: 30, rarity: 'common' },
-        ],
-        starterLocation: '洛阳城', starterLocationDesc: '天下第一城洛阳，繁华热闹。城中有武林盟的分舵，各路英雄豪杰在此汇聚。', starterGold: 30,
-    },
-    {
-        id: 'tpl_apocalypse', name: '末日求生', genre: '末日', icon: '☢️', description: '后启示录生存挑战',
-        world: { name: '废土', genre: '末日', description: '核战之后的废土世界，文明已经崩塌。幸存者在废墟中艰难求生，变异生物横行，资源极度匮乏。你从一座地下避难所中醒来...', rules: '辐射无处不在，需要盖革计数器监测。物资极度稀缺，以物易物是主要交易方式。变异生物具有不同的弱点。', tone: '黑暗' },
-        starterItems: [
-            { name: '自制匕首', type: 'weapon', description: '用废铁打磨的匕首', quantity: 1, effects: { attack: 2 }, rarity: 'common' },
-            { name: '脏水', type: 'consumable', description: '恢复10点生命值，有概率生病', quantity: 3, effects: { hp: 10 }, rarity: 'common' },
-            { name: '防毒面具', type: 'armor', description: '过滤部分辐射尘埃', quantity: 1, effects: { defense: 1 }, rarity: 'uncommon' },
-        ],
-        starterLocation: '避难所', starterLocationDesc: '一座破旧的地下避难所，应急灯忽明忽暗。储物柜里还有一些残余物资，大门通向未知的废土。', starterGold: 0,
-    },
-];
-
-// ===================================================================
 // ===== POST /api/game/autofill — AI 自动补全角色和世界信息 =====
 // ===================================================================
 router.post('/autofill', async (req, res) => {
@@ -266,10 +330,10 @@ router.post('/autofill', async (req, res) => {
         return res.json({ success: true, filled: {}, message: '所有字段已填写完整' });
     }
 
-    // 如果选了模板，获取模板信息作为参考
+    // 如果选了模板，从数据库获取模板信息作为参考
     let templateInfo = '';
     if (templateId && templateId !== 'custom') {
-        const tpl = BUILTIN_TEMPLATES.find(t => t.id === templateId);
+        const tpl = getTemplateById(templateId);
         if (tpl) {
             templateInfo = `\n参考模板：${tpl.name}（${tpl.genre}）\n模板世界：${tpl.world.name}\n模板描述：${tpl.world.description?.slice(0, 200)}`;
         }
@@ -341,17 +405,21 @@ ${missing.join('、')}
     }
 });
 
+// ===================================================================
+// ===== POST /api/game/create — 创建新游戏 =====
+// ===================================================================
 router.post('/create', (req, res) => {
     const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId, starterItems: customStarterItems } = req.body;
 
     let playerDesc = '';
-    if (playerRace) playerDesc += `种族：${playerRace}。`;
-    if (playerClass) playerDesc += `职业：${playerClass}。`;
-    if (playerAppearance) playerDesc += `外貌：${playerAppearance}。`;
-    if (playerPersonality) playerDesc += `性格：${playerPersonality}。`;
-    if (playerBackstory) playerDesc += `背景：${playerBackstory}`;
+    if (playerRace) playerDesc += `种族：${playerRace}；`;
+    if (playerClass) playerDesc += `职业：${playerClass}；`;
+    if (playerAppearance) playerDesc += `外貌：${playerAppearance}；`;
+    if (playerPersonality) playerDesc += `性格：${playerPersonality}；`;
+    if (playerBackstory) playerDesc += `背景：${playerBackstory}；`;
 
-    let starterItems = [], starterGold = parseInt(startGold) || 0;
+    let finalStarterItems = [];
+    let finalStarterGold = parseInt(startGold) || 0;
     let effectiveWorldName = worldName || '未知世界', effectiveGenre = genre || '自定义';
     let effectiveWorldDesc = worldDesc || '一个未知的世界', effectiveWorldRules = worldRules || '';
     let effectiveTone = tone || '史诗';
@@ -359,18 +427,17 @@ router.post('/create', (req, res) => {
     let effectiveStartLocationDesc = startLocationDesc || '你站在这片陌生土地的起点。';
 
     if (templateId && templateId !== 'custom') {
-        const tpl = BUILTIN_TEMPLATES.find(t => t.id === templateId);
+        const tpl = getTemplateById(templateId);
         if (tpl) {
-            starterItems = tpl.starterItems || [];
-            starterGold = tpl.starterGold !== undefined ? tpl.starterGold : starterGold;
+            finalStarterItems = tpl.starterItems || [];
+            finalStarterGold = tpl.starterGold !== undefined ? tpl.starterGold : finalStarterGold;
             effectiveWorldName = tpl.world.name; effectiveGenre = tpl.world.genre;
             effectiveWorldDesc = tpl.world.description; effectiveWorldRules = tpl.world.rules || '';
             effectiveTone = tpl.world.tone;
             effectiveStartLocation = tpl.starterLocation; effectiveStartLocationDesc = tpl.starterLocationDesc;
         }
     } else if (Array.isArray(customStarterItems)) {
-        // 使用自定义的初始物品
-        starterItems = customStarterItems;
+        finalStarterItems = customStarterItems;
     }
 
     const id = 'save_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -380,9 +447,9 @@ router.post('/create', (req, res) => {
         id, name: saveName || '未命名的冒险', version: '1.0',
         world: { name: effectiveWorldName, genre: effectiveGenre, description: effectiveWorldDesc, rules: effectiveWorldRules, tone: effectiveTone, customPrompt: customPrompt || '' },
         player: { name: playerName || '旅行者', gender: playerGender || '未设定', age: playerAge || '未设定', appearance: playerAppearance || '', personality: playerPersonality || '', occupation: playerClass || '', backstory: playerBackstory || '', description: playerDesc, level: 1, experience: 0, experienceToNext: 100, attributes: { hp: { current: 100, max: 100, label: '生命值' }, mp: { current: 50, max: 50, label: '魔力值' }, attack: { current: 10, max: 10, label: '攻击力' }, defense: { current: 5, max: 5, label: '防御力' }, agility: { current: 7, max: 7, label: '敏捷' }, luck: { current: 3, max: 3, label: '幸运' } }, statusEffects: [] },
-        inventory: { items: starterItems.map((item, i) => ({ id: 'item_' + Date.now() + '_' + i, name: item.name, type: item.type, description: item.description || '', quantity: item.quantity || 1, effects: item.effects || {}, rarity: item.rarity || 'common', usable: item.usable || false, equippable: item.equippable || false, equipped: false })), gold: starterGold, maxSlots: 20 },
+        inventory: { items: finalStarterItems.map((item, i) => ({ id: 'item_' + Date.now() + '_' + i, name: item.name, type: item.type, description: item.description || '', quantity: item.quantity || 1, effects: item.effects || {}, rarity: item.rarity || 'common', usable: item.usable || false, equippable: item.equippable || false, equipped: false })), gold: finalStarterGold, maxSlots: 20 },
         map: { currentLocation: effectiveStartLocation, locations: { [effectiveStartLocation]: { description: effectiveStartLocationDesc, connections: [], npcs: [], discovered: true, dangerLevel: 0 } } },
-        characters: {}, // 角色系统初始化为空
+        characters: {},
         chatHistory: [],
         stats: { turnCount: 0, playTime: 0, monstersDefeated: 0, itemsCollected: 0, locationsDiscovered: 1, deaths: 0 },
         eventLog: [{ turn: 1, type: 'system', text: '冒险开始' }],
@@ -395,47 +462,47 @@ router.post('/create', (req, res) => {
     res.json({ success: true, id, saveData });
 });
 
-router.get('/templates', (req, res) => { res.json(BUILTIN_TEMPLATES); });
+// ===================================================================
+// ===== 模板 API =====
+// ===================================================================
+router.get('/templates', (req, res) => { res.json(getAllTemplates()); });
 
-// ===================================================================
-// ===== POST /api/game/templates/import — 导入世界模板卡片 =====
-// ===================================================================
+// 导入模板
 router.post('/templates/import', (req, res) => {
     const template = req.body;
     if (!template || !template.name || !template.world) {
         return res.status(400).json({ error: '无效的世界模板：缺少 name 或 world 字段' });
     }
-
-    // 验证必要字段
     if (!template.world.name || !template.world.description) {
         return res.status(400).json({ error: '无效的世界模板：world 中缺少 name 或 description' });
     }
 
-    // 生成唯一 ID（如果是导入的模板）
     const id = template.id || ('custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+    const now = new Date().toISOString();
 
-    const importedTemplate = {
-        id,
-        name: template.name,
-        genre: template.world.genre || '自定义',
-        icon: template.icon || '✨',
-        description: template.world.description.slice(0, 80),
-        world: {
-            name: template.world.name,
-            genre: template.world.genre || '自定义',
-            description: template.world.description,
-            rules: template.world.rules || '',
-            tone: template.world.tone || '史诗',
-            customPrompt: template.world.customPrompt || '',
-        },
+    const data = JSON.stringify({
+        world: template.world,
         starterItems: Array.isArray(template.starterItems) ? template.starterItems : [],
         starterLocation: template.starterLocation || '起始之地',
         starterLocationDesc: template.starterLocationDesc || '你站在这片陌生土地的起点。',
         starterGold: template.starterGold || 0,
-        _imported: true, // 标记为导入模板
-    };
+    });
 
+    db.prepare(`INSERT INTO world_templates (id, name, genre, icon, description, data, is_builtin, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`)
+        .run(id, template.name, template.world.genre || '自定义', template.icon || '✨', template.description || '', data, now, now);
+
+    const importedTemplate = getTemplateById(id);
     res.json({ success: true, template: importedTemplate });
+});
+
+// 删除模板
+router.delete('/templates/:id', (req, res) => {
+    const tpl = getTemplateById(req.params.id);
+    if (!tpl) return res.status(404).json({ error: '模板不存在' });
+    if (tpl.is_builtin) return res.status(400).json({ error: '内建模板不能删除' });
+
+    db.prepare('DELETE FROM world_templates WHERE id = ?').run(req.params.id);
+    res.json({ success: true, message: '模板已删除' });
 });
 
 // ===================================================================
@@ -467,9 +534,7 @@ router.get('/templates/export/:saveId', (req, res) => {
         starterLocation: saveData.map?.currentLocation || '',
         starterLocationDesc: '',
         starterGold: saveData.inventory?.gold || 0,
-        starterItems: [],
-        _exportedFrom: saveData.name,
-        _exportedAt: new Date().toISOString(),
+        starterItems: saveData.inventory?.items || [],
     };
 
     // 尝试获取起始地点描述
@@ -611,6 +676,23 @@ router.get('/templates/svg-list', (req, res) => {
         res.json({ success: true, files });
     } catch (error) {
         res.status(500).json({ error: '获取图片列表失败: ' + error.message });
+    }
+});
+
+// DELETE /api/game/templates/svg/:filename - 删除世界卡片 SVG 图片
+router.delete('/templates/svg/:filename', (req, res) => {
+    try {
+        const filename = req.params.filename;
+        const filePath = path.join(__dirname, '../uploads/world_cards', filename);
+
+        if (!fs.existsSync(filePath)) {
+            return res.json({ success: true, message: '文件不存在或已被删除' });
+        }
+
+        fs.unlinkSync(filePath);
+        res.json({ success: true, message: '图片已删除' });
+    } catch (error) {
+        res.status(500).json({ error: '删除图片失败: ' + error.message });
     }
 });
 

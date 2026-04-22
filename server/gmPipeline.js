@@ -594,6 +594,13 @@ async function runUserAgent(saveData, optionText, apiConfig) {
     const { apiKey, apiBaseUrl, model, temperature } = apiConfig;
     const systemPrompt = buildUserAgentPrompt(saveData);
 
+    saveData.chatHistory.push({
+        role: 'notification',
+        content: `玩家选择了「${optionText}」`,
+        type: 'info',
+        timestamp: new Date().toISOString(),
+    })
+
     const messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `玩家选择了以下行动选项，请生成角色行为描写：\n\n"${optionText}"` },
@@ -635,16 +642,22 @@ async function runUserAgent(saveData, optionText, apiConfig) {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
+    // 预处理：移除 markdown 代码块标记
+    const cleanContent = content
+        .replace(/^```json\s*/i, '')  // 开头的 ```json
+        .replace(/^```\s*/, '')        // 开头的 ```
+        .replace(/\s*```$/, '');       // 结尾的 ```
+
     // 解析 JSON 输出
     try {
-        const parsed = JSON.parse(content);
+        const parsed = JSON.parse(cleanContent);
         return {
             action: parsed.action || optionText,
             dialogue: parsed.dialogue || null,
         };
     } catch (e) {
         // JSON 解析失败，尝试从文本中提取
-        const jsonMatch = content.match(/\{[\s\S]*"action"[\s\S]*\}/);
+        const jsonMatch = cleanContent.match(/\{[\s\S]*"action"[\s\S]*}/);
         if (jsonMatch) {
             try {
                 const parsed = JSON.parse(jsonMatch[0]);
