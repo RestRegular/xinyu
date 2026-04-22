@@ -27,20 +27,7 @@ class PromptRegistry {
     }
 
     _compile(tpl) {
-        const pattern = /{{(\w+)}}/g;
-        let match;
-        let lastIndex = 0;
-        const parts = [];
-
-        while ((match = pattern.exec(tpl)) !== null) {
-            parts.push(tpl.slice(lastIndex, match.index));
-            parts.push(`\${vars['${match[1]}'] ?? ''}`);
-            lastIndex = pattern.lastIndex;
-        }
-        parts.push(tpl.slice(lastIndex));
-
-        const body = 'return `' + parts.join('') + '`;';
-        return new Function('vars', body);
+        return (vars) => tpl.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
     }
 
     get(name) {
