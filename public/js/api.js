@@ -76,8 +76,8 @@ async function callAI(userText, isOption = false) {
             }
         }
 
-        // 显示后端产生的通知（新旧格式通用）
-        if (result.notifications && result.notifications.length > 0) {
+        // 显示后端产生的通知（仅旧格式时需要，新格式已包含在 renderData.newBlocks 中）
+        if (!result.renderData && result.notifications && result.notifications.length > 0) {
             for (const notif of result.notifications) {
                 addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
             }
