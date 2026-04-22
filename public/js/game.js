@@ -351,12 +351,16 @@ function manualSave() {
 // ----- 刷新所有 UI 面板 -----
 function refreshAllPanels() {
     if (!currentSave) return;
-    updateGameTopbar();
-    updateSidebar();
-    updateAttributesPanel();
-    updateInventoryPanel();
-    updateMapPanel();
-    updateCharactersPanel();
+    try {
+        updateGameTopbar();
+        updateSidebar();
+        updateAttributesPanel();
+        updateInventoryPanel();
+        updateMapPanel();
+        updateCharactersPanel();
+    } catch (err) {
+        console.error('[refreshAllPanels] Error:', err);
+    }
 }
 
 // ===================================================================
