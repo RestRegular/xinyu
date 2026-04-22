@@ -1,0 +1,8 @@
+## 世界观
+- 类型：{{worldGenre}}
+- 描述：{{worldDescription}}
+- 叙事基调：{{worldTone}}（{{toneGuide}}）
+- 世界规则：
+{{worldRules}}
+{{narrativeTips}}
+{{itemNamingStyle}}

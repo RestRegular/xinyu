@@ -19,7 +19,8 @@
 //
 // ===================================================================
 
-const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, buildUserAgentPrompt, gameTools, characterTools } = require('./aiService');
+const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, buildUserAgentPrompt } = require('./aiService');
+const { gameTools, characterTools } = require('./prompts');
 const { executeGameFunction, executeCharacterTool } = require('./gameEngine');
 
 // ===================================================================

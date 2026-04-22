@@ -7,6 +7,7 @@ const router = express.Router();
 const db = require('../db');
 const { Pipeline, runUserAgent } = require('../gmPipeline');
 const { executeGameFunction } = require('../gameEngine');
+const { buildAutofillPrompt } = require('../prompts/builders/autofillPrompt');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
@@ -326,10 +327,6 @@ router.post('/autofill', async (req, res) => {
     if (!startLocation) missing.push('startLocation');
     if (!startLocationDesc) missing.push('startLocationDesc');
 
-    if (missing.length === 0) {
-        return res.json({ success: true, filled: {}, message: '所有字段已填写完整' });
-    }
-
     // 如果选了模板，从数据库获取模板信息作为参考
     let templateInfo = '';
     if (templateId && templateId !== 'custom') {
@@ -339,37 +336,18 @@ router.post('/autofill', async (req, res) => {
         }
     }
 
-    const prompt = `你是一个 RPG 游戏的角色创建助手。请根据用户已提供的信息，为缺失的字段生成合适的内容。
+    const { prompt, missing: autofillMissing } = buildAutofillPrompt({
+        worldName, genre, worldDesc, worldRules, tone,
+        startLocation, startLocationDesc,
+        playerName, playerGender, playerAge, playerRace, playerClass,
+        playerAppearance, playerPersonality, playerBackstory,
+        missing: missing.join('、'),
+        templateInfo,
+    });
 
-## 已提供的信息
-- 世界名称：${worldName || '未填写'}
-- 世界类型：${genre || '未填写'}
-- 世界描述：${worldDesc || '未填写'}
-- 世界规则：${worldRules || '未填写'}
-- 叙事基调：${tone || '未填写'}
-- 起始地点：${startLocation || '未填写'}
-- 起始地点描述：${startLocationDesc || '未填写'}
-- 角色名称：${playerName || '未填写'}
-- 性别：${playerGender || '未填写'}
-- 年龄：${playerAge || '未填写'}
-- 种族：${playerRace || '未填写'}
-- 职业：${playerClass || '未填写'}
-- 外貌：${playerAppearance || '未填写'}
-- 性格：${playerPersonality || '未填写'}
-- 背景故事：${playerBackstory || '未填写'}
-${templateInfo}
-
-## 需要补全的字段
-${missing.join('、')}
-
-## 要求
-1. 只返回 JSON，不要输出任何其他内容
-2. 只包含需要补全的字段，已填写的不要返回
-3. 每个字段的内容要简短精炼（角色名2-4字，性别1-2字，年龄1-3字，种族/职业1-4字，外貌30字内，性格20字内，背景故事50字内，世界名2-6字，世界描述100字内，世界规则100字内，起始地点2-6字，起始地点描述80字内）
-4. 内容要与已填写的信息保持一致和协调
-5. 返回格式：{"playerName":"xxx","playerRace":"xxx",...}
-
-请直接返回 JSON：`;
+    if (!prompt) {
+        return res.json({ success: true, filled: {}, message: '所有字段已填写完整' });
+    }
 
     try {
         // apiBaseUrl 可能是完整端点或基础URL，统一处理

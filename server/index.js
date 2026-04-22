@@ -9,6 +9,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// 初始化提示词系统
+require('./prompts');
+
 // API 路由
 app.use('/api/config', require('./routes/config'));
 app.use('/api/saves', require('./routes/saves'));

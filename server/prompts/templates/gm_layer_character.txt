@@ -1,0 +1,9 @@
+## 玩家角色
+- 名称：{{playerName}}
+- 性别：{{playerGender}}
+- 年龄：{{playerAge}}
+- 身份：{{playerOccupation}}
+- 外貌：{{playerAppearance}}
+- 性格：{{playerPersonality}}
+- 背景：{{playerBackstory}}
+- 等级：{{playerLevel}}（经验 {{playerExp}}/{{playerExpNext}}）
