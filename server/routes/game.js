@@ -336,7 +336,7 @@ router.post('/autofill', async (req, res) => {
         }
     }
 
-    const { prompt, missing: autofillMissing } = buildAutofillPrompt({
+    const { prompt } = buildAutofillPrompt({
         worldName, genre, worldDesc, worldRules, tone,
         startLocation, startLocationDesc,
         playerName, playerGender, playerAge, playerRace, playerClass,
