@@ -72,6 +72,9 @@
                         }
                     }
                     scrollToBottom();
+                    // 从最后一条 assistant 消息恢复 options
+                    const lastAssistant = [...data.chatHistory.messages].reverse().find(m => m.role === 'assistant' && m.structured && m.structured.options);
+                    if (lastAssistant) renderOptions(lastAssistant.structured.options);
                 }
             }
 
