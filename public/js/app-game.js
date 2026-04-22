@@ -23,8 +23,19 @@
                 // 旧格式兼容：chatHistory 是数组
                 renderGameMessages(data.chatHistory);
             } else if (data.chatHistory && data.chatHistory.messages && data.chatHistory.messages.length > 0) {
-                // 新格式但无 renderHistory：从 chatHistory.messages 重建
+                // 新格式但无 renderHistory：从 chatHistory 重建
                 renderGameMessages(data.chatHistory.messages);
+                // 渲染 notifications
+                if (data.chatHistory.notifications && data.chatHistory.notifications.length > 0) {
+                    const container = document.getElementById('gameMessages');
+                    if (container) {
+                        for (const notif of data.chatHistory.notifications) {
+                            container.insertAdjacentHTML('beforeend',
+                                `<div class="msg"><div class="msg-notification ${notif.type || 'info'}"><span class="notif-icon">${notif.type === 'positive' ? '✚' : notif.type === 'negative' ? '✖' : 'ℹ'}</span>${escapeHtml(notif.text)}</div></div>`
+                            );
+                        }
+                    }
+                }
             }
 
             // 新游戏检测（同时检查新旧格式）
