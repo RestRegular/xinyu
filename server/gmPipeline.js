@@ -648,13 +648,6 @@ async function runUserAgent(saveData, optionText, apiConfig) {
     logger.info('[UserAgent] Starting', { option: selectedOption.text });
     const uaTimer = logger.timer();
 
-    saveData.chatHistory.push({
-        role: 'notification',
-        content: `玩家选择了「${optionText}」`,
-        type: 'info',
-        timestamp: new Date().toISOString(),
-    });
-
     // 返回通知信息，由调用方写入 CHM 和 RDM
     const uaNotifications = [{
         text: `玩家选择了「${optionText}」`,
