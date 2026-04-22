@@ -529,7 +529,7 @@ function appendRenderBlocks(blocks) {
 function renderBlock(block) {
     switch (block.type) {
         case 'system':
-            return `<div class="msg msg-system">${escapeHtml(block.data.text)}</div>`;
+            return '';
         case 'player':
             return renderPlayerBlock(block);
         case 'narrative':
