@@ -474,7 +474,14 @@ class Pipeline {
 
         // ===== Phase 3: 解析最终输出 =====
         logger.debug('[Pipeline] Parsing GM output');
-        const lastAssistantMsg = messages[messages.length - 1];
+        // 找到最后一条 assistant 消息（跳过 tool 消息）
+        let lastAssistantMsg = null;
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'assistant') {
+                lastAssistantMsg = messages[i];
+                break;
+            }
+        }
         const rawContent = lastAssistantMsg?.content || '';
         const structuredOutput = parseGMOutput(rawContent);
 
