@@ -27,10 +27,9 @@ class ChatHistoryManager {
      */
     addUserMessage(text, isSystem = false) {
         this.messages.push({
-            role: 'user',
+            role: isSystem ? 'system' : 'user',
             content: text,
             timestamp: new Date().toISOString(),
-            _isSystem: isSystem,  // 内部标记，不序列化
         });
     }
 

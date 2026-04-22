@@ -59,7 +59,6 @@
                         } else {
                             // message 格式渲染
                             if (item.role === 'user') {
-                                if (item.content && item.content.startsWith('[系统]')) continue;
                                 container.insertAdjacentHTML('beforeend',
                                     `<div class="msg"><div class="msg-player">${escapeHtml(item.content)}</div></div>`
                                 );

@@ -390,7 +390,6 @@ function renderGameMessages(data) {
             if (msg.role === 'system') {
                 // 系统消息不渲染
             } else if (msg.role === 'user') {
-                if (msg.content && msg.content.startsWith('[系统]')) return;
                 const playerName = currentSave?.player?.name || '你';
                 const timeStr = formatMessageTime(msg.timestamp);
 
