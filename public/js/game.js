@@ -481,7 +481,7 @@ function renderGameMessages(data) {
                             cardHtml += `<span class="character-mood ${block.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>`;
                             cardHtml += `</div>`;
                             if (block.reaction) cardHtml += `<div class="character-reaction">${escapeHtml(block.reaction)}</div>`;
-                            if (block.dialogue) cardHtml += `<div class="character-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+                            if (block.dialogue) cardHtml += `<div class="character-dialogue">${escapeHtml(block.dialogue)}</div>`;
                             cardHtml += `</div></div>`;
                             html += cardHtml;
                         } else {
@@ -605,7 +605,7 @@ function renderCharacterBlock(block) {
         html += `<div class="character-reaction">${escapeHtml(d.reaction)}</div>`;
     }
     if (d.dialogue) {
-        html += `<div class="character-dialogue">"${escapeHtml(d.dialogue)}"</div>`;
+        html += `<div class="character-dialogue">${escapeHtml(d.dialogue)}</div>`;
     }
     html += '</div></div>';
     return html;
@@ -716,7 +716,7 @@ function addCharacterMessage(block) {
         html += `<div class="character-reaction">${escapeHtml(block.reaction)}</div>`;
     }
     if (block.dialogue) {
-        html += `<div class="character-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+        html += `<div class="character-dialogue">${escapeHtml(block.dialogue)}</div>`;
     }
 
     html += '</div>';
