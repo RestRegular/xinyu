@@ -572,6 +572,18 @@ function parseGMOutput(rawContent) {
         } catch (e) {}
     }
 
+    // 降级：无法解析为结构化输出
+    // 如果 rawContent 看起来像 JSON（工具结果等），返回空内容而非渲染原始 JSON
+    const trimmed = rawContent.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+            const obj = JSON.parse(trimmed);
+            if (typeof obj === 'object' && !Array.isArray(obj) && !obj.content) {
+                // 是工具结果 JSON，不是叙事内容
+                return { content: [], options: [] };
+            }
+        } catch (e) {}
+    }
     return { content: [{ type: 'narrative', text: rawContent }], options: [] };
 }
 
