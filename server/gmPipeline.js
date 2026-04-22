@@ -22,6 +22,7 @@
 const { buildSystemPrompt, buildMessageHistory, buildCharacterPrompt, buildUserAgentPrompt } = require('./aiService');
 const { gameTools, characterTools } = require('./prompts');
 const { executeGameFunction, executeCharacterTool } = require('./gameEngine');
+const logger = require('./logger');
 
 // ===================================================================
 // ===== BaseAgent — 基类 =====
@@ -157,6 +158,9 @@ class StoryAgent extends BaseAgent {
         const character = Object.values(saveData.characters).find(c => c.name === charName);
         if (!character) return { success: false, error: `未找到角色"${charName}"` };
 
+        const charData = character;
+        logger.debug(`[CharacterAI] Calling ${charData.name}`);
+
         character.lastInteractedAt = new Date().toISOString();
 
         const charPrompt = buildCharacterPrompt(character, saveData);
@@ -168,6 +172,7 @@ class StoryAgent extends BaseAgent {
         // 请求角色 AI（含重试）
         let response;
         let retries = 0;
+        const charTimer = logger.timer();
         while (retries < 2) {
             try {
                 const controller = new AbortController();
@@ -187,6 +192,7 @@ class StoryAgent extends BaseAgent {
             } catch (err) {
                 retries++;
                 if (retries >= 2) return { success: false, error: '角色AI请求失败' };
+                logger.warn(`[CharacterAI] ${charData.name} retry`, { attempt: retries });
                 await new Promise(r => setTimeout(r, 1000 * retries));
             }
         }
@@ -207,6 +213,9 @@ class StoryAgent extends BaseAgent {
                 return { success: false, error: '角色AI响应解析失败' };
             }
         }
+
+        logger.debug(`[CharacterAI] ${charData.name} responded`);
+        charTimer.done(`CharacterAI:${charData.name}`);
 
         // 处理角色 AI 的 tool calls（update_relationship, add_memory）
         if (result.tool_calls && result.tool_calls.length > 0) {
@@ -380,11 +389,14 @@ class Pipeline {
      */
     async run(saveData, userMessage, apiConfig, appConfig, aiMessages = null) {
         const allNotifications = [];
+        let totalToolCalls = 0;
 
         // ===== Phase 1: StoryAgent 主循环 =====
         const systemPrompt = buildSystemPrompt(saveData, appConfig);
         const history = aiMessages || buildMessageHistory(saveData.chatHistory);
         const messages = [{ role: 'system', content: systemPrompt }, ...history];
+
+        logger.info('[Pipeline] Starting run', { messageCount: messages.length });
 
         const MAX_LOOPS = 5;
         const MAX_RETRIES = 2;
@@ -394,8 +406,12 @@ class Pipeline {
         while (loopCount < MAX_LOOPS) {
             loopCount++;
 
+            logger.debug(`[Pipeline] Loop ${loopCount} starting`);
+
             // 请求 AI
+            const llmTimer = logger.timer();
             const response = await this._requestLLM(apiConfig, messages, gameTools, MAX_RETRIES, API_TIMEOUT);
+            llmTimer.done('LLM request');
 
             // 解析响应
             const result = await this._parseResponse(response, apiConfig, messages, gameTools, appConfig);
@@ -411,47 +427,73 @@ class Pipeline {
                     let fnArgs;
                     try { fnArgs = JSON.parse(tc.function.arguments); } catch (e) { fnArgs = {}; }
 
+                    logger.debug(`[Pipeline] Tool call: ${fnName}`, { args: fnArgs });
+
                     // 查找负责的 Agent
                     const agent = this.getAgentForTool(fnName);
                     if (!agent) {
                         // 未知工具，直接执行
+                        logger.warn(`[Pipeline] Unknown tool: ${fnName}`);
                         const toolResult = executeGameFunction(fnName, fnArgs, saveData);
                         if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
                         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
+                        totalToolCalls++;
                         continue;
                     }
 
                     // 委托给对应 Agent 执行（异步，支持角色 AI 调用）
+                    const agentTimer = logger.timer();
                     const toolResult = await agent.executeAsync(fnName, fnArgs, saveData, apiConfig);
+                    agentTimer.done(`Agent:${agent.name}`);
+                    logger.debug(`[Pipeline] Tool result: ${fnName}`, { success: !toolResult.error });
                     if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
                     // 返回真实结果给 AI
                     messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
+                    totalToolCalls++;
                 }
+                logger.debug(`[Pipeline] Loop ${loopCount} completed`, { toolCalls: result.tool_calls.length });
                 continue;
             }
             break;
         }
 
         // ===== Phase 2: 各 Agent 后处理（并行） =====
+        logger.debug('[Pipeline] Phase 2: Post-processing');
         const postProcessPromises = this.agents.map(agent => agent.postProcess(saveData, apiConfig));
         const postResults = await Promise.all(postProcessPromises);
         for (const notifications of postResults) {
             if (notifications.length > 0) allNotifications.push(...notifications);
         }
 
+        // Agent 调用摘要
+        for (const agent of this.agents) {
+            if (agent.callLog.length > 0) {
+                logger.debug(`[Agent:${agent.name}] ${agent.callLog.length} tool calls`);
+            }
+        }
+
         // ===== Phase 3: 解析最终输出 =====
+        logger.debug('[Pipeline] Parsing GM output');
         const lastAssistantMsg = messages[messages.length - 1];
         const rawContent = lastAssistantMsg?.content || '';
         const structuredOutput = parseGMOutput(rawContent);
 
+        if (structuredOutput.content.length === 1 && structuredOutput.content[0].type === 'narrative' && structuredOutput.content[0].text === rawContent) {
+            logger.warn('[Pipeline] Failed to parse GM output');
+        }
+
         // 清理所有 Agent 日志
         this.agents.forEach(a => a.clearLog());
+
+        logger.info('[Pipeline] Run completed', { totalLoops: loopCount, totalToolCalls });
 
         return {
             content: structuredOutput.content || [{ type: 'narrative', text: rawContent }],
             options: structuredOutput.options || [],
             notifications: allNotifications,
             saveData,
+            loops: loopCount,
+            toolCallCount: totalToolCalls,
         };
     }
 
@@ -478,10 +520,15 @@ class Pipeline {
                     const errText = await response.text().catch(() => '');
                     throw new Error(`AI 请求失败 (${response.status}): ${errText}`);
                 }
+                logger.debug('[LLM] Response received');
                 return response;
             } catch (err) {
                 retries++;
-                if (retries >= maxRetries) throw err;
+                if (retries >= maxRetries) {
+                    logger.error('[LLM] All retries exhausted');
+                    throw err;
+                }
+                logger.warn('[LLM] Request failed, retrying...', { attempt: retries, error: err.message });
                 await new Promise(r => setTimeout(r, 1000 * retries));
             }
         }
@@ -494,6 +541,7 @@ class Pipeline {
         try {
             return await parseStreamResponse(response);
         } catch (err) {
+            logger.warn('[LLM] Stream parse failed, falling back to non-stream');
             return await parseNonStreamResponse(
                 apiConfig.apiBaseUrl, apiConfig.apiKey, apiConfig.model,
                 messages, tools, appConfig
@@ -595,6 +643,10 @@ async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools
 async function runUserAgent(saveData, optionText, apiConfig) {
     const { apiKey, apiBaseUrl, model, temperature } = apiConfig;
     const systemPrompt = buildUserAgentPrompt(saveData);
+    const selectedOption = { text: optionText };
+
+    logger.info('[UserAgent] Starting', { option: selectedOption.text });
+    const uaTimer = logger.timer();
 
     saveData.chatHistory.push({
         role: 'notification',
@@ -638,6 +690,7 @@ async function runUserAgent(saveData, optionText, apiConfig) {
         } catch (err) {
             retries++;
             if (retries >= 2) throw new Error('UserAgent 请求失败: ' + err.message);
+            logger.warn('[UserAgent] Retry', { attempt: retries });
             await new Promise(r => setTimeout(r, 1000 * retries));
         }
     }
@@ -659,6 +712,8 @@ async function runUserAgent(saveData, optionText, apiConfig) {
     // 解析 JSON 输出
     try {
         const parsed = JSON.parse(cleanContent);
+        logger.info('[UserAgent] Completed');
+        uaTimer.done('UserAgent');
         return {
             action: parsed.action || optionText,
             dialogue: parsed.dialogue || null,
@@ -670,6 +725,8 @@ async function runUserAgent(saveData, optionText, apiConfig) {
         if (jsonMatch) {
             try {
                 const parsed = JSON.parse(jsonMatch[0]);
+                logger.info('[UserAgent] Completed');
+                uaTimer.done('UserAgent');
                 return {
                     action: parsed.action || optionText,
                     dialogue: parsed.dialogue || null,
@@ -678,6 +735,9 @@ async function runUserAgent(saveData, optionText, apiConfig) {
             } catch (e2) {}
         }
         // 降级：直接使用选项文本作为行为描述
+        logger.warn('[UserAgent] JSON parse failed, using raw text');
+        logger.info('[UserAgent] Completed');
+        uaTimer.done('UserAgent');
         return { action: optionText, dialogue: null, notifications: uaNotifications };
     }
 }

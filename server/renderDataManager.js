@@ -10,6 +10,8 @@
 //
 // ===================================================================
 
+const logger = require('./logger');
+
 class RenderDataManager {
     constructor() {
         this.renderBlocks = [];   // 持久化的渲染块列表
@@ -107,6 +109,7 @@ class RenderDataManager {
      * 当 renderHistory 丢失或损坏时使用
      */
     rebuildFromCHM(chm) {
+        logger.warn('[RDM] Rebuilding render data from CHM (fallback)');
         this.renderBlocks = [];
         this.currentOptions = [];
 
@@ -165,6 +168,7 @@ class RenderDataManager {
                     data: { action: block.action, dialogue: block.dialogue },
                 };
             default:
+                logger.debug(`[RDM] Unknown block type: ${block.type}, falling back to narrative`);
                 return { type: 'narrative', data: { text: block.text || '' } };
         }
     }

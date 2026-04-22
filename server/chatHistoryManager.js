@@ -10,6 +10,8 @@
 //
 // ===================================================================
 
+const logger = require('./logger');
+
 class ChatHistoryManager {
     constructor(options = {}) {
         this.messages = [];           // AI 对话消息
@@ -79,6 +81,8 @@ class ChatHistoryManager {
             return filtered.map(m => ({ role: m.role, content: m.content }));
         }
 
+        logger.info('[CHM] Message compression triggered', { total: filtered.length, keeping: this.keepRecent });
+
         const recent = filtered.slice(-this.keepRecent);
         const old = filtered.slice(0, -this.keepRecent);
 
@@ -145,9 +149,12 @@ class ChatHistoryManager {
     }
 
     static fromJSON(data) {
+        if (!data || typeof data !== 'object') {
+            logger.warn('[CHM] Invalid data format in fromJSON');
+        }
         const mgr = new ChatHistoryManager();
-        mgr.messages = data.messages || [];
-        mgr.notifications = data.notifications || [];
+        mgr.messages = data?.messages || [];
+        mgr.notifications = data?.notifications || [];
         return mgr;
     }
 }

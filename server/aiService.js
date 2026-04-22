@@ -3,6 +3,7 @@
 // ===================================================================
 
 const { executeCharacterTool, getRelationshipTitle } = require('./gameEngine');
+const logger = require('./logger');
 
 // 新的提示词构建器
 const { buildGmPrompt } = require('./prompts/builders/gmPrompt');
@@ -18,13 +19,17 @@ const { GENRE_PRESETS } = require('./prompts/presets/genrePresets');
 // ===== GM System Prompt 构建 =====
 // ===================================================================
 function buildSystemPrompt(saveData, appConfig) {
-    return buildGmPrompt(saveData, appConfig);
+    logger.debug('[Prompt] Building GM system prompt');
+    const prompt = buildGmPrompt(saveData, appConfig);
+    logger.debug('[Prompt] GM prompt length:', prompt.length);
+    return prompt;
 }
 
 // ===================================================================
 // ===== 角色AI Prompt 构建 =====
 // ===================================================================
 function buildCharacterPrompt(character, saveData) {
+    logger.debug(`[Prompt] Building character prompt for ${character.name}`);
     return buildCharacterPromptNew(character, saveData);
 }
 
@@ -41,6 +46,7 @@ function buildMessageHistory(chatHistory) {
     if (filtered.length <= SUMMARIZE_THRESHOLD) return filtered;
 
     const keepRecent = 16;
+    logger.info('[Messages] Compressing history', { total: filtered.length, keeping: keepRecent });
     const recent = filtered.slice(-keepRecent);
     const old = filtered.slice(0, -keepRecent);
 

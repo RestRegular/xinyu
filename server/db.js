@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./logger');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'xinyu.db');
 
@@ -9,8 +10,11 @@ fs.mkdirSync(path.join(__dirname, '..', 'data'), { recursive: true });
 
 const db = new Database(DB_PATH);
 
+logger.info(`[DB] Database: ${DB_PATH}`);
+
 // 启用 WAL 模式提升性能
 db.pragma('journal_mode = WAL');
+logger.info('[DB] WAL mode enabled');
 
 // 创建表
 db.exec(`
@@ -49,5 +53,7 @@ db.exec(`
         updated_at TEXT NOT NULL
     );
 `);
+
+logger.info('[DB] Tables initialized');
 
 module.exports = db;

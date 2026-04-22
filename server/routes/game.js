@@ -4,6 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
+const logger = require('../logger');
 const db = require('../db');
 const { Pipeline, runUserAgent } = require('../gmPipeline');
 const { executeGameFunction } = require('../gameEngine');
@@ -97,6 +98,7 @@ const BUILTIN_TEMPLATES = [
 
 // 初始化内建模板到数据库
 function initBuiltinTemplates() {
+    logger.info('[Templates] Initializing built-in templates');
     const now = new Date().toISOString();
     const insertOrReplace = db.prepare(`
         INSERT OR REPLACE INTO world_templates (id, name, genre, icon, description, data, is_builtin, created_at, updated_at)
@@ -170,7 +172,12 @@ router.post('/action', async (req, res) => {
     if (!apiKey) return res.status(400).json({ error: '未配置 API Key，请在设置中配置' });
 
     const row = db.prepare('SELECT data FROM saves WHERE id = ?').get(saveId);
-    if (!row) return res.status(404).json({ error: '存档不存在' });
+    if (!row) {
+        logger.error(`[Action] Save not found: ${saveId}`);
+        return res.status(404).json({ error: '存档不存在' });
+    }
+
+    logger.info(`[Action] saveId=${saveId}, isOption=${isOption}`);
 
     let saveData;
     try { saveData = JSON.parse(row.data); } catch(e) { return res.status(500).json({ error: '存档数据解析失败' }); }
@@ -209,6 +216,7 @@ router.post('/action', async (req, res) => {
         let uaNotifications = [];
         if (isOption) {
             try {
+                const uaTimer = logger.timer();
                 const apiConfig = {
                     apiKey,
                     apiBaseUrl: getApiBaseUrl(),
@@ -217,6 +225,7 @@ router.post('/action', async (req, res) => {
                     maxTokens: appConfig.maxTokens,
                 };
                 const uaResult = await runUserAgent(saveData, userMessage, apiConfig);
+                uaTimer.done('UserAgent');
                 playerActionContent = {
                     type: 'player_action',
                     option: userMessage,
@@ -232,12 +241,13 @@ router.post('/action', async (req, res) => {
                     }
                 }
             } catch (uaErr) {
-                console.error('UserAgent 执行失败:', uaErr.message);
+                logger.error('[Action] UserAgent failed:', { error: uaErr.message, stack: uaErr.stack });
             }
         }
 
         // 构建预处理的 AI 消息，传给 Pipeline
         const aiMessages = chm.buildAIMessages();
+        const pipelineTimer = logger.timer();
         const result = await pipeline.run(saveData, userMessage, {
             apiKey,
             apiBaseUrl: getApiBaseUrl(),
@@ -245,6 +255,8 @@ router.post('/action', async (req, res) => {
             temperature: appConfig.temperature,
             maxTokens: appConfig.maxTokens,
         }, appConfig, aiMessages);
+        logger.info('[Action] Pipeline completed', { loops: result.loops, toolCalls: result.toolCallCount });
+        pipelineTimer.done('Pipeline');
 
         // 将 player_action 插入到 content 最前面
         const finalContent = playerActionContent
@@ -276,6 +288,7 @@ router.post('/action', async (req, res) => {
         saveData.renderHistory = rdm.toJSON();
 
         await persistSave(saveData, saveId);
+        logger.debug('[Action] Save persisted');
 
         // 返回增量渲染数据
         const renderData = rdm.getRenderData();
@@ -288,6 +301,7 @@ router.post('/action', async (req, res) => {
         });
     } catch (err) {
         // 错误时也序列化 CHM 和 RDM
+        logger.error('[Action] Pipeline failed:', { error: err.message, stack: err.stack });
         saveData.chatHistory = chm.toJSON();
         saveData.renderHistory = rdm.toJSON();
         await persistSave(saveData, saveId);
@@ -371,6 +385,8 @@ router.post('/autofill', async (req, res) => {
     if (!startLocation) missing.push('startLocation');
     if (!startLocationDesc) missing.push('startLocationDesc');
 
+    logger.info('[Autofill] Request received', { missing: missing.length });
+
     // 如果选了模板，从数据库获取模板信息作为参考
     let templateInfo = '';
     if (templateId && templateId !== 'custom') {
@@ -408,11 +424,14 @@ router.post('/autofill', async (req, res) => {
         });
 
         if (!response.ok) {
+            logger.error('[Autofill] AI request failed:', { status: response.status });
             return res.status(500).json({ error: 'AI 请求失败: ' + response.status });
         }
 
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || '';
+
+        logger.info('[Autofill] AI response received');
 
         // 解析 JSON
         let filled = {};
@@ -432,6 +451,8 @@ router.post('/autofill', async (req, res) => {
 // ===================================================================
 router.post('/create', (req, res) => {
     const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId, starterItems: customStarterItems } = req.body;
+
+    logger.info('[Create] New game', { name: saveName, world: worldName });
 
     let playerDesc = '';
     if (playerRace) playerDesc += `种族：${playerRace}；`;
@@ -485,6 +506,7 @@ router.post('/create', (req, res) => {
     db.prepare(`INSERT INTO saves (id, name, data, world_name, world_genre, player_name, player_level, current_location, turn_count, play_time, pinned, archived, created_at, last_saved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)`)
         .run(id, saveData.name, JSON.stringify(saveData), effectiveWorldName, effectiveGenre, saveData.player.name, 1, effectiveStartLocation, now, now);
 
+    logger.info('[Create] Game created successfully', { saveId: id });
     res.json({ success: true, id, saveData });
 });
 
@@ -632,6 +654,7 @@ async function persistSave(saveData, saveId) {
     saveData.meta.lastSavedAt = now;
     db.prepare(`UPDATE saves SET data = ?, name = COALESCE(?, name), world_name = ?, world_genre = ?, player_name = ?, player_level = ?, current_location = ?, turn_count = ?, play_time = ?, last_saved_at = ? WHERE id = ?`)
         .run(JSON.stringify(saveData), saveData.name || null, saveData.world?.name || '', saveData.world?.genre || '', saveData.player?.name || '', saveData.player?.level || 1, saveData.map?.currentLocation || '', saveData.stats?.turnCount || 0, saveData.stats?.playTime || 0, now, saveId);
+    logger.debug('[Persist] Save data written', { saveId: saveData.id });
 }
 
 // ===================================================================
