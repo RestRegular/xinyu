@@ -8,6 +8,7 @@ class PromptRegistry {
     constructor() {
         this._cache = new Map();
         this._watchers = [];
+        this._compiled = new Map();
     }
 
     init() {
@@ -25,18 +26,36 @@ class PromptRegistry {
         console.log(`[Prompts] Loaded ${this._cache.size} templates`);
     }
 
+    _compile(tpl) {
+        const pattern = /{{(\w+)}}/g;
+        let match;
+        let lastIndex = 0;
+        const parts = [];
+
+        while ((match = pattern.exec(tpl)) !== null) {
+            parts.push(tpl.slice(lastIndex, match.index));
+            parts.push(`\${vars['${match[1]}'] ?? ''}`);
+            lastIndex = pattern.lastIndex;
+        }
+        parts.push(tpl.slice(lastIndex));
+
+        const body = 'return `' + parts.join('') + '`;';
+        return new Function('vars', body);
+    }
+
     get(name) {
         return this._cache.get(name) || '';
     }
 
     render(name, vars = {}) {
-        let tpl = this.get(name);
-        if (!tpl) return '';
-        for (const [key, val] of Object.entries(vars)) {
-            const placeholder = `{{${key}}}`;
-            tpl = tpl.split(placeholder).join(String(val ?? ''));
+        let compiled = this._compiled.get(name);
+        if (!compiled) {
+            const tpl = this.get(name);
+            if (!tpl) return '';
+            compiled = this._compile(tpl);
+            this._compiled.set(name, compiled);
         }
-        return tpl;
+        return compiled(vars);
     }
 
     compose(names, vars = {}) {
