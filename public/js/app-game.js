@@ -19,9 +19,12 @@
                     renderOptions(data.renderHistory.options);
                 }
                 currentLastBlockIndex = data.renderHistory.blocks.length - 1;
-            } else if (data.chatHistory) {
-                // 旧格式兼容
+            } else if (Array.isArray(data.chatHistory) && data.chatHistory.length > 0) {
+                // 旧格式兼容：chatHistory 是数组
                 renderGameMessages(data.chatHistory);
+            } else if (data.chatHistory && data.chatHistory.messages && data.chatHistory.messages.length > 0) {
+                // 新格式但无 renderHistory：从 chatHistory.messages 重建
+                renderGameMessages(data.chatHistory.messages);
             }
 
             // 新游戏检测（同时检查新旧格式）
