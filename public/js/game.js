@@ -388,7 +388,7 @@ function renderGameMessages(data) {
         let html = '';
         data.forEach(msg => {
             if (msg.role === 'system') {
-                html += `<div class="msg msg-system">${escapeHtml(msg.content)}</div>`;
+                // 系统消息不渲染
             } else if (msg.role === 'user') {
                 const playerName = currentSave?.player?.name || '你';
                 const timeStr = formatMessageTime(msg.timestamp);
