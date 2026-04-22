@@ -64,7 +64,9 @@
                                 );
                             } else if (item.role === 'assistant' && item.structured && item.structured.content) {
                                 for (const block of item.structured.content) {
-                                    container.insertAdjacentHTML('beforeend', renderBlock(block));
+                                    // 将 AI content block 转为渲染块格式
+                                    const rb = block.data ? block : { ...block, data: { text: block.text, speaker: block.speaker, characterName: block.characterName, mood: block.mood, reaction: block.reaction, dialogue: block.dialogue, action: block.action } };
+                                    container.insertAdjacentHTML('beforeend', renderBlock(rb));
                                 }
                             }
                         }
