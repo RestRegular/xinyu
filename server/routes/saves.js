@@ -54,6 +54,19 @@ router.get('/:id', (req, res) => {
             // 持久化迁移结果
             db.prepare('UPDATE saves SET data = ? WHERE id = ?').run(JSON.stringify(data), req.params.id);
         }
+        // 新格式但无 renderHistory：自动从 chatHistory 重建
+        if (!Array.isArray(data.chatHistory) &&
+            (!data.renderHistory || !data.renderHistory.renderBlocks || data.renderHistory.renderBlocks.length === 0) &&
+            data.chatHistory && data.chatHistory.messages && data.chatHistory.messages.length > 0) {
+            const ChatHistoryManager = require('../chatHistoryManager');
+            const RenderDataManager = require('../renderDataManager');
+            const chm = ChatHistoryManager.fromJSON(data.chatHistory);
+            const rdm = new RenderDataManager();
+            rdm.rebuildFromCHM(chm);
+            data.renderHistory = rdm.toJSON();
+            // 持久化重建结果
+            db.prepare('UPDATE saves SET data = ? WHERE id = ?').run(JSON.stringify(data), req.params.id);
+        }
         // 返回 renderHistory
         const renderHistory = data.renderHistory || null;
         res.json({ ...data, renderHistory });

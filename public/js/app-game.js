@@ -23,18 +23,53 @@
                 // 旧格式兼容：chatHistory 是数组
                 renderGameMessages(data.chatHistory);
             } else if (data.chatHistory && data.chatHistory.messages && data.chatHistory.messages.length > 0) {
-                // 新格式但无 renderHistory：从 chatHistory 重建
-                renderGameMessages(data.chatHistory.messages);
-                // 渲染 notifications
-                if (data.chatHistory.notifications && data.chatHistory.notifications.length > 0) {
-                    const container = document.getElementById('gameMessages');
-                    if (container) {
-                        for (const notif of data.chatHistory.notifications) {
+                // 新格式但无 renderHistory：从 chatHistory 重建（防御性降级，正常情况下后端已自动重建）
+                // 合并 messages 和 notifications，按 timestamp 排序后统一渲染
+                const allItems = [];
+
+                for (const msg of data.chatHistory.messages) {
+                    allItems.push({ ...msg, _source: 'message' });
+                }
+                for (const notif of (data.chatHistory.notifications || [])) {
+                    allItems.push({
+                        id: notif.id || ('notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
+                        type: 'notification',
+                        timestamp: notif.timestamp,
+                        data: { text: notif.text, notifType: notif.type || 'info' },
+                        _source: 'notification'
+                    });
+                }
+
+                // 按 timestamp 稳定排序
+                allItems.sort((a, b) => {
+                    const ta = new Date(a.timestamp).getTime();
+                    const tb = new Date(b.timestamp).getTime();
+                    if (ta !== tb) return ta - tb;
+                    return 0;
+                });
+
+                // 统一渲染
+                const container = document.getElementById('gameMessages');
+                if (container) {
+                    for (const item of allItems) {
+                        if (item._source === 'notification') {
                             container.insertAdjacentHTML('beforeend',
-                                `<div class="msg"><div class="msg-notification ${notif.type || 'info'}"><span class="notif-icon">${notif.type === 'positive' ? '✚' : notif.type === 'negative' ? '✖' : 'ℹ'}</span>${escapeHtml(notif.text)}</div></div>`
+                                `<div class="msg"><div class="msg-notification ${item.data.notifType || 'info'}"><span class="notif-icon">${item.data.notifType === 'positive' ? '✚' : item.data.notifType === 'negative' ? '✖' : 'ℹ'}</span>${escapeHtml(item.data.text)}</div></div>`
                             );
+                        } else {
+                            // message 格式渲染
+                            if (item.role === 'user') {
+                                container.insertAdjacentHTML('beforeend',
+                                    `<div class="msg"><div class="msg-player">${escapeHtml(item.content)}</div></div>`
+                                );
+                            } else if (item.role === 'assistant' && item.structured && item.structured.content) {
+                                for (const block of item.structured.content) {
+                                    container.insertAdjacentHTML('beforeend', renderBlock(block));
+                                }
+                            }
                         }
                     }
+                    scrollToBottom();
                 }
             }
 

@@ -107,6 +107,7 @@ class RenderDataManager {
     /**
      * 从 CHM 重建渲染数据（降级方案）
      * 当 renderHistory 丢失或损坏时使用
+     * 将 messages 和 notifications 合并后按 timestamp 排序，确保正确的时间顺序
      */
     rebuildFromCHM(chm) {
         logger.warn('[RDM] Rebuilding render data from CHM (fallback)');
@@ -114,24 +115,51 @@ class RenderDataManager {
         this.currentOptions = [];
 
         const data = chm.toJSON();
+        const allBlocks = [];
 
-        // 重建 messages
+        // 转换 messages 为渲染块
         for (const msg of data.messages) {
             if (msg.role === 'user') {
-                this.appendUserMessage(msg.content);
-            } else if (msg.role === 'assistant' && msg.structured) {
-                this.appendAssistantContent(msg.structured.content);
+                allBlocks.push({
+                    id: msg.timestamp ? 'msg_' + new Date(msg.timestamp).getTime() : this._generateId(),
+                    type: 'player',
+                    timestamp: msg.timestamp || new Date().toISOString(),
+                    data: { action: null, dialogue: msg.content },
+                });
+            } else if (msg.role === 'assistant' && msg.structured && msg.structured.content) {
+                for (const block of msg.structured.content) {
+                    allBlocks.push({
+                        id: this._generateId(),
+                        timestamp: msg.timestamp || new Date().toISOString(),
+                        ...this._convertContentBlock(block),
+                    });
+                }
                 if (msg.structured.options) {
                     this.currentOptions = msg.structured.options;
                 }
             }
+            // system 消息不转换（CHM 中不存储 system）
         }
 
-        // 重建 notifications
+        // 转换 notifications 为渲染块
         for (const notif of data.notifications) {
-            this.appendNotification(notif.text, notif.type);
+            allBlocks.push({
+                id: this._generateId(),
+                type: 'notification',
+                timestamp: notif.timestamp || new Date().toISOString(),
+                data: { text: notif.text, notifType: notif.type || 'info' },
+            });
         }
 
+        // 按 timestamp 排序（稳定排序，相同 timestamp 保持原始顺序）
+        allBlocks.sort((a, b) => {
+            const ta = new Date(a.timestamp).getTime();
+            const tb = new Date(b.timestamp).getTime();
+            if (ta !== tb) return ta - tb;
+            return 0; // 相同 timestamp 保持原始顺序（稳定排序）
+        });
+
+        this.renderBlocks = allBlocks;
         return this.renderBlocks;
     }
 
