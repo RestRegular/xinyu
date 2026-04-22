@@ -16,3 +16,6 @@
 
 ## 当前位置的重要角色
 {{charactersInfo}}
+
+## 最近剧情进展
+{{recentPlotSummary}}

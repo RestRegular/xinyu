@@ -1,8 +1,44 @@
 const registry = require('../registry');
 const { getGenrePreset } = require('../presets/genrePresets');
-const { characterRules } = require('../rules/characterRules');
-const { toolRules } = require('../rules/toolRules');
-const { outputFormatRules } = require('../rules/outputFormatRules');
+
+/**
+ * 从 eventLog 或 chatHistory 提取最近剧情摘要
+ * @param {Object} saveData - 游戏存档数据
+ * @returns {string} 剧情摘要文本
+ */
+function buildRecentPlotSummary(saveData) {
+    const eventLog = saveData.eventLog || [];
+    const recentEvents = eventLog.slice(-5);
+
+    if (recentEvents.length === 0) {
+        // 从 chatHistory 提取
+        let history;
+        if (Array.isArray(saveData.chatHistory)) {
+            history = saveData.chatHistory;
+        } else if (saveData.chatHistory && saveData.chatHistory.messages) {
+            history = saveData.chatHistory.messages;
+        } else {
+            return '冒险刚刚开始';
+        }
+        const recent = history.slice(-6);
+        return recent
+            .filter(m => m.role === 'assistant')
+            .map(m => {
+                const text = m.structured?.content
+                    ? m.structured.content
+                        .filter(b => b.type === 'narrative' || b.type === 'scene')
+                        .map(b => b.text?.slice(0, 50))
+                        .filter(Boolean)
+                        .join('；')
+                    : (m.content || '').slice(0, 80);
+                return text ? `- ${text}` : null;
+            })
+            .filter(Boolean)
+            .join('\n') || '冒险刚刚开始';
+    }
+
+    return recentEvents.map(e => `- ${e.text}`).join('\n');
+}
 
 /**
  * 构建 GM 系统提示词
@@ -27,20 +63,16 @@ function buildGmPrompt(saveData, appConfig) {
         '幽默': '可以打破第四面墙，加入元幽默和有趣的梗',
     }[s.world.tone] || '保持一致的叙事风格';
 
-    const worldRules = s.world.rules || preset.worldRules || '无特殊规则';
+    // 世界规则合并策略：预设规则 + 用户规则，不再互相覆盖
+    const userRules = s.world.rules || '';
+    const presetRules = preset.worldRules || '';
+    const worldRules = [presetRules, userRules].filter(Boolean).join('\n') || '无特殊规则';
     const narrativeTips = preset.narrativeTips || '';
     const itemNaming = preset.items || '';
 
     // 世界层变量
     const narrativeTipsLine = narrativeTips ? '- 叙事技巧：' + narrativeTips : '';
     const itemNamingLine = itemNaming ? '- 物品命名风格：' + itemNaming : '';
-
-    // 叙事长度
-    const narrativeHint = {
-        concise: '每次回复50-150字，简洁有力',
-        medium: '每次回复100-300字，详略得当',
-        detailed: '每次回复200-500字，充分描述环境、心理和细节',
-    }[appConfig?.ui?.narrativeLength || 'medium'];
 
     // 背包
     const inventoryStr = inv.items.length > 0
@@ -72,16 +104,21 @@ function buildGmPrompt(saveData, appConfig) {
         ).join('\n');
     }
 
-    // 自定义指令
+    // 自定义指令（醒目标记）
     const globalInstructions = appConfig?.customInstructions || '';
     const saveInstructions = s.world.customPrompt || '';
-    let customInstructions = '';
-    if (globalInstructions) customInstructions += '\n## 玩家自定义指令（全局）\n' + globalInstructions;
-    if (saveInstructions) customInstructions += '\n## 玩家自定义指令（本世界）\n' + saveInstructions;
+    let customBlock = '';
+    if (globalInstructions) {
+        customBlock += '\n⚠️ 玩家自定义指令（全局，必须遵守）\n' + globalInstructions;
+    }
+    if (saveInstructions) {
+        customBlock += '\n⚠️ 玩家自定义指令（本世界，必须遵守）\n' + saveInstructions;
+    }
 
-    // 组合五层模板
+    // 组合模板
     return registry.compose([
         'gm_layer_base',
+        'gm_layer_rules',
         'gm_layer_world',
         'gm_layer_character',
         'gm_layer_context',
@@ -123,7 +160,8 @@ function buildGmPrompt(saveData, appConfig) {
         npcsInfo: npcs,
         connectionsInfo: loc && loc.connections ? loc.connections.join('、') : '无已知路径',
         charactersInfo: charsInfo,
-    }) + '\n\n' + characterRules + '\n\n' + toolRules + '\n\n' + outputFormatRules.replace('{{narrativeLengthGuide}}', narrativeHint) + customInstructions;
+        recentPlotSummary: buildRecentPlotSummary(saveData),
+    }) + customBlock;
 }
 
 module.exports = { buildGmPrompt };
