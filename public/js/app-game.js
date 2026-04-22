@@ -12,8 +12,24 @@
             currentSave = data;
             enterGameView();
 
-            // 新游戏自动生成开场剧情
-            if (!data.chatHistory || data.chatHistory.length === 0) {
+            // 优先使用 renderHistory（新格式渲染块）
+            if (data.renderHistory && data.renderHistory.blocks && data.renderHistory.blocks.length > 0) {
+                renderGameMessages(data.renderHistory.blocks);
+                if (data.renderHistory.options && data.renderHistory.options.length > 0) {
+                    renderOptions(data.renderHistory.options);
+                }
+                currentLastBlockIndex = data.renderHistory.blocks.length - 1;
+            } else if (data.chatHistory) {
+                // 旧格式兼容
+                renderGameMessages(data.chatHistory);
+            }
+
+            // 新游戏检测（同时检查新旧格式）
+            const isNewGame = !data.chatHistory ||
+                (Array.isArray(data.chatHistory) && data.chatHistory.length === 0) ||
+                (!Array.isArray(data.chatHistory) && data.chatHistory.messages && data.chatHistory.messages.length === 0);
+
+            if (isNewGame) {
                 addSystemMessage(`欢迎来到${data.world.name}，${data.player.name}。你的冒险即将开始...`);
                 // 直接调用AI生成开场剧情，不显示为玩家消息
                 callAI('[系统] 玩家开始新游戏，请根据世界设定和角色背景，生成一段沉浸式的开场剧情。描述玩家最初醒来的场景、周围的环境，并暗示接下来可能发生的事情。不要替玩家做任何决定。').catch(err => {

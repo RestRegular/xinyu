@@ -31,6 +31,7 @@ function buildCharacterPrompt(character, saveData) {
 // ===================================================================
 // ===== 对话历史管理 =====
 // ===================================================================
+// @deprecated 此函数将在 Phase 4 清理时删除，请使用 ChatHistoryManager.buildAIMessages()
 const SUMMARIZE_THRESHOLD = 30;
 
 function buildMessageHistory(chatHistory) {

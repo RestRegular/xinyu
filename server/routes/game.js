@@ -8,6 +8,9 @@ const db = require('../db');
 const { Pipeline, runUserAgent } = require('../gmPipeline');
 const { executeGameFunction } = require('../gameEngine');
 const { buildAutofillPrompt } = require('../prompts/builders/autofillPrompt');
+const ChatHistoryManager = require('../chatHistoryManager');
+const RenderDataManager = require('../renderDataManager');
+const { migrateSaveData } = require('../migrations/migrateChatHistory');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
@@ -174,14 +177,36 @@ router.post('/action', async (req, res) => {
 
     if (!saveData.characters) saveData.characters = {};
 
+    // 初始化或恢复 CHM 和 RDM
+    let chm, rdm;
+    if (Array.isArray(saveData.chatHistory)) {
+        // 旧格式，迁移
+        const migrated = migrateSaveData(saveData);
+        Object.assign(saveData, migrated);
+        chm = ChatHistoryManager.fromJSON(saveData.chatHistory);
+        rdm = RenderDataManager.fromJSON(saveData.renderHistory || { renderBlocks: [], currentOptions: [] });
+    } else {
+        chm = ChatHistoryManager.fromJSON(saveData.chatHistory || { messages: [], notifications: [] });
+        rdm = RenderDataManager.fromJSON(saveData.renderHistory || { renderBlocks: [], currentOptions: [] });
+    }
+
     const appConfig = getAppConfig();
     const isSystemMsg = userMessage.startsWith('[系统]');
-    saveData.chatHistory.push({ role: isSystemMsg ? 'system' : 'user', content: userMessage, timestamp: new Date().toISOString() });
+
+    // 写入用户消息到 CHM 和 RDM
+    chm.addUserMessage(userMessage, isSystemMsg);
+    if (isSystemMsg) {
+        rdm.appendSystemMessage(userMessage);
+    } else {
+        rdm.appendUserMessage(userMessage);
+    }
+
     saveData.stats.turnCount++;
 
     try {
         // 如果是选项选择，先调用 UserAgent 生成玩家行为描述
         let playerActionContent = null;
+        let uaNotifications = [];
         if (isOption) {
             try {
                 const apiConfig = {
@@ -199,53 +224,72 @@ router.post('/action', async (req, res) => {
                     dialogue: uaResult.dialogue,
                     timestamp: new Date().toISOString(),
                 };
+                // 处理 UA 返回的通知（由调用方写入 CHM 和 RDM）
+                if (uaResult.notifications && uaResult.notifications.length > 0) {
+                    for (const notif of uaResult.notifications) {
+                        chm.addNotification(notif.text, notif.type);
+                        rdm.appendNotification(notif.text, notif.type);
+                    }
+                }
             } catch (uaErr) {
                 console.error('UserAgent 执行失败:', uaErr.message);
             }
         }
 
+        // 构建预处理的 AI 消息，传给 Pipeline
+        const aiMessages = chm.buildAIMessages();
         const result = await pipeline.run(saveData, userMessage, {
             apiKey,
             apiBaseUrl: getApiBaseUrl(),
             model: getModel(),
             temperature: appConfig.temperature,
             maxTokens: appConfig.maxTokens,
-        }, appConfig);
+        }, appConfig, aiMessages);
 
         // 将 player_action 插入到 content 最前面
         const finalContent = playerActionContent
             ? [playerActionContent, ...(result.content || [])]
             : result.content;
 
-        saveData.chatHistory.push({
-            role: 'assistant',
-            content: JSON.stringify({ content: finalContent, options: result.options }),
-            structured: { content: finalContent, options: result.options },
-            timestamp: new Date().toISOString(),
-        });
+        // 写入 AI 响应到 CHM
+        chm.addAssistantResponse(
+            result.content ? JSON.stringify({ content: result.content, options: result.options }) : '',
+            finalContent,
+            result.options,
+            playerActionContent
+        );
 
-        // 将通知持久化到 chatHistory
+        // 写入 AI 响应到 RDM
+        rdm.appendAssistantContent(finalContent);
+        rdm.updateOptions(result.options);
+
+        // 将通知持久化到 CHM 和 RDM
         if (result.notifications && result.notifications.length > 0) {
-            const now = new Date().toISOString();
             for (const notif of result.notifications) {
-                saveData.chatHistory.push({
-                    role: 'notification',
-                    content: notif.text,
-                    type: notif.type === 'character_created' ? 'positive' : (notif.type || 'info'),
-                    timestamp: now,
-                });
+                chm.addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
+                rdm.appendNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
             }
         }
 
+        // 序列化 CHM 和 RDM 回 saveData
+        saveData.chatHistory = chm.toJSON();
+        saveData.renderHistory = rdm.toJSON();
+
         await persistSave(saveData, saveId);
 
+        // 返回增量渲染数据
+        const renderData = rdm.getRenderData();
         res.json({
+            renderData,
             content: finalContent,
             options: result.options,
             notifications: result.notifications,
             saveData,
         });
     } catch (err) {
+        // 错误时也序列化 CHM 和 RDM
+        saveData.chatHistory = chm.toJSON();
+        saveData.renderHistory = rdm.toJSON();
         await persistSave(saveData, saveId);
         res.status(500).json({ error: 'GM 管线执行失败: ' + err.message });
     }
@@ -431,7 +475,8 @@ router.post('/create', (req, res) => {
         inventory: { items: finalStarterItems.map((item, i) => ({ id: 'item_' + Date.now() + '_' + i, name: item.name, type: item.type, description: item.description || '', quantity: item.quantity || 1, effects: item.effects || {}, rarity: item.rarity || 'common', usable: item.usable || false, equippable: item.equippable || false, equipped: false })), gold: finalStarterGold, maxSlots: 20 },
         map: { currentLocation: effectiveStartLocation, locations: { [effectiveStartLocation]: { description: effectiveStartLocationDesc, connections: [], npcs: [], discovered: true, dangerLevel: 0 } } },
         characters: {},
-        chatHistory: [],
+        chatHistory: { messages: [], notifications: [] },
+        renderHistory: { renderBlocks: [], currentOptions: [] },
         stats: { turnCount: 0, playTime: 0, monstersDefeated: 0, itemsCollected: 0, locationsDiscovered: 1, deaths: 0 },
         eventLog: [{ turn: 1, type: 'system', text: '冒险开始' }],
         meta: { createdAt: now, lastSavedAt: now, version: '1.0' },

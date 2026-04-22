@@ -39,6 +39,7 @@ async function callAI(userText, isOption = false) {
                 saveId: currentSaveId,
                 userMessage: userText,
                 isOption: isOption || undefined,
+                lastBlockIndex: currentLastBlockIndex >= 0 ? currentLastBlockIndex : undefined,
             }),
         });
 
@@ -58,17 +59,24 @@ async function callAI(userText, isOption = false) {
             currentSave = result.saveData;
         }
 
-        // 渲染结构化内容（content 数组 + options 按钮）
-        if (result.content && Array.isArray(result.content) && result.content.length > 0) {
+        // 新格式：renderData（包含 newBlocks 和 options）
+        if (result.renderData) {
+            appendRenderBlocks(result.renderData.newBlocks);
+            if (result.renderData.options && result.renderData.options.length > 0) {
+                renderOptions(result.renderData.options);
+            } else {
+                clearOptions();
+            }
+            currentLastBlockIndex += (result.renderData.newBlocks || []).length;
+        } else if (result.content) {
+            // 旧格式兼容：content 数组 + options 按钮
             await renderStructuredContent(result.content);
+            if (result.options && result.options.length > 0) {
+                renderOptions(result.options);
+            }
         }
 
-        // 渲染选项按钮
-        if (result.options && result.options.length > 0) {
-            renderOptions(result.options);
-        }
-
-        // 显示后端产生的通知
+        // 显示后端产生的通知（新旧格式通用）
         if (result.notifications && result.notifications.length > 0) {
             for (const notif of result.notifications) {
                 addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
@@ -157,6 +165,12 @@ function renderOptions(options) {
     }
 
     scrollToBottom();
+}
+
+// ----- 清除选项按钮 -----
+function clearOptions() {
+    const container = document.getElementById('gameOptionsArea');
+    if (container) container.innerHTML = '';
 }
 
 // ----- 模拟流式打字效果 -----

@@ -375,14 +375,15 @@ class Pipeline {
      * @param {string} userMessage — 用户消息
      * @param {object} apiConfig  — { apiKey, apiBaseUrl, model, temperature, maxTokens }
      * @param {object} appConfig  — 应用配置
+     * @param {Array}  [aiMessages] — 预构建的 AI 消息数组（来自 CHM.buildAIMessages()）
      * @returns {Promise<{content, options, notifications, saveData}>}
      */
-    async run(saveData, userMessage, apiConfig, appConfig) {
+    async run(saveData, userMessage, apiConfig, appConfig, aiMessages = null) {
         const allNotifications = [];
 
         // ===== Phase 1: StoryAgent 主循环 =====
         const systemPrompt = buildSystemPrompt(saveData, appConfig);
-        const history = buildMessageHistory(saveData.chatHistory);
+        const history = aiMessages || buildMessageHistory(saveData.chatHistory);
         const messages = [{ role: 'system', content: systemPrompt }, ...history];
 
         const MAX_LOOPS = 5;
@@ -600,7 +601,13 @@ async function runUserAgent(saveData, optionText, apiConfig) {
         content: `玩家选择了「${optionText}」`,
         type: 'info',
         timestamp: new Date().toISOString(),
-    })
+    });
+
+    // 返回通知信息，由调用方写入 CHM 和 RDM
+    const uaNotifications = [{
+        text: `玩家选择了「${optionText}」`,
+        type: 'info',
+    }];
 
     const messages = [
         { role: 'system', content: systemPrompt },
@@ -655,6 +662,7 @@ async function runUserAgent(saveData, optionText, apiConfig) {
         return {
             action: parsed.action || optionText,
             dialogue: parsed.dialogue || null,
+            notifications: uaNotifications,
         };
     } catch (e) {
         // JSON 解析失败，尝试从文本中提取
@@ -665,11 +673,12 @@ async function runUserAgent(saveData, optionText, apiConfig) {
                 return {
                     action: parsed.action || optionText,
                     dialogue: parsed.dialogue || null,
+                    notifications: uaNotifications,
                 };
             } catch (e2) {}
         }
         // 降级：直接使用选项文本作为行为描述
-        return { action: optionText, dialogue: null };
+        return { action: optionText, dialogue: null, notifications: uaNotifications };
     }
 }
 

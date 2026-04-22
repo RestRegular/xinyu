@@ -33,7 +33,8 @@ db.exec(`
         pinned INTEGER DEFAULT 0,
         archived INTEGER DEFAULT 0,
         created_at TEXT NOT NULL,
-        last_saved_at TEXT NOT NULL
+        last_saved_at TEXT NOT NULL,
+        render_history TEXT DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS world_templates (

@@ -46,7 +46,17 @@ router.get('/:id', (req, res) => {
     const row = db.prepare('SELECT data FROM saves WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: '存档不存在' });
     try {
-        res.json(JSON.parse(row.data));
+        let data = JSON.parse(row.data);
+        // 迁移旧格式 chatHistory
+        if (Array.isArray(data.chatHistory)) {
+            const { migrateSaveData } = require('../migrations/migrateChatHistory');
+            data = migrateSaveData(data);
+            // 持久化迁移结果
+            db.prepare('UPDATE saves SET data = ? WHERE id = ?').run(JSON.stringify(data), req.params.id);
+        }
+        // 返回 renderHistory
+        const renderHistory = data.renderHistory || null;
+        res.json({ ...data, renderHistory });
     } catch(e) {
         res.status(500).json({ error: '存档数据解析失败' });
     }

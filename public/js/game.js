@@ -2,6 +2,9 @@
 // ===== 游戏界面（重构版 - 纯 UI 展示层） =====
 // ===================================================================
 
+// 追踪已渲染的块索引（用于增量渲染）
+var currentLastBlockIndex = -1;
+
 // 格式化时间戳为可读时间
 function formatMessageTime(timestamp) {
     if (!timestamp) return '';
@@ -359,132 +362,261 @@ function refreshAllPanels() {
 // ===================================================================
 // ===== 消息渲染（纯 UI） =====
 // ===================================================================
-function renderGameMessages() {
+function renderGameMessages(data) {
     const container = document.getElementById('gameMessages');
-    const history = currentSave.chatHistory || [];
-    let html = '';
-    history.forEach(msg => {
-        if (msg.role === 'system') {
-            html += `<div class="msg msg-system">${escapeHtml(msg.content)}</div>`;
-        } else if (msg.role === 'user') {
-            const playerName = currentSave?.player?.name || '你';
-            const timeStr = formatMessageTime(msg.timestamp);
+    if (!container) return;
 
-            // 检查是否是结构化消息
-            if (msg.structured && msg.structured.content) {
-                let contentHtml;
-                const block = msg.structured.content[0];
-                if (block.action) {
-                    contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
-                } else if (block.dialogue) {
-                    contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
-                } else {
-                    contentHtml = `<div class="dialogue-text">"${escapeHtml(msg.content)}"</div>`;
-                }
-
-                html += `
-                    <div class="msg msg-player">
-                        <div class="player-card">
-                            <div class="player-card-header" style="margin-bottom:0;">
-                                <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
-                                <div class="player-card-header-right" style="margin-bottom:6px;">
-                                    <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
-                                    ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
-                                </div>
-                            </div>
-                            ${contentHtml}
-                        </div>
-                    </div>
-                `;
-            }
-        } else if (msg.role === 'assistant') {
-            // 支持结构化内容渲染（新格式）
-            if (msg.structured && msg.structured.content) {
-                msg.structured.content.forEach(block => {
-                    // 过滤掉工具返回的JSON（AI有时会错误地把工具结果写入content）
-                    if (block.type && !['narrative', 'scene', 'dialogue', 'action', 'combat', 'loot', 'character', 'player_action'].includes(block.type)) return;
-                    if (block.text && typeof block.text === 'string' && block.text.startsWith('{"success"')) return;
-                    if (block.type === 'player_action') {
-                        const playerName = currentSave?.player?.name || '你';
-                        const timeStr = formatMessageTime(block.timestamp);
-
-                        let contentHtml = '';
-                        if (block.action) {
-                            contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
-                        } else if (block.dialogue) {
-                            contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
-                        } else {
-                            contentHtml = `<div class="dialogue-text">"${escapeHtml(block.action || block.dialogue || '')}"</div>`;
-                        }
-
-                        html += `
-                            <div class="msg msg-player">
-                                <div class="player-card">
-                                    <div class="player-card-header" style="margin-bottom:0;">
-                                        <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
-                                        <div class="player-card-header-right" style="margin-bottom:6px;">
-                                            <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
-                                            ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
-                                        </div>
-                                    </div>
-                                    ${contentHtml}
-                                </div>
-                            </div>
-                        `;
-                    } else if (block.type === 'narrative') {
-                        html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
-                    } else if (block.type === 'scene') {
-                        html += `<div class="msg msg-scene"><div class="scene-card">${formatNarratorText(block.text)}</div></div>`;
-                    } else if (block.type === 'dialogue') {
-                        const speaker = escapeHtml(block.speaker || '???');
-                        html += `<div class="msg msg-dialogue"><div class="dialogue-bubble"><div class="dialogue-speaker">${speaker}</div><div class="dialogue-text">${escapeHtml(block.text)}</div></div></div>`;
-                    } else if (block.type === 'action') {
-                        html += `<div class="msg msg-action"><div class="action-text">${formatNarratorText(block.text)}</div></div>`;
-                    } else if (block.type === 'combat') {
-                        html += `<div class="msg msg-combat"><div class="combat-text">${formatNarratorText(block.text)}</div></div>`;
-                    } else if (block.type === 'loot') {
-                        html += `<div class="msg msg-loot"><div class="loot-text">${formatNarratorText(block.text)}</div></div>`;
-                    } else if (block.type === 'character') {
-                        const moodEmoji = getMoodEmoji(block.mood);
-                        const moodLabel = getMoodLabel(block.mood);
-                        let cardHtml = `<div class="msg msg-character"><div class="character-card">`;
-                        cardHtml += `<div class="character-card-header">`;
-                        cardHtml += `<span class="character-name">${escapeHtml(block.characterName || '未知角色')}</span>`;
-                        cardHtml += `<span class="character-mood ${block.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>`;
-                        cardHtml += `</div>`;
-                        if (block.reaction) cardHtml += `<div class="character-reaction">${escapeHtml(block.reaction)}</div>`;
-                        if (block.dialogue) cardHtml += `<div class="character-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
-                        cardHtml += `</div></div>`;
-                        html += cardHtml;
-                    } else {
-                        // 未知类型降级为 narrative
-                        html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
-                    }
-                });
-            } else {
-                // 兼容旧格式（纯文本 assistant 消息）
-                // 过滤掉工具返回的JSON泄漏
-                let text = msg.content || '';
-                if (text.trim().startsWith('{"success"') || text.trim().startsWith('{\n{"success"')) {
-                    text = '（系统数据已处理）';
-                }
-                html += `<div class="msg msg-narrator">${formatNarratorText(text)}</div>`;
-            }
-        } else if (msg.role === 'notification') {
-            const cls = msg.type === 'positive' ? 'positive' : msg.type === 'negative' ? 'negative' : 'info';
-            const icon = msg.type === 'positive' ? '✚' : msg.type === 'negative' ? '✖' : 'ℹ';
-            html += `<div class="msg"><div class="msg-notification ${cls}"><span class="notif-icon">${icon}</span>${escapeHtml(msg.content)}</div></div>`;
-        }
-    });
-    container.innerHTML = html;
-
-    // 渲染最后一条 assistant 消息的选项按钮（刷新后恢复）
-    const lastAssistant = history.slice().reverse().find(m => m.role === 'assistant' && m.structured?.options?.length > 0);
-    if (lastAssistant && lastAssistant.structured.options.length > 0) {
-        renderOptions(lastAssistant.structured.options);
+    // 如果没有传入 data，使用 currentSave.chatHistory（默认行为）
+    if (data === undefined) {
+        data = currentSave.chatHistory || [];
     }
 
+    // 新格式：renderBlocks 数组（每项有 id 字段标识为渲染块）
+    if (Array.isArray(data) && data.length > 0 && data[0].id) {
+        let html = '';
+        for (const block of data) {
+            html += renderBlock(block);
+        }
+        container.innerHTML = html;
+        currentLastBlockIndex = data.length - 1;
+        scrollToBottom();
+        return;
+    }
+
+    // 旧格式兼容：chatHistory 数组（按 role 分支渲染）
+    if (Array.isArray(data) && data.length > 0) {
+        let html = '';
+        data.forEach(msg => {
+            if (msg.role === 'system') {
+                html += `<div class="msg msg-system">${escapeHtml(msg.content)}</div>`;
+            } else if (msg.role === 'user') {
+                const playerName = currentSave?.player?.name || '你';
+                const timeStr = formatMessageTime(msg.timestamp);
+
+                // 检查是否是结构化消息
+                if (msg.structured && msg.structured.content) {
+                    let contentHtml;
+                    const block = msg.structured.content[0];
+                    if (block.action) {
+                        contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
+                    } else if (block.dialogue) {
+                        contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+                    } else {
+                        contentHtml = `<div class="dialogue-text">"${escapeHtml(msg.content)}"</div>`;
+                    }
+
+                    html += `
+                        <div class="msg msg-player">
+                            <div class="player-card">
+                                <div class="player-card-header" style="margin-bottom:0;">
+                                    <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
+                                    <div class="player-card-header-right" style="margin-bottom:6px;">
+                                        <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
+                                        ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
+                                    </div>
+                                </div>
+                                ${contentHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+            } else if (msg.role === 'assistant') {
+                // 支持结构化内容渲染（新格式）
+                if (msg.structured && msg.structured.content) {
+                    msg.structured.content.forEach(block => {
+                        // 过滤掉工具返回的JSON（AI有时会错误地把工具结果写入content）
+                        if (block.type && !['narrative', 'scene', 'dialogue', 'action', 'combat', 'loot', 'character', 'player_action'].includes(block.type)) return;
+                        if (block.text && typeof block.text === 'string' && block.text.startsWith('{"success"')) return;
+                        if (block.type === 'player_action') {
+                            const playerName = currentSave?.player?.name || '你';
+                            const timeStr = formatMessageTime(block.timestamp);
+
+                            let contentHtml = '';
+                            if (block.action) {
+                                contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
+                            } else if (block.dialogue) {
+                                contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+                            } else {
+                                contentHtml = `<div class="dialogue-text">"${escapeHtml(block.action || block.dialogue || '')}"</div>`;
+                            }
+
+                            html += `
+                                <div class="msg msg-player">
+                                    <div class="player-card">
+                                        <div class="player-card-header" style="margin-bottom:0;">
+                                            <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(playerName)}</span>
+                                            <div class="player-card-header-right" style="margin-bottom:6px;">
+                                                <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
+                                                ${timeStr ? `<span class="msg-time">${timeStr}</span>` : ''}
+                                            </div>
+                                        </div>
+                                        ${contentHtml}
+                                    </div>
+                                </div>
+                            `;
+                        } else if (block.type === 'narrative') {
+                            html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
+                        } else if (block.type === 'scene') {
+                            html += `<div class="msg msg-scene"><div class="scene-card">${formatNarratorText(block.text)}</div></div>`;
+                        } else if (block.type === 'dialogue') {
+                            const speaker = escapeHtml(block.speaker || '???');
+                            html += `<div class="msg msg-dialogue"><div class="dialogue-bubble"><div class="dialogue-speaker">${speaker}</div><div class="dialogue-text">${escapeHtml(block.text)}</div></div></div>`;
+                        } else if (block.type === 'action') {
+                            html += `<div class="msg msg-action"><div class="action-text">${formatNarratorText(block.text)}</div></div>`;
+                        } else if (block.type === 'combat') {
+                            html += `<div class="msg msg-combat"><div class="combat-text">${formatNarratorText(block.text)}</div></div>`;
+                        } else if (block.type === 'loot') {
+                            html += `<div class="msg msg-loot"><div class="loot-text">${formatNarratorText(block.text)}</div></div>`;
+                        } else if (block.type === 'character') {
+                            const moodEmoji = getMoodEmoji(block.mood);
+                            const moodLabel = getMoodLabel(block.mood);
+                            let cardHtml = `<div class="msg msg-character"><div class="character-card">`;
+                            cardHtml += `<div class="character-card-header">`;
+                            cardHtml += `<span class="character-name">${escapeHtml(block.characterName || '未知角色')}</span>`;
+                            cardHtml += `<span class="character-mood ${block.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>`;
+                            cardHtml += `</div>`;
+                            if (block.reaction) cardHtml += `<div class="character-reaction">${escapeHtml(block.reaction)}</div>`;
+                            if (block.dialogue) cardHtml += `<div class="character-dialogue">"${escapeHtml(block.dialogue)}"</div>`;
+                            cardHtml += `</div></div>`;
+                            html += cardHtml;
+                        } else {
+                            // 未知类型降级为 narrative
+                            html += `<div class="msg msg-narrator">${formatNarratorText(block.text)}</div>`;
+                        }
+                    });
+                } else {
+                    // 兼容旧格式（纯文本 assistant 消息）
+                    // 过滤掉工具返回的JSON泄漏
+                    let text = msg.content || '';
+                    if (text.trim().startsWith('{"success"') || text.trim().startsWith('{\n{"success"')) {
+                        text = '（系统数据已处理）';
+                    }
+                    html += `<div class="msg msg-narrator">${formatNarratorText(text)}</div>`;
+                }
+            } else if (msg.role === 'notification') {
+                const cls = msg.type === 'positive' ? 'positive' : msg.type === 'negative' ? 'negative' : 'info';
+                const icon = msg.type === 'positive' ? '✚' : msg.type === 'negative' ? '✖' : 'ℹ';
+                html += `<div class="msg"><div class="msg-notification ${cls}"><span class="notif-icon">${icon}</span>${escapeHtml(msg.content)}</div></div>`;
+            }
+        });
+        container.innerHTML = html;
+
+        // 渲染最后一条 assistant 消息的选项按钮（刷新后恢复）
+        const lastAssistant = data.slice().reverse().find(m => m.role === 'assistant' && m.structured?.options?.length > 0);
+        if (lastAssistant && lastAssistant.structured.options.length > 0) {
+            renderOptions(lastAssistant.structured.options);
+        }
+
+        scrollToBottom();
+        return;
+    }
+
+    container.innerHTML = '';
+}
+
+// ----- 新格式渲染块函数（renderBlock 系列） -----
+
+function appendRenderBlocks(blocks) {
+    const container = document.getElementById('gameMessages');
+    if (!container) return;
+
+    for (const block of blocks) {
+        container.insertAdjacentHTML('beforeend', renderBlock(block));
+    }
     scrollToBottom();
+}
+
+function renderBlock(block) {
+    switch (block.type) {
+        case 'system':
+            return `<div class="msg msg-system">${escapeHtml(block.data.text)}</div>`;
+        case 'player':
+            return renderPlayerBlock(block);
+        case 'narrative':
+            return `<div class="msg msg-narrator">${formatNarratorText(block.data.text)}</div>`;
+        case 'scene':
+            return `<div class="msg msg-scene"><div class="scene-card">${formatNarratorText(block.data.text)}</div></div>`;
+        case 'dialogue':
+            return renderDialogueBlock(block);
+        case 'action':
+            return `<div class="msg msg-action"><div class="action-text">${formatNarratorText(block.data.text)}</div></div>`;
+        case 'combat':
+            return `<div class="msg msg-combat"><div class="combat-text">${formatNarratorText(block.data.text)}</div></div>`;
+        case 'loot':
+            return `<div class="msg msg-loot"><div class="loot-text">${formatNarratorText(block.data.text)}</div></div>`;
+        case 'character':
+            return renderCharacterBlock(block);
+        case 'notification':
+            return renderNotificationBlock(block);
+        default:
+            return `<div class="msg msg-narrator">${escapeHtml(block.data?.text || '')}</div>`;
+    }
+}
+
+function renderPlayerBlock(block) {
+    const d = block.data;
+    const time = formatTime(block.timestamp);
+    let html = `<div class="msg msg-player">
+        <div class="player-card">
+            <div class="player-card-header" style="margin-bottom:0;">
+                <span class="dialogue-speaker" style="color:#3B82F6;">${escapeHtml(currentSave?.player?.name || '你')}</span>
+                <div class="player-card-header-right" style="margin-bottom:6px;">
+                    <span class="player-card-tag you" style="padding:1px 8px;font-size:8px;">你</span>
+                    ${time ? `<span class="msg-time">${time}</span>` : ''}
+                </div>
+            </div>`;
+    if (d.action) {
+        html += `<div class="player-action">${formatNarratorText(d.action)}</div>`;
+    }
+    if (d.dialogue) {
+        html += `<div class="dialogue-text">"${escapeHtml(d.dialogue)}"</div>`;
+    }
+    html += '</div></div>';
+    return html;
+}
+
+function renderDialogueBlock(block) {
+    const d = block.data;
+    const speaker = escapeHtml(d.speaker || '???');
+    return `<div class="msg msg-dialogue">
+        <div class="dialogue-bubble">
+            <div class="dialogue-speaker">${speaker}</div>
+            <div class="dialogue-text">${escapeHtml(d.text)}</div>
+        </div>
+    </div>`;
+}
+
+function renderCharacterBlock(block) {
+    const d = block.data;
+    const moodEmoji = getMoodEmoji(d.mood);
+    const moodLabel = getMoodLabel(d.mood);
+    let html = `<div class="msg msg-character">
+        <div class="character-card">
+            <div class="character-card-header">
+                <span class="character-name">${escapeHtml(d.characterName || '未知角色')}</span>
+                <span class="character-mood ${d.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>
+            </div>`;
+    if (d.reaction) {
+        html += `<div class="character-reaction">${escapeHtml(d.reaction)}</div>`;
+    }
+    if (d.dialogue) {
+        html += `<div class="character-dialogue">"${escapeHtml(d.dialogue)}"</div>`;
+    }
+    html += '</div></div>';
+    return html;
+}
+
+function renderNotificationBlock(block) {
+    const d = block.data;
+    const cls = d.notifType === 'positive' ? 'positive' : d.notifType === 'negative' ? 'negative' : 'info';
+    const icon = d.notifType === 'positive' ? '✚' : d.notifType === 'negative' ? '✖' : 'ℹ';
+    return `<div class="msg"><div class="msg-notification ${cls}"><span class="notif-icon">${icon}</span>${escapeHtml(d.text)}</div></div>`;
+}
+
+// 格式化时间（兼容 renderBlock 使用的 timestamp）
+function formatTime(timestamp) {
+    if (!timestamp) return '';
+    return formatMessageTime(timestamp);
 }
 
 function formatNarratorText(text) {
