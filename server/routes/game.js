@@ -165,7 +165,7 @@ function getTemplateById(id) {
 // ===== POST /api/game/action — 统一游戏动作（核心接口） =====
 // ===================================================================
 router.post('/action', async (req, res) => {
-    const { saveId, userMessage, isOption } = req.body;
+    const { saveId, userMessage, isOption, lastBlockIndex } = req.body;
     if (!saveId || !userMessage) return res.status(400).json({ error: '缺少 saveId 或 userMessage' });
 
     const apiKey = getApiKey();
@@ -291,7 +291,7 @@ router.post('/action', async (req, res) => {
         logger.debug('[Action] Save persisted');
 
         // 返回增量渲染数据
-        const renderData = rdm.getRenderData();
+        const renderData = rdm.getRenderData(lastBlockIndex != null ? lastBlockIndex : -1);
         res.json({
             renderData,
             content: finalContent,
