@@ -51,7 +51,9 @@
                 // 统一渲染
                 const container = document.getElementById('gameMessages');
                 if (container) {
-                    for (const item of allItems) {
+                    const msgs = data.chatHistory.messages;
+                    for (let i = 0; i < allItems.length; i++) {
+                        const item = allItems[i];
                         if (item._source === 'notification') {
                             container.insertAdjacentHTML('beforeend',
                                 `<div class="msg"><div class="msg-notification ${item.data.notifType || 'info'}"><span class="notif-icon">${item.data.notifType === 'positive' ? '✚' : item.data.notifType === 'negative' ? '✖' : 'ℹ'}</span>${escapeHtml(item.data.text)}</div></div>`
@@ -60,6 +62,12 @@
                             // message 格式渲染
                             if (item.role === 'user') {
                                 if (item.content && item.content.startsWith('[系统]')) continue;
+                                // 检查下一条 assistant 消息是否包含 player_action（避免重复渲染）
+                                const nextAssistant = msgs[msgs.indexOf(item) + 1];
+                                if (nextAssistant && nextAssistant.role === 'assistant' && nextAssistant.structured && nextAssistant.structured.content) {
+                                    const hasPlayerAction = nextAssistant.structured.content.some(b => b.type === 'player_action');
+                                    if (hasPlayerAction) continue; // player_action 会渲染完整的 player card
+                                }
                                 container.insertAdjacentHTML('beforeend',
                                     `<div class="msg"><div class="msg-player">${escapeHtml(item.content)}</div></div>`
                                 );

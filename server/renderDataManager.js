@@ -132,10 +132,12 @@ class RenderDataManager {
             } else if (msg.role === 'assistant' && msg.structured && msg.structured.content) {
                 for (const block of msg.structured.content) {
                     if (!this._isRenderableBlock(block)) continue;
+                    const converted = this._convertContentBlock(block);
+                    if (!converted) continue;
                     allBlocks.push({
                         id: this._generateId(),
                         timestamp: msg.timestamp || new Date().toISOString(),
-                        ...this._convertContentBlock(block),
+                        ...converted,
                     });
                 }
                 if (msg.structured.options) {
