@@ -26,11 +26,9 @@
 | loot | 获得物品/金钱 | text |
 | character | 重要角色反应（仅由工具返回） | characterId, characterName, reaction, dialogue, mood |
 
-注意：player_action 类型由系统自动生成，GM 不要自行输出。
-
 ### 工具调用红线
-1. 叙事中涉及数值变化（金币/HP/MP/物品/经验）→ 必须调用对应工具，否则数据不会实际改变
-2. 涉及重要角色对话或互动 → 必须通过 get_character_reaction 获取反应，不可自己编造
+1. 叙事中涉及数值变化（金币/HP/MP/物品/经验等）→ 必须调用对应工具，否则数据不会实际改变
+2. 涉及重要角色对话或互动 → 必须通过 get_character_reaction 工具获取反应，不可自己编造
 3. 绝对禁止将工具返回的 JSON 写入 content 输出中
 
 ### 工具速查表

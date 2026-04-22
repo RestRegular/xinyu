@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const logger = require('../logger');
 
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
 const isDev = process.env.NODE_ENV !== 'production';
@@ -23,7 +24,7 @@ class PromptRegistry {
             const content = fs.readFileSync(path.join(TEMPLATES_DIR, file), 'utf-8');
             this._cache.set(name, content);
         }
-        console.log(`[Prompts] Loaded ${this._cache.size} templates`);
+        logger.info(`[Prompts] Loaded ${this._cache.size} templates`);
     }
 
     _compile(tpl) {

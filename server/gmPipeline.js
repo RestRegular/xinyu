@@ -398,9 +398,9 @@ class Pipeline {
 
         logger.info('[Pipeline] Starting run', { messageCount: messages.length });
 
-        const MAX_LOOPS = 5;
-        const MAX_RETRIES = 2;
-        const API_TIMEOUT = 90000;
+        const MAX_LOOPS = 10;
+        const MAX_RETRIES = 3;
+        const API_TIMEOUT = 5 * 60 * 1000;
 
         let loopCount = 0;
         while (loopCount < MAX_LOOPS) {
