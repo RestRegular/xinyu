@@ -427,7 +427,7 @@ class Pipeline {
                     let fnArgs;
                     try { fnArgs = JSON.parse(tc.function.arguments); } catch (e) { fnArgs = {}; }
 
-                    logger.debug(`[Pipeline] Tool call: ${fnName}`, { args: fnArgs });
+                    logger.info(`[Pipeline] Tool call: ${fnName}`, { args: fnArgs });
 
                     // 查找负责的 Agent
                     const agent = this.getAgentForTool(fnName);
@@ -445,20 +445,20 @@ class Pipeline {
                     const agentTimer = logger.timer();
                     const toolResult = await agent.executeAsync(fnName, fnArgs, saveData, apiConfig);
                     agentTimer.done(`Agent:${agent.name}`);
-                    logger.debug(`[Pipeline] Tool result: ${fnName}`, { success: !toolResult.error });
+                    logger.info(`[Pipeline] Tool result: ${fnName}`, { success: !toolResult.error, hasNotifications: !!(toolResult.notifications?.length) });
                     if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
                     // 返回真实结果给 AI
                     messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
                     totalToolCalls++;
                 }
-                logger.debug(`[Pipeline] Loop ${loopCount} completed`, { toolCalls: result.tool_calls.length });
+                logger.info(`[Pipeline] Loop ${loopCount} completed`, { toolCalls: result.tool_calls.length });
                 continue;
             }
             break;
         }
 
         // ===== Phase 2: 各 Agent 后处理（并行） =====
-        logger.debug('[Pipeline] Phase 2: Post-processing');
+        logger.info('[Pipeline] Phase 2: Post-processing');
         const postProcessPromises = this.agents.map(agent => agent.postProcess(saveData, apiConfig));
         const postResults = await Promise.all(postProcessPromises);
         for (const notifications of postResults) {
@@ -466,14 +466,19 @@ class Pipeline {
         }
 
         // Agent 调用摘要
+        const toolCallLog = []; // 收集工具调用详情，返回给前端用于调试
         for (const agent of this.agents) {
             if (agent.callLog.length > 0) {
-                logger.debug(`[Agent:${agent.name}] ${agent.callLog.length} tool calls`);
+                logger.info(`[Agent:${agent.name}] ${agent.callLog.length} tool calls`);
+                for (const log of agent.callLog) {
+                    toolCallLog.push({ agent: agent.name, ...log });
+                    logger.info(`[Agent:${agent.name}] ${log.toolName}`, { args: log.args, success: log.success });
+                }
             }
         }
 
         // ===== Phase 3: 解析最终输出 =====
-        logger.debug('[Pipeline] Parsing GM output');
+        logger.info('[Pipeline] Parsing GM output');
         // 找到最后一条 assistant 消息（跳过 tool 消息）
         let lastAssistantMsg = null;
         for (let i = messages.length - 1; i >= 0; i--) {
@@ -501,6 +506,7 @@ class Pipeline {
             saveData,
             loops: loopCount,
             toolCallCount: totalToolCalls,
+            toolCallLog,
         };
     }
 
