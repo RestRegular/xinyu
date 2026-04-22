@@ -54,19 +54,6 @@ async function callAI(userText, isOption = false) {
         // 移除打字指示器
         removeTypingIndicator();
 
-        // 调试信息输出到控制台
-        if (result.loops != null || result.toolCallCount != null) {
-            console.log(`[GM Pipeline] ${result.loops} loops, ${result.toolCallCount} tool calls`);
-        }
-        if (result.toolCallLog && result.toolCallLog.length > 0) {
-            console.table(result.toolCallLog.map(t => ({
-                agent: t.agent,
-                tool: t.toolName,
-                success: t.success,
-                args: JSON.stringify(t.args)?.slice(0, 80),
-            })));
-        }
-
         // 用后端返回的完整存档数据更新前端状态
         if (result.saveData) {
             currentSave = result.saveData;
