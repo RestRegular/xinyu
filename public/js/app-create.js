@@ -57,6 +57,7 @@ function populateStep2() {
         document.getElementById('createWorldDesc').value = '';
         document.getElementById('createWorldRules').value = '';
         document.getElementById('createCustomPrompt').value = '';
+        document.getElementById('createOpeningPrompt').value = '';
         document.getElementById('createTone').value = '史诗';
         document.getElementById('createStartLocation').value = '';
         document.getElementById('createStartLocationDesc').value = '';
@@ -84,6 +85,7 @@ function populateStep2() {
         document.getElementById('createWorldDesc').value = tpl.world.description;
         document.getElementById('createWorldRules').value = tpl.world.rules;
         document.getElementById('createCustomPrompt').value = tpl.world.customPrompt || '';
+        document.getElementById('createOpeningPrompt').value = tpl.world.openingPrompt || '';
         document.getElementById('createTone').value = tpl.world.tone;
         document.getElementById('createStartLocation').value = tpl.starterLocation || '';
         document.getElementById('createStartLocationDesc').value = tpl.starterLocationDesc || '';
