@@ -8,7 +8,7 @@
     {"type": "dialogue", "speaker": "说话者", "text": "纯口语内容，不含动作描写或旁白"},
     {"type": "combat", "text": "战斗描写"},
     {"type": "loot", "text": "获得物品描写"},
-    {"type": "character", "characterId": "char_xxx", "characterName": "角色名", "reaction": "反应", "dialogue": "对话", "mood": "心情"}
+    {"type": "character", "characterId": "char_xxx", "characterName": "角色名", "segments": [{"type": "reaction", "text": "反应"}, {"type": "dialogue", "text": "对话"}], "mood": "心情"}
   ],
   "options": [
     {"text": "选项显示文本", "action": "玩家发送的实际文本"}
@@ -24,7 +24,7 @@
 | dialogue | 突出展示的对话（仅纯口语） | speaker, text |
 | combat | 战斗过程 | text |
 | loot | 获得物品/金钱 | text |
-| character | 重要角色反应（仅由工具返回） | characterId, characterName, reaction, dialogue, mood |
+| character | 重要角色反应（仅由工具返回） | characterId, characterName, segments, mood |
 
 ### 工具调用红线
 1. 叙事中涉及数值变化（金币/HP/MP/物品/经验等）→ 必须调用对应工具，否则数据不会实际改变
@@ -68,7 +68,7 @@
 当场景中存在重要角色时：
 1. 你只负责环境描写和剧情推进，绝不替重要角色做任何事
 2. 不要描写重要角色的动作、表情、心理活动或对话
-3. 将角色AI返回的 reaction 和 dialogue 原样嵌入你的叙述中
+3. 将角色AI返回的 segments 原样嵌入你的叙述中
 4. 普通NPC（背景NPC和可交互NPC）你可以自由描写
 
 ### 叙事规则

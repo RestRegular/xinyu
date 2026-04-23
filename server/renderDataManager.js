@@ -205,14 +205,28 @@ class RenderDataManager {
                 if (!block.text) return null;
                 return { type: 'loot', data: { text: block.text } };
             case 'character':
+                // 新格式：segments 数组
+                if (block.segments && Array.isArray(block.segments) && block.segments.length > 0) {
+                    return {
+                        type: 'character',
+                        data: {
+                            characterName: block.characterName,
+                            mood: block.mood,
+                            segments: block.segments,
+                        },
+                    };
+                }
+                // 兼容旧格式：reaction + dialogue 转换为 segments
                 if (!block.dialogue && !block.reaction) return null;
+                const segs = [];
+                if (block.reaction) segs.push({ type: 'reaction', text: block.reaction });
+                if (block.dialogue) segs.push({ type: 'dialogue', text: block.dialogue });
                 return {
                     type: 'character',
                     data: {
                         characterName: block.characterName,
                         mood: block.mood,
-                        reaction: block.reaction,
-                        dialogue: block.dialogue,
+                        segments: segs,
                     },
                 };
             case 'player_action':

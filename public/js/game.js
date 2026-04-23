@@ -618,20 +618,32 @@ function renderCharacterBlock(block) {
                 <span class="character-name">${escapeHtml(d.characterName || '未知角色')}</span>
                 <span class="character-mood ${d.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>
             </div>`;
-    if (d.reaction) {
-        // 支持换行分隔的多段 reaction
-        const reactions = d.reaction.split('\n').filter(s => s.trim());
-        for (const r of reactions) {
-            html += `<div class="character-reaction">${escapeHtml(r.trim())}</div>`;
+
+    if (d.segments && Array.isArray(d.segments)) {
+        // 新格式：按 segments 数组顺序渲染
+        for (const seg of d.segments) {
+            if (seg.type === 'reaction' && seg.text) {
+                html += `<div class="character-reaction">${escapeHtml(seg.text)}</div>`;
+            } else if (seg.type === 'dialogue' && seg.text) {
+                html += `<div class="character-dialogue">${escapeHtml(seg.text)}</div>`;
+            }
+        }
+    } else {
+        // 兼容旧格式：reaction + dialogue
+        if (d.reaction) {
+            const reactions = d.reaction.split('\n').filter(s => s.trim());
+            for (const r of reactions) {
+                html += `<div class="character-reaction">${escapeHtml(r.trim())}</div>`;
+            }
+        }
+        if (d.dialogue) {
+            const dialogues = d.dialogue.split('\n').filter(s => s.trim());
+            for (const dl of dialogues) {
+                html += `<div class="character-dialogue">${escapeHtml(dl.trim())}</div>`;
+            }
         }
     }
-    if (d.dialogue) {
-        // 支持换行分隔的多段 dialogue
-        const dialogues = d.dialogue.split('\n').filter(s => s.trim());
-        for (const dl of dialogues) {
-            html += `<div class="character-dialogue">${escapeHtml(dl.trim())}</div>`;
-        }
-    }
+
     html += '</div></div>';
     return html;
 }

@@ -29,16 +29,21 @@
 
 你必须返回以下 JSON（不要输出任何其他内容）：
 {
-    "reaction": "描述你的动作、表情、肢体语言（第三人称，生动有画面感，供GM融入叙述）",
-    "dialogue": "你说的原话，用「」包裹，只包含口语内容，不含任何动作描写、旁白或叙述",
+    "segments": [
+        {"type": "reaction", "text": "你的动作、表情、肢体语言（第三人称，生动有画面感）"},
+        {"type": "dialogue", "text": "你说的原话，用「」包裹"},
+        {"type": "reaction", "text": "继续动作描写..."},
+        {"type": "dialogue", "text": "继续对话..."}
+    ],
     "mood": "你当前的心情（一个词，如happy/angry/sad/suspicious/nervous/excited等）"
 }
 
-严格区分规则：
-- reaction：仅写动作、表情、肢体语言等外在行为描写，不包含任何对话内容
+segments 规则：
+- 按时间顺序排列，reaction 和 dialogue 可以交错出现
+- reaction：仅写动作、表情、肢体语言，不包含任何对话内容
 - dialogue：仅写口语内容，不包含任何动作描写、表情变化或旁白叙述
-- 如果有多段对话或多个动作，用换行符分隔，每段独立完整
 - 不要在 dialogue 中用括号描写动作（如"（微笑）"），动作全部放在 reaction 中
+- segments 数组至少包含一个元素，通常以 reaction 开头
 
 注意：
 - 始终保持角色一致性，不要OOC（out of character）

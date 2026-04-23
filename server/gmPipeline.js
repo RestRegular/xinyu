@@ -227,21 +227,33 @@ class StoryAgent extends BaseAgent {
         }
 
         // 解析角色 AI 返回的 JSON
-        let charReaction = { reaction: '', dialogue: '', mood: 'neutral' };
+        let charReaction = { segments: [], mood: 'neutral' };
         try {
             const jsonMatch = result.content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) charReaction = { ...charReaction, ...JSON.parse(jsonMatch[0]) };
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                // 新格式：segments 数组
+                if (parsed.segments && Array.isArray(parsed.segments)) {
+                    charReaction.segments = parsed.segments;
+                } else {
+                    // 兼容旧格式：reaction + dialogue 转换为 segments
+                    const segs = [];
+                    if (parsed.reaction) segs.push({ type: 'reaction', text: parsed.reaction });
+                    if (parsed.dialogue) segs.push({ type: 'dialogue', text: parsed.dialogue });
+                    charReaction.segments = segs.length > 0 ? segs : [{ type: 'dialogue', text: result.content }];
+                }
+                charReaction.mood = parsed.mood || 'neutral';
+            }
         } catch (e) {
-            charReaction.dialogue = result.content;
+            charReaction.segments = [{ type: 'dialogue', text: result.content }];
         }
 
         return {
             success: true,
             characterId: character.id,
             characterName: character.name,
-            reaction: charReaction.reaction || '',
-            dialogue: charReaction.dialogue || '',
-            mood: charReaction.mood || 'neutral',
+            segments: charReaction.segments,
+            mood: charReaction.mood,
             relationship_value: character.relationship.value,
             relationship_title: character.relationship.title,
         };
