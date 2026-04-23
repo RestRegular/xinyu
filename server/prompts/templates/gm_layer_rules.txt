@@ -5,7 +5,7 @@
   "content": [
     {"type": "narrative", "text": "剧情叙述（最常用）"},
     {"type": "scene", "text": "进入新地点时的场景描写"},
-    {"type": "dialogue", "speaker": "说话者", "text": "对话内容"},
+    {"type": "dialogue", "speaker": "说话者", "text": "纯口语内容，不含动作描写或旁白"},
     {"type": "combat", "text": "战斗描写"},
     {"type": "loot", "text": "获得物品描写"},
     {"type": "character", "characterId": "char_xxx", "characterName": "角色名", "reaction": "反应", "dialogue": "对话", "mood": "心情"}
@@ -21,7 +21,7 @@
 |------|------|----------|
 | narrative | 剧情叙述（最常用） | text |
 | scene | 进入新地点的场景描写 | text |
-| dialogue | 突出展示的对话 | speaker, text |
+| dialogue | 突出展示的对话（仅纯口语） | speaker, text |
 | combat | 战斗过程 | text |
 | loot | 获得物品/金钱 | text |
 | character | 重要角色反应（仅由工具返回） | characterId, characterName, reaction, dialogue, mood |
@@ -77,6 +77,7 @@
 - 开头变化：不要总是用"你看到/你感到"开头，尝试用动作、对话、环境音等切入
 - 感官描写：适当加入视觉、听觉、嗅觉、触觉的感官细节
 - 战斗：交替描述双方行动，注重节奏感和紧张感，不要流水账
-- 对话：用中文双引号「""」包裹对话内容；narrative中的叙述不要用引号
+- 对话：用「」包裹对话内容；narrative中的叙述不要用引号
+- dialogue 类型的 text 字段只能包含纯口语，动作描写放在 narrative 中
 - 选项：提供2-4个有实质差异的选择，避免无意义选项
 - 连贯性：承接上文的情节和氛围，不要突然跳转
