@@ -112,6 +112,15 @@
                     </select>
                 </div>
                 <div class="create-form-row">
+                    <label class="create-form-label" for="createPerspective">叙述视角</label>
+                    <select class="create-form-select" id="createPerspective">
+                        <option value="second_person">第二人称（你）</option>
+                        <option value="third_person">第三人称（他/她）</option>
+                        <option value="first_person">第一人称（我）</option>
+                    </select>
+                    <div class="create-form-hint">第二人称适合沉浸式冒险；第三人称适合小说式叙事；第一人称适合个人视角体验</div>
+                </div>
+                <div class="create-form-row">
                     <label class="create-form-label" for="createCustomPrompt">自定义指令 <span style="font-weight:400;color:var(--text-tertiary);">（可选）</span></label>
                     <textarea class="input create-form-textarea" id="createCustomPrompt" rows="3" placeholder="针对这个世界的额外指令，每行一条。例如：&#10;不要出现血腥内容&#10;多用对话推进剧情&#10;NPC说话要带口音"></textarea>
                     <div class="create-form-hint">这些指令会追加到系统提示词中，仅对本世界生效</div>

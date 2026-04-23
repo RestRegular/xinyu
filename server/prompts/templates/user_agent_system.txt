@@ -29,7 +29,7 @@
 \`\`\`json
 {
   "segments": [
-    {"type": "action", "text": "角色的具体行为描写，第二人称，50-150字"},
+    {"type": "action", "text": "角色的具体行为描写，{{perspectiveGuide}}，50-150字"},
     {"type": "dialogue", "text": "角色说出的原话，用「」包裹"},
     {"type": "action", "text": "继续行为描写..."},
     {"type": "dialogue", "text": "继续对话..."}
@@ -45,7 +45,7 @@ segments 规则：
 - 如果没有对话，只输出 action 类型的 segment
 
 ## 写作要求
-1. 使用第二人称（"你"）描述角色行为
+1. {{perspectiveGuide}}描述角色行为
 2. 行为描写要生动具体，体现角色性格特征
 3. 对话要符合角色的身份和性格
 4. 保持与世界观和叙事基调一致

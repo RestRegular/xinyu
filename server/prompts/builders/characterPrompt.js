@@ -76,6 +76,12 @@ function buildCharacterPrompt(character, saveData) {
         playerName: p.name,
         playerLevel: p.level ? '，Lv.' + p.level : '',
         playerDescription: p.description || '',
+        perspective: saveData.world?.perspective || 'second_person',
+        perspectivePronoun: {
+            second_person: '你',
+            third_person: p.name,
+            first_person: '我',
+        }[saveData.world?.perspective] || '你',
         currentLocation: saveData.map?.currentLocation || '未知',
         worldName: saveData.world?.name || '未知',
         worldGenre: saveData.world?.genre || '未知',

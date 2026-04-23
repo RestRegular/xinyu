@@ -128,6 +128,12 @@ function buildGmPrompt(saveData, appConfig) {
         worldDescription: s.world.description,
         worldTone: s.world.tone,
         toneGuide,
+        perspective: s.world.perspective || 'second_person',
+        perspectiveGuide: {
+            second_person: '使用第二人称（"你"）叙述，让读者代入主角视角',
+            third_person: '使用第三人称（"他/她"+ 玩家名字）叙述，像小说一样描写主角',
+            first_person: '使用第一人称（"我"）叙述，以主角的口吻讲述故事',
+        }[s.world.perspective] || '使用第二人称（"你"）叙述',
         worldRules,
         narrativeTips: narrativeTipsLine,
         itemNamingStyle: itemNamingLine,

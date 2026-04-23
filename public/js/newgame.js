@@ -17,6 +17,7 @@ async function autofillForm() {
             worldDesc: getVal('createWorldDesc'),
             worldRules: getVal('createWorldRules'),
             tone: getVal('createTone'),
+            perspective: getVal('createPerspective'),
             startLocation: getVal('createStartLocation'),
             startLocationDesc: getVal('createStartLocationDesc'),
             playerName: getVal('createPlayerName'),
@@ -163,6 +164,7 @@ function populateStep2FromTemplate(tpl) {
     setVal('createWorldDesc', tpl.world?.description);
     setVal('createWorldRules', tpl.world?.rules);
     setVal('createTone', tpl.world?.tone);
+    setVal('createPerspective', tpl.world?.perspective);
     setVal('createCustomPrompt', tpl.world?.customPrompt);
     setVal('createStartLocation', tpl.starterLocation);
     setVal('createStartLocationDesc', tpl.starterLocationDesc);
@@ -193,6 +195,7 @@ async function createNewGame() {
     const worldRules = document.getElementById('createWorldRules').value.trim();
     const customPrompt = document.getElementById('createCustomPrompt').value.trim();
     const tone = document.getElementById('createTone').value || '史诗';
+    const perspective = document.getElementById('createPerspective').value || 'second_person';
     const startLocation = document.getElementById('createStartLocation').value.trim() || '起始之地';
     const startLocationDesc = document.getElementById('createStartLocationDesc').value.trim() || '你站在这片陌生土地的起点。';
     const playerName = document.getElementById('createPlayerName').value.trim() || '旅行者';
@@ -210,7 +213,7 @@ async function createNewGame() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone,
+                saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, perspective,
                 startLocation, startLocationDesc,
                 playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory,
                 startGold, templateId: selectedTemplate,

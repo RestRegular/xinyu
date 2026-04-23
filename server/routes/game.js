@@ -465,6 +465,7 @@ router.post('/create', (req, res) => {
     let effectiveWorldName = worldName || '未知世界', effectiveGenre = genre || '自定义';
     let effectiveWorldDesc = worldDesc || '一个未知的世界', effectiveWorldRules = worldRules || '';
     let effectiveTone = tone || '史诗';
+    let effectivePerspective = perspective || 'second_person';
     let effectiveStartLocation = startLocation || '起始之地';
     let effectiveStartLocationDesc = startLocationDesc || '你站在这片陌生土地的起点。';
 
@@ -476,6 +477,7 @@ router.post('/create', (req, res) => {
             effectiveWorldName = tpl.world.name; effectiveGenre = tpl.world.genre;
             effectiveWorldDesc = tpl.world.description; effectiveWorldRules = tpl.world.rules || '';
             effectiveTone = tpl.world.tone;
+            effectivePerspective = tpl.world.perspective || effectivePerspective;
             effectiveStartLocation = tpl.starterLocation; effectiveStartLocationDesc = tpl.starterLocationDesc;
         } else if (Array.isArray(customStarterItems)) {
             // 对于导入的模板，使用自定义的初始物品
@@ -490,7 +492,7 @@ router.post('/create', (req, res) => {
 
     const saveData = {
         id, name: saveName || '未命名的冒险', version: '1.0',
-        world: { name: effectiveWorldName, genre: effectiveGenre, description: effectiveWorldDesc, rules: effectiveWorldRules, tone: effectiveTone, customPrompt: customPrompt || '' },
+        world: { name: effectiveWorldName, genre: effectiveGenre, description: effectiveWorldDesc, rules: effectiveWorldRules, tone: effectiveTone, perspective: effectivePerspective, customPrompt: customPrompt || '' },
         player: { name: playerName || '旅行者', gender: playerGender || '未设定', age: playerAge || '未设定', appearance: playerAppearance || '', personality: playerPersonality || '', occupation: playerClass || '', backstory: playerBackstory || '', description: playerDesc, level: 1, experience: 0, experienceToNext: 100, attributes: { hp: { current: 100, max: 100, label: '生命值' }, mp: { current: 50, max: 50, label: '魔力值' }, attack: { current: 10, max: 10, label: '攻击力' }, defense: { current: 5, max: 5, label: '防御力' }, agility: { current: 7, max: 7, label: '敏捷' }, luck: { current: 3, max: 3, label: '幸运' } }, statusEffects: [] },
         inventory: { items: finalStarterItems.map((item, i) => ({ id: 'item_' + Date.now() + '_' + i, name: item.name, type: item.type, description: item.description || '', quantity: item.quantity || 1, effects: item.effects || {}, rarity: item.rarity || 'common', usable: item.usable || false, equippable: item.equippable || false, equipped: false })), gold: finalStarterGold, maxSlots: 20 },
         map: { currentLocation: effectiveStartLocation, locations: { [effectiveStartLocation]: { description: effectiveStartLocationDesc, connections: [], npcs: [], discovered: true, dangerLevel: 0 } } },
@@ -576,6 +578,7 @@ router.get('/templates/export/:saveId', (req, res) => {
             description: world.description || '',
             rules: world.rules || '',
             tone: world.tone || '',
+            perspective: world.perspective || '',
             customPrompt: world.customPrompt || '',
         },
         starterLocation: saveData.map?.currentLocation || '',
