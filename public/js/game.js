@@ -48,57 +48,110 @@ function updateSidebar() {
     document.getElementById('sidebarConnections').innerHTML = html || '<span style="font-size:12px;color:var(--text-tertiary);">无已知路径</span>';
 }
 
-function updateAttributesPanel() {
+// ===================================================================
+// ===== 面板渲染工具 =====
+// ===================================================================
+
+const PANEL_PREVIEW_LIMIT = 3;
+
+/**
+ * 渲染面板预览：取前N项 + "查看全部"按钮
+ * @param {string} panelId - 右侧面板容器的ID（如 'inventoryPanel'）
+ * @param {string} fullHtml - 完整的列表 HTML
+ * @param {string} panelType - 面板类型（用于 showPanelModal）
+ * @param {string} emptyText - 空状态文本
+ * @param {boolean} isPlainText - 是否为纯文本（非列表项）
+ */
+function renderPanelPreview(panelId, fullHtml, panelType, emptyText, isPlainText = false) {
+    const el = document.getElementById(panelId);
+    if (!fullHtml || fullHtml.trim() === '') {
+        el.innerHTML = `<span style="font-size:12px;color:var(--text-tertiary);">${emptyText}</span>`;
+        return;
+    }
+    // 纯文本（如属性面板）不做截取
+    if (isPlainText) {
+        el.innerHTML = fullHtml;
+        return;
+    }
+    // 解析 HTML 片段，提取直接子元素数量
+    const tmp = document.createElement('div');
+    tmp.innerHTML = fullHtml;
+    const items = Array.from(tmp.children);
+    if (items.length <= PANEL_PREVIEW_LIMIT) {
+        el.innerHTML = fullHtml;
+        return;
+    }
+    // 截取前 N 项
+    const previewHtml = items.slice(0, PANEL_PREVIEW_LIMIT).map(el => el.outerHTML).join('');
+    const remaining = items.length - PANEL_PREVIEW_LIMIT;
+    el.innerHTML = previewHtml + `<div class="panel-show-all" onclick="showPanelModal('${panelType}')" style="text-align:center;padding:6px 0;font-size:12px;color:var(--accent);cursor:pointer;">查看全部 (${items.length})</div>`;
+}
+
+/**
+ * 打开面板详情模态框
+ */
+function showPanelModal(panelType) {
+    const titles = {
+        attributes: '属性详情',
+        status: '状态效果',
+        inventory: '背包',
+        map: '地图',
+        npcs: '场景NPC',
+        characters: '重要角色',
+    };
+    document.getElementById('panelDetailTitle').textContent = titles[panelType] || '详情';
+    document.getElementById('panelDetailContent').innerHTML = getFullPanelHtml(panelType);
+    openModal('modalPanelDetail');
+}
+
+/**
+ * 获取面板完整 HTML（用于模态框）
+ */
+function getFullPanelHtml(panelType) {
+    switch (panelType) {
+        case 'attributes': return buildAttributesHtml();
+        case 'status': return buildStatusHtml();
+        case 'inventory': return buildInventoryHtml();
+        case 'map': return buildMapHtml();
+        case 'npcs': return buildNpcsHtml();
+        case 'characters': return buildCharactersHtml();
+        default: return '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
+    }
+}
+
+// ===================================================================
+// ===== 面板构建函数（返回完整 HTML） =====
+// ===================================================================
+
+function buildAttributesHtml() {
     const attrs = currentSave.player.attributes;
     let html = '';
-    // HP & MP 条
     ['hp', 'mp'].forEach(key => {
         const a = attrs[key];
         if (!a) return;
         const pct = Math.max(0, (a.current / a.max) * 100);
         let fillClass = key;
-        if (key === 'hp') {
-            fillClass += pct > 50 ? ' healthy' : pct > 25 ? ' warning' : '';
-        }
-        html += `
-            <div class="attr-row">
-                <span class="attr-label">${a.label}</span>
-                <div class="attr-bar"><div class="attr-fill ${fillClass}" style="width:${pct}%"></div></div>
-                <span class="attr-value">${a.current}/${a.max}</span>
-            </div>
-        `;
+        if (key === 'hp') fillClass += pct > 50 ? ' healthy' : pct > 25 ? ' warning' : '';
+        html += `<div class="attr-row"><span class="attr-label">${a.label}</span><div class="attr-bar"><div class="attr-fill ${fillClass}" style="width:${pct}%"></div></div><span class="attr-value">${a.current}/${a.max}</span></div>`;
     });
-    // 其他属性
     ['attack', 'defense', 'agility', 'luck'].forEach(key => {
         const a = attrs[key];
         if (!a) return;
         html += `<div class="attr-row-simple"><span>${a.label}</span><span>${a.current}</span></div>`;
     });
-    document.getElementById('attributesPanel').innerHTML = html;
-
-    // 状态效果
-    const effects = currentSave.player.statusEffects || [];
-    const statusEl = document.getElementById('statusPanel');
-    if (effects.length === 0) {
-        statusEl.innerHTML = '<span style="font-size:12px;color:var(--text-tertiary);">无</span>';
-    } else {
-        statusEl.innerHTML = effects.map(e =>
-            `<span class="status-tag ${e.duration > 0 ? 'negative' : 'positive'}">${escapeHtml(e.name)}${e.duration > 0 ? '(' + e.duration + ')' : ''}</span>`
-        ).join('');
-    }
+    return html;
 }
 
-function updateInventoryPanel() {
+function buildStatusHtml() {
+    const effects = currentSave.player.statusEffects || [];
+    if (effects.length === 0) return '<span style="font-size:12px;color:var(--text-tertiary);">无</span>';
+    return effects.map(e => `<span class="status-tag ${e.duration > 0 ? 'negative' : 'positive'}">${escapeHtml(e.name)}${e.duration > 0 ? '(' + e.duration + ')' : ''}</span>`).join('');
+}
+
+function buildInventoryHtml() {
     const items = currentSave.inventory.items || [];
-    const gold = currentSave.inventory.gold ?? 0;
-    document.getElementById('inventoryCount').textContent = `(${items.length}/${currentSave.inventory.maxSlots})`;
-    document.getElementById('inventoryGold').innerHTML = `<span class="inventory-gold-icon">💰</span><span class="inventory-gold-value">${gold}</span>`;
-    const el = document.getElementById('inventoryPanel');
-    if (items.length === 0) {
-        el.innerHTML = '<span style="font-size:12px;color:var(--text-tertiary);">背包是空的</span>';
-        return;
-    }
-    el.innerHTML = items.map(item => `
+    if (items.length === 0) return '<span style="font-size:12px;color:var(--text-tertiary);">背包是空的</span>';
+    return items.map(item => `
         <div class="inventory-item" onclick="showItemDetail('${item.id}')">
             <span class="inventory-item-icon">${itemIcon(item.type)}</span>
             <div class="inventory-item-info">
@@ -109,155 +162,107 @@ function updateInventoryPanel() {
     `).join('');
 }
 
-function updateMapPanel() {
+function buildMapHtml() {
     const cur = currentSave.map.currentLocation;
     const loc = currentSave.map.locations[cur];
     const locations = currentSave.map.locations || {};
-
     let html = '';
-
-    // 当前位置卡片
-    html += `
-        <div class="map-card map-card-current" onclick="showLocationDetail('${escapeHtml(cur)}')">
-            <div class="map-card-header">
-                <span class="map-card-name">📍 ${escapeHtml(cur)}</span>
-                <span class="map-card-tag current">当前</span>
-            </div>
-            <div class="map-card-desc">${escapeHtml(loc?.description || '').slice(0, 60)}${(loc?.description || '').length > 60 ? '...' : ''}</div>
-        </div>
-    `;
-
-    // 可前往的地点
+    html += `<div class="map-card map-card-current" onclick="showLocationDetail('${escapeHtml(cur)}')"><div class="map-card-header"><span class="map-card-name">📍 ${escapeHtml(cur)}</span><span class="map-card-tag current">当前</span></div><div class="map-card-desc">${escapeHtml(loc?.description || '').slice(0, 60)}${(loc?.description || '').length > 60 ? '...' : ''}</div></div>`;
     const conns = loc?.connections || [];
     if (conns.length > 0) {
         html += '<div class="map-section-title">可前往</div>';
         conns.forEach(c => {
             const cLoc = locations[c];
-            html += `
-                <div class="map-card" onclick="showLocationDetail('${escapeHtml(c)}')">
-                    <div class="map-card-header">
-                        <span class="map-card-name">${escapeHtml(c)}</span>
-                    </div>
-                    <div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div>
-                    <div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div>
-                </div>
-            `;
+            html += `<div class="map-card" onclick="showLocationDetail('${escapeHtml(c)}')"><div class="map-card-header"><span class="map-card-name">${escapeHtml(c)}</span></div><div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div><div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div></div>`;
         });
     }
-
-    // 已探索的其他地点
     const discovered = Object.entries(locations).filter(([k, v]) => v.discovered && k !== cur && !conns.includes(k));
     if (discovered.length > 0) {
         html += '<div class="map-section-title">已探索</div>';
-        discovered.forEach(([name, data]) => {
-            html += `
-                <div class="map-card" onclick="showLocationDetail('${escapeHtml(name)}')">
-                    <div class="map-card-header">
-                        <span class="map-card-name">${escapeHtml(name)}</span>
-                    </div>
-                    <div class="map-card-desc">${escapeHtml(data.description || '').slice(0, 50)}${(data.description || '').length > 50 ? '...' : ''}</div>
-                </div>
-            `;
+        discovered.forEach(([name]) => {
+            html += `<div class="map-card" onclick="showLocationDetail('${escapeHtml(name)}')"><div class="map-card-header"><span class="map-card-name">${escapeHtml(name)}</span></div></div>`;
         });
     }
+    return html;
+}
 
-    document.getElementById('mapPanel').innerHTML = html;
+function buildNpcsHtml() {
+    const loc = currentSave.map?.locations?.[currentSave.map?.currentLocation];
+    const npcs = loc?.npcs || [];
+    const counts = currentSave.npcInteractionCounts || {};
+    if (npcs.length === 0) return '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
+    return npcs.map(name => {
+        const count = counts[name] || 0;
+        return `<div class="character-list-item"><div class="character-list-name">${escapeHtml(name)}</div><div class="character-list-role" style="font-size:11px;color:var(--text-tertiary);">互动 ${count} 次</div></div>`;
+    }).join('');
+}
+
+function buildCharactersHtml() {
+    const characters = currentSave.characters || {};
+    const list = Object.values(characters);
+    if (list.length === 0) return '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
+    return list.map(c => {
+        const relTitle = c.relationship?.title || '陌生人';
+        const relValue = c.relationship?.value ?? 0;
+        const relColor = relValue > 50 ? 'positive' : relValue < -50 ? 'negative' : 'neutral';
+        return `<div class="character-list-item" onclick="showCharacterDetail('${c.id}')"><div class="character-list-name">${escapeHtml(c.name)}</div><div class="character-list-role">${escapeHtml(c.role || '')}</div><div class="character-list-rel ${relColor}">${escapeHtml(relTitle)} (${relValue})</div></div>`;
+    }).join('');
+}
+
+// ===================================================================
+// ===== 面板更新函数（调用 build + renderPanelPreview） =====
+// ===================================================================
+
+function updateAttributesPanel() {
+    renderPanelPreview('attributesPanel', buildAttributesHtml(), 'attributes', '', true);
+    renderPanelPreview('statusPanel', buildStatusHtml(), 'status', '', true);
+}
+
+function updateInventoryPanel() {
+    const items = currentSave.inventory.items || [];
+    const gold = currentSave.inventory.gold ?? 0;
+    document.getElementById('inventoryCount').textContent = `(${items.length}/${currentSave.inventory.maxSlots})`;
+    document.getElementById('inventoryGold').innerHTML = `<span class="inventory-gold-icon">💰</span><span class="inventory-gold-value">${gold}</span>`;
+    renderPanelPreview('inventoryPanel', buildInventoryHtml(), 'inventory', '背包是空的');
+}
+
+function updateMapPanel() {
+    renderPanelPreview('mapPanel', buildMapHtml(), 'map', '暂无', true);
+}
+
+function updateCharactersPanel() {
+    renderPanelPreview('charactersPanel', buildCharactersHtml(), 'characters', '暂无');
+}
+
+function updateNpcsPanel() {
+    renderPanelPreview('npcsPanel', buildNpcsHtml(), 'npcs', '暂无');
 }
 
 function showLocationDetail(locName) {
     const loc = currentSave.map.locations[locName];
     if (!loc) return;
-
     const cur = currentSave.map.currentLocation;
     const isCurrent = locName === cur;
     const conns = currentSave.map.locations[cur]?.connections || [];
     const canGo = conns.includes(locName);
-
-    let html = `
-        <div style="margin-bottom:16px;">
-            <h4 style="font-size:16px;font-weight:600;margin-bottom:4px;">📍 ${escapeHtml(locName)}</h4>
-            ${isCurrent ? '<span style="font-size:11px;color:var(--accent);font-weight:500;">当前所在地</span>' : ''}
-        </div>
-        <div style="margin-bottom:16px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">描述</div>
-            <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">${escapeHtml(loc.description || '暂无描述')}</div>
-        </div>
-    `;
-
-    // 该地点的连接
+    let html = `<div style="margin-bottom:16px;"><h4 style="font-size:16px;font-weight:600;margin-bottom:4px;">📍 ${escapeHtml(locName)}</h4>${isCurrent ? '<span style="font-size:11px;color:var(--accent);font-weight:500;">当前所在地</span>' : ''}</div><div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">描述</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">${escapeHtml(loc.description || '暂无描述')}</div></div>`;
     const locConns = loc.connections || [];
     if (locConns.length > 0) {
         html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">相邻地点</div>`;
-        locConns.forEach(c => {
-            const isCur = c === cur;
-            html += `<div style="font-size:12px;color:${isCur ? 'var(--accent)' : 'var(--text-secondary)'};padding:2px 0;">${isCur ? '📍 ' : '→ '}${escapeHtml(c)}${isCur ? ' (当前)' : ''}</div>`;
-        });
+        locConns.forEach(c => { const isCur = c === cur; html += `<div style="font-size:12px;color:${isCur ? 'var(--accent)' : 'var(--text-secondary)'};padding:2px 0;">${isCur ? '📍 ' : '→ '}${escapeHtml(c)}${isCur ? ' (当前)' : ''}</div>`; });
         html += '</div>';
     }
-
-    // 该地点的 NPC
     const npcs = loc.npcs || [];
     if (npcs.length > 0) {
         html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:4px;">在此的 NPC</div>`;
-        npcs.forEach(n => {
-            html += `<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;">👤 ${escapeHtml(n)}</div>`;
-        });
+        npcs.forEach(n => { html += `<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;">👤 ${escapeHtml(n)}</div>`; });
         html += '</div>';
     }
-
-    // 前往按钮
     if (!isCurrent && canGo) {
         html += `<button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="closeModal('modalWorldInfo');moveToLocation('${escapeHtml(locName)}')">前往 ${escapeHtml(locName)}</button>`;
     }
-
     document.getElementById('worldInfoContent').innerHTML = html;
     openModal('modalWorldInfo');
-}
-
-function updateCharactersPanel() {
-    const characters = currentSave.characters || {};
-    const el = document.getElementById('charactersPanel');
-    const list = Object.values(characters);
-
-    if (list.length === 0) {
-        el.innerHTML = '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
-        return;
-    }
-
-    el.innerHTML = list.map(c => {
-        const relTitle = c.relationship?.title || '陌生人';
-        const relValue = c.relationship?.value ?? 0;
-        const relColor = relValue > 50 ? 'positive' : relValue < -50 ? 'negative' : 'neutral';
-        return `
-            <div class="character-list-item" onclick="showCharacterDetail('${c.id}')">
-                <div class="character-list-name">${escapeHtml(c.name)}</div>
-                <div class="character-list-role">${escapeHtml(c.role || '')}</div>
-                <div class="character-list-rel ${relColor}">${escapeHtml(relTitle)} (${relValue})</div>
-            </div>
-        `;
-    }).join('');
-}
-
-function updateNpcsPanel() {
-    const el = document.getElementById('npcsPanel');
-    const loc = currentSave.map?.locations?.[currentSave.map?.currentLocation];
-    const npcs = loc?.npcs || [];
-    const counts = currentSave.npcInteractionCounts || {};
-
-    if (npcs.length === 0) {
-        el.innerHTML = '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
-        return;
-    }
-
-    el.innerHTML = npcs.map(name => {
-        const count = counts[name] || 0;
-        return `
-            <div class="character-list-item">
-                <div class="character-list-name">${escapeHtml(name)}</div>
-                <div class="character-list-role" style="font-size:11px;color:var(--text-tertiary);">互动 ${count} 次</div>
-            </div>
-        `;
-    }).join('');
 }
 
 async function showCharacterDetail(charId) {

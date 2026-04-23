@@ -48,11 +48,14 @@
             <div class="sidebar-connections" id="sidebarConnections"></div>
         </div>
         <div class="sidebar-section">
-            <div class="sidebar-section-title">快捷操作</div>
+            <div class="sidebar-section-title">面板</div>
             <div class="sidebar-shortcuts">
-                <button class="sidebar-shortcut" onclick="toggleRightPanel('attributes')">📊 属性面板</button>
-                <button class="sidebar-shortcut" onclick="toggleRightPanel('inventory')">🎒 背包</button>
-                <button class="sidebar-shortcut" onclick="toggleRightPanel('map')">🗺️ 地图</button>
+                <button class="sidebar-shortcut" onclick="showPanelModal('attributes')">📊 属性</button>
+                <button class="sidebar-shortcut" onclick="showPanelModal('status')">💫 状态</button>
+                <button class="sidebar-shortcut" onclick="showPanelModal('inventory')">🎒 背包</button>
+                <button class="sidebar-shortcut" onclick="showPanelModal('map')">🗺️ 地图</button>
+                <button class="sidebar-shortcut" onclick="showPanelModal('npcs')">👥 NPC</button>
+                <button class="sidebar-shortcut" onclick="showPanelModal('characters')">🎭 角色</button>
             </div>
         </div>
     </div>
@@ -122,6 +125,17 @@
             <button class="btn btn-secondary" onclick="closeModal('modalConfirm')">取消</button>
             <button class="btn btn-danger" id="confirmAction" onclick="">确认</button>
         </div>
+    </div>
+</div>
+
+<!-- ==================== 模态框：面板详情 ==================== -->
+<div class="modal-overlay" id="modalPanelDetail">
+    <div class="modal" style="max-width:500px;max-height:80vh;display:flex;flex-direction:column;">
+        <div class="modal-header">
+            <h3 id="panelDetailTitle">详情</h3>
+            <button class="btn btn-ghost btn-sm" onclick="closeModal('modalPanelDetail')">✕</button>
+        </div>
+        <div class="modal-body" id="panelDetailContent" style="overflow-y:auto;flex:1;"></div>
     </div>
 </div>
 
