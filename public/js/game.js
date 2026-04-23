@@ -573,7 +573,10 @@ function renderPlayerBlock(block) {
     if (d.action) {
         html += `<div class="player-action">${escapeHtml(d.action)}</div>`;
     }
-    if (d.dialogue) {
+    // 如果 action 中已包含对话内容，不重复渲染 dialogue
+    if (d.dialogue && d.action && !d.action.includes(d.dialogue)) {
+        html += `<div class="dialogue-text">"${escapeHtml(d.dialogue)}"</div>`;
+    } else if (d.dialogue && !d.action) {
         html += `<div class="dialogue-text">"${escapeHtml(d.dialogue)}"</div>`;
     }
     html += '</div></div>';
@@ -891,9 +894,9 @@ async function sendGameMessage(text, isOption = false) {
     isGenerating = true;
     document.getElementById('gameSendBtn').disabled = true;
 
-    // 选项选择：显示系统提示而非玩家消息卡片
+    // 选项选择：后端 UA 会生成 player-action 和 notification，前端不需要额外添加
     if (isOption) {
-        addNotification(`玩家选择了「${text}」`, 'info');
+        // 不再前端添加 notification，避免与后端重复
     } else {
         addUserMessage(text);
     }
