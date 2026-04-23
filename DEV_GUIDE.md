@@ -1,5 +1,11 @@
 # Xinyu 开发规范 - 每次开发前必读
 
+## 环境配置
+
+- **Git 用户** — `git config user.name "RestRegular"` / `git config user.email "RestRegular@users.noreply.github.com"`
+- **GITHUB_TOKEN** — 已写入 `~/.bashrc`，`push.sh` 会自动读取
+- **推送命令** — `bash /workspace/xinyu/push.sh "commit message"`
+
 ## 发布检查清单（每次 commit 前必须检查）
 
 - [ ] **更新版本号** — `package.json` 中的 `version` 字段，每次有功能改动都要递增
