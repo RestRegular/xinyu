@@ -156,7 +156,7 @@ const gameTools = [
         type: 'function',
         function: {
             name: 'add_content_blocks',
-            description: '向最终输出中逐步添加内容块。你必须在每次调用其他工具（如 create_npc、create_location 等）之后，使用此工具将对应的叙事内容块添加到输出中。这样可以确保通知消息和内容块按正确的顺序交错排列。你可以在一次调用中传入多个内容块。',
+            description: '向最终输出中逐步添加内容块和选项。在调用其他工具（如 create_npc、create_location）之后，调用此工具将叙事内容块添加到输出中。最后一次调用时必须同时传入 options。调用此工具时不要在文本中输出任何内容。',
             parameters: {
                 type: 'object',
                 properties: {
@@ -175,6 +175,18 @@ const gameTools = [
                             required: ['type'],
                         },
                         description: '要添加的内容块数组',
+                    },
+                    options: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                text: { type: 'string', description: '选项显示文本' },
+                                action: { type: 'string', description: '玩家发送的实际文本' },
+                            },
+                            required: ['text', 'action'],
+                        },
+                        description: '玩家行动选项（2-4个）。在最后一次调用此工具时必须传入',
                     },
                 },
                 required: ['blocks'],

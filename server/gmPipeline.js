@@ -405,6 +405,7 @@ class Pipeline {
         let totalToolCalls = 0;
         let hasUsedAddContentBlocks = false;  // 标记 AI 是否使用了 add_content_blocks 工具
         let emptyAddContentCount = 0;         // 连续空调用计数
+        let toolOptions = null;               // 从工具调用中收集的选项
 
         // ===== Phase 1: StoryAgent 主循环 =====
         const systemPrompt = buildSystemPrompt(saveData, appConfig);
@@ -448,13 +449,20 @@ class Pipeline {
                     if (fnName === 'add_content_blocks') {
                         hasUsedAddContentBlocks = true;
                         const blocks = fnArgs.blocks || [];
+                        // 从工具调用中提取 options（AI 通过工具直接提交选项）
+                        if (fnArgs.options && Array.isArray(fnArgs.options) && fnArgs.options.length > 0) {
+                            toolOptions = fnArgs.options.map(opt => ({
+                                text: opt.text || '',
+                                action: opt.action || opt.text || '',
+                            }));
+                            logger.info(`[Pipeline] add_content_blocks: ${toolOptions.length} options received via tool call`);
+                        }
                         // 检测连续空调用，防止 AI 陷入无效循环
-                        if (blocks.length === 0) {
+                        if (blocks.length === 0 && !fnArgs.options) {
                             emptyAddContentCount = (emptyAddContentCount || 0) + 1;
                             if (emptyAddContentCount >= 2) {
                                 logger.warn(`[Pipeline] Detected ${emptyAddContentCount} consecutive empty add_content_blocks calls, forcing exit`);
-                                // 返回提示信息让 AI 输出最终 JSON
-                                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: 0, warning: '你已经连续多次提交空内容块。请直接输出最终的 JSON（包含 options 字段）来结束回复，不要再调用 add_content_blocks。' }) });
+                                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: 0, warning: '你已经连续多次提交空内容块且没有 options。请调用 add_content_blocks 传入 options 来结束回复。' }) });
                                 totalToolCalls++;
                                 continue;
                             }
@@ -465,8 +473,11 @@ class Pipeline {
                             orderedBlocks.push({ ...block, _source: 'add_content_blocks' });
                         }
                         logger.info(`[Pipeline] add_content_blocks: ${blocks.length} blocks added to orderedBlocks`);
-                        // 返回成功结果给 AI
-                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: blocks.length }) });
+                        // 如果已收到 options，告知 AI 可以结束
+                        const toolResultContent = toolOptions
+                            ? { success: true, added: blocks.length, optionsReceived: true, message: '已收到选项，你可以直接输出 {"content":[],"options":[]} 来结束，或继续添加内容。' }
+                            : { success: true, added: blocks.length };
+                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResultContent) });
                         totalToolCalls++;
                         continue;
                     }
@@ -612,7 +623,7 @@ class Pipeline {
 
         logger.info('[Pipeline] Run completed', { totalLoops: loopCount, totalToolCalls });
 
-        let finalOptions = structuredOutput.options || [];
+        let finalOptions = toolOptions || structuredOutput.options || [];
 
         // ===== 选项补充：如果 AI 没有生成选项，自动补充 =====
         if (finalOptions.length === 0 && finalContent.length > 0) {

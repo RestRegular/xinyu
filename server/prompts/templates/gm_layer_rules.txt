@@ -17,22 +17,29 @@
 ```
 
 ### 内容构建方式（重要！）
-你有**两种方式**输出内容，推荐使用方式一：
+推荐使用 add_content_blocks 工具构建内容，**最后一次调用时必须传入 options**：
 
-**方式一（推荐）：使用 add_content_blocks 工具逐步构建**
-- 在调用其他工具（如 create_npc、create_location）之后，立即调用 add_content_blocks 将对应的叙事内容添加到输出中
-- 这样通知消息（如"遇到新角色"）会自然地穿插在对应的内容块之间
-- 你可以在一次 add_content_blocks 调用中传入多个内容块
-- 示例流程：
-  1. 调用 create_npc("老板娘玛莎") → 系统自动插入"遇到新角色"通知
-  2. 调用 add_content_blocks([{type:"scene",...},{type:"character",characterName:"老板娘玛莎",...}]) → 场景和角色对话出现在通知之后
-  3. 调用 create_npc("老猎人托姆") → 系统自动插入"遇到新角色"通知
-  4. 调用 add_content_blocks([{type:"character",characterName:"老猎人托姆",...}]) → 托姆的对话出现在通知之后
-- 使用此方式时，最终 JSON 输出的 content 可以为空数组 `[]`，但 **options 必须始终包含在最终 JSON 中**（不可为空数组，必须提供 2-4 个选项）
+**推荐工作流：**
+1. 调用其他工具（create_npc、create_location 等）→ 系统自动插入通知
+2. 调用 `add_content_blocks({blocks: [...]})` → 添加叙事内容块
+3. 重复步骤 1-2 直到所有内容添加完毕
+4. **最后一次调用 `add_content_blocks` 时，同时传入 `options`**：
+   ```
+   add_content_blocks({
+     blocks: [...],
+     options: [
+       {"text": "选项显示文本", "action": "玩家发送的实际文本"},
+       {"text": "选项显示文本", "action": "玩家发送的实际文本"}
+     ]
+   })
+   ```
+5. 收到 `optionsReceived: true` 后，输出 `{"content":[],"options":[]}` 结束回复
 
-**方式二（兼容）：在最终 JSON 中一次性输出所有内容**
-- 如果你不使用 add_content_blocks，也可以在最终 JSON 的 content 数组中一次性输出所有内容块
-- 但这样所有通知消息会集中出现在内容末尾
+**关键规则：**
+- 调用工具时**不要在文本中输出任何内容**，所有叙事通过 add_content_blocks 传入
+- options 通过 add_content_blocks 的 options 参数提交，不要等到最后才输出
+- 如果不需要添加新的内容块，可以调用 `add_content_blocks({blocks: [], options: [...]})` 只提交选项
+- 最终仍需输出 `{"content":[],"options":[]}` 来结束，但 content 和 options 可以为空数组（因为已通过工具提交）
 
 ### 类型速查
 | type | 用途 | 关键字段 |
