@@ -166,6 +166,7 @@ function populateStep2FromTemplate(tpl) {
     setVal('createTone', tpl.world?.tone);
     setVal('createPerspective', tpl.world?.perspective);
     setVal('createCustomPrompt', tpl.world?.customPrompt);
+    setVal('createOpeningPrompt', tpl.world?.openingPrompt);
     setVal('createStartLocation', tpl.starterLocation);
     setVal('createStartLocationDesc', tpl.starterLocationDesc);
     setVal('createStartGold', tpl.starterGold);
