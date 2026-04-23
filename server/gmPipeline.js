@@ -431,6 +431,11 @@ class Pipeline {
             // 解析响应
             const result = await this._parseResponse(response, apiConfig, messages, gameTools, appConfig);
 
+            // 调试：打印 AI 原始响应摘要
+            const contentPreview = result.content ? result.content.substring(0, 200) : '(empty)';
+            const toolNames = result.tool_calls ? result.tool_calls.map(tc => tc.function.name) : [];
+            logger.info(`[Pipeline] LLM response: content="${contentPreview}" | tools=[${toolNames.join(', ')}]`);
+
             const assistantMsg = { role: 'assistant', content: result.content };
             if (result.tool_calls) assistantMsg.tool_calls = result.tool_calls;
             messages.push(assistantMsg);
@@ -470,6 +475,7 @@ class Pipeline {
                         const toolResultContent = toolOptions
                             ? { success: true, added: blocks.length, optionsReceived: true, message: '已收到选项，回复已自动结束。' }
                             : { success: true, added: blocks.length, reminder: '你还没有提交 options（玩家选项）。请在下一次 add_content_blocks 调用中传入 options 参数来结束回复。' };
+                        logger.info(`[Pipeline] Tool result → AI: ${JSON.stringify(toolResultContent)}`);
                         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResultContent) });
                         totalToolCalls++;
                         continue;
@@ -517,7 +523,7 @@ class Pipeline {
             }
             // ===== AI 未调用工具 = 异常，注入提示后重试 =====
             if (loopCount === 1 && orderedBlocks.length === 0 && !toolOptions) {
-                logger.warn('[Pipeline] AI responded without tool calls, injecting retry prompt');
+                logger.warn(`[Pipeline] AI responded without tool calls, raw content: "${result.content ? result.content.substring(0, 300) : '(empty)'}"`);
                 messages.push({
                     role: 'user',
                     content: '【系统提示】你必须通过调用 add_content_blocks 工具来输出内容和选项，不要直接在文本中回复。请重新生成回复，使用工具调用。'
@@ -526,6 +532,9 @@ class Pipeline {
             }
             break;
         }
+
+        // 退出循环时的状态摘要
+        logger.info(`[Pipeline] Loop exited: loops=${loopCount}, toolCalls=${totalToolCalls}, blocks=${orderedBlocks.length}, options=${toolOptions ? toolOptions.length : 0}, emptyCalls=${emptyAddContentCount || 0}`);
 
         // ===== Phase 2: 各 Agent 后处理（并行） =====
         logger.info('[Pipeline] Phase 2: Post-processing');
