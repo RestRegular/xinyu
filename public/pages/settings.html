@@ -74,9 +74,10 @@
             <div class="settings-row">
                 <div>
                     <div class="settings-row-label">最大 Token 数</div>
+                    <div class="settings-row-desc">AI 单次回复的最大长度，值越大输出越完整，但消耗更多额度</div>
                 </div>
                 <div class="settings-row-control">
-                    <input class="input settings-input" type="number" id="settingMaxTokens" value="1024" min="256" max="4096">
+                    <input class="input settings-input" type="number" id="settingMaxTokens" value="4096" min="512" max="16384" step="512">
                 </div>
             </div>
             <div class="settings-row">

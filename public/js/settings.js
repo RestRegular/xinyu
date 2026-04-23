@@ -7,7 +7,7 @@ function populateSettings() {
     document.getElementById('settingModel').value = appConfig.model || '';
     document.getElementById('settingTemp').value = appConfig.temperature || 0.9;
     document.getElementById('tempVal').textContent = appConfig.temperature || 0.9;
-    document.getElementById('settingMaxTokens').value = appConfig.maxTokens || 1024;
+    document.getElementById('settingMaxTokens').value = appConfig.maxTokens || 4096;
     document.getElementById('settingNarrative').value = appConfig.ui?.narrativeLength || 'medium';
     document.getElementById('settingCustomInstructions').value = appConfig.customInstructions || '';
 }
@@ -17,7 +17,7 @@ function saveSettingsFromUI() {
     appConfig.apiBaseUrl = document.getElementById('settingApiUrl').value.trim();
     appConfig.model = document.getElementById('settingModel').value.trim();
     appConfig.temperature = parseFloat(document.getElementById('settingTemp').value) || 0.9;
-    appConfig.maxTokens = parseInt(document.getElementById('settingMaxTokens').value) || 1024;
+    appConfig.maxTokens = parseInt(document.getElementById('settingMaxTokens').value) || 4096;
     appConfig.ui.narrativeLength = document.getElementById('settingNarrative').value;
     appConfig.customInstructions = document.getElementById('settingCustomInstructions').value.trim();
     saveConfig();
