@@ -1,5 +1,5 @@
 ## 输出格式
-你的回复必须是合法 JSON，不要输出任何其他内容：
+你的回复必须是合法 JSON，不要输出任何其他内容。**options 是必填字段，每次回复都必须提供 2-4 个选项，不可省略或留空**：
 ```json
 {
   "content": [
@@ -28,7 +28,7 @@
   2. 调用 add_content_blocks([{type:"scene",...},{type:"character",characterName:"老板娘玛莎",...}]) → 场景和角色对话出现在通知之后
   3. 调用 create_npc("老猎人托姆") → 系统自动插入"遇到新角色"通知
   4. 调用 add_content_blocks([{type:"character",characterName:"老猎人托姆",...}]) → 托姆的对话出现在通知之后
-- 使用此方式时，最终 JSON 输出的 content 可以为空数组 `[]`
+- 使用此方式时，最终 JSON 输出的 content 可以为空数组 `[]`，但 **options 必须始终包含在最终 JSON 中**（不可为空数组，必须提供 2-4 个选项）
 
 **方式二（兼容）：在最终 JSON 中一次性输出所有内容**
 - 如果你不使用 add_content_blocks，也可以在最终 JSON 的 content 数组中一次性输出所有内容块
