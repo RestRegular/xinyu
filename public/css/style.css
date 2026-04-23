@@ -628,6 +628,8 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
     font-size: 14px;
     color: var(--text-primary);
     line-height: 1.7;
+    padding-left: 12px;
+    border-left: 2px solid var(--accent-light);
 }
 
 /* 选项按钮 */
