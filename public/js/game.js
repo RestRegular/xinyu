@@ -221,11 +221,24 @@ function buildMapPreviewHtml() {
 function buildNpcsHtml() {
     const loc = currentSave.map?.locations?.[currentSave.map?.currentLocation];
     const npcs = loc?.npcs || [];
-    const counts = currentSave.npcInteractionCounts || {};
-    if (npcs.length === 0) return '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
-    return npcs.map(name => {
-        const count = counts[name] || 0;
-        return `<div class="character-list-item"><div class="character-list-name">${escapeHtml(name)}</div><div class="character-list-role" style="font-size:11px;color:var(--text-tertiary);">互动 ${count} 次</div></div>`;
+    const characters = currentSave.characters || {};
+    const charList = Object.values(characters).filter(c => npcs.includes(c.name) || (loc?.connections || []).some(conn => {
+        // 也显示在相邻地点的角色
+        const connLoc = currentSave.map?.locations?.[conn];
+        return connLoc?.npcs?.includes(c.name);
+    }));
+    // 合并：地点 NPC 名 + 当前地点相关角色
+    const allNames = [...new Set([...npcs, ...charList.map(c => c.name)])];
+    if (allNames.length === 0) return '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
+    return allNames.map(name => {
+        const c = Object.values(characters).find(ch => ch.name === name);
+        if (c) {
+            const relTitle = c.relationship?.title || '陌生人';
+            const relValue = c.relationship?.value ?? 0;
+            const relColor = relValue > 50 ? 'positive' : relValue < -50 ? 'negative' : 'neutral';
+            return `<div class="character-list-item" onclick="showCharacterDetail('${c.id}')"><div class="character-list-name">${escapeHtml(name)}</div><div class="character-list-role">${escapeHtml(c.role || '')}</div><div class="character-list-rel ${relColor}">${escapeHtml(relTitle)} (${relValue})</div></div>`;
+        }
+        return `<div class="character-list-item"><div class="character-list-name">${escapeHtml(name)}</div></div>`;
     }).join('');
 }
 

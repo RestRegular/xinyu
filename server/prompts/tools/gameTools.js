@@ -98,41 +98,9 @@ const gameTools = [
     {
         type: 'function',
         function: {
-            name: 'create_npc',
-            description: '在当前位置创建一个普通NPC。',
-            parameters: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, personality: { type: 'string' } }, required: ['name', 'description'] },
-        },
-    },
-    {
-        type: 'function',
-        function: {
             name: 'remove_npc',
             description: '从当前位置移除一个NPC。',
             parameters: { type: 'object', properties: { name: { type: 'string' }, reason: { type: 'string' } }, required: ['name'] },
-        },
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'upgrade_npc_to_character',
-            description: '将普通NPC升级为重要角色（拥有独立AI代理、记忆和关系系统）。当剧情发展使一个普通NPC变得重要时调用此工具，例如：NPC与玩家建立了深层关系、NPC成为剧情关键人物、NPC需要多轮深度互动。升级后该NPC将从普通NPC列表中移除，成为重要角色。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: 'NPC名称（必须是在当前位置已存在的普通NPC）' },
-                    role: { type: 'string', description: '角色类型标识（如merchant/blacksmith/mentor/companion/antagonist/guard/noble等）' },
-                    personality: { type: 'string', description: '性格特点（如沉稳、暴躁、温柔、狡猾等）' },
-                    speech_style: { type: 'string', description: '说话风格（如正式、粗鲁、文雅、幽默等）' },
-                    gender: { type: 'string', description: '性别' },
-                    age: { type: 'string', description: '年龄' },
-                    appearance: { type: 'string', description: '外貌描述' },
-                    background: { type: 'string', description: '背景故事' },
-                    motivation: { type: 'string', description: '动机/目标' },
-                    secrets: { type: 'string', description: '秘密' },
-                    extra: { type: 'object', description: '角色特有属性' },
-                },
-                required: ['name', 'role', 'personality', 'speech_style'],
-            },
         },
     },
     {
@@ -156,7 +124,7 @@ const gameTools = [
         type: 'function',
         function: {
             name: 'add_content_blocks',
-            description: '向最终输出中逐步添加内容块和选项。在调用其他工具（如 create_npc、create_location）之后，调用此工具将叙事内容块添加到输出中。最后一次调用时必须同时传入 options。调用此工具时不要在文本中输出任何内容。',
+            description: '向最终输出中逐步添加内容块和选项。在调用其他工具（如 create_location）之后，调用此工具将叙事内容块添加到输出中。最后一次调用时必须同时传入 options。调用此工具时不要在文本中输出任何内容。',
             parameters: {
                 type: 'object',
                 properties: {

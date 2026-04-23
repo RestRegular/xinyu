@@ -21,9 +21,7 @@ function executeGameFunction(name, args, saveData) {
         case 'remove_status_effect': return handleRemoveStatusEffect(args, saveData);
         case 'update_gold': return handleUpdateGold(args, saveData);
         case 'check_death': return handleCheckDeath(args, saveData);
-        case 'create_npc': return handleCreateNpc(args, saveData);
         case 'remove_npc': return handleRemoveNpc(args, saveData);
-        case 'upgrade_npc_to_character': return handleUpgradeNpcToCharacter(args, saveData);
         case 'equip_item': return handleEquipItem(args, saveData);
         case 'revive_player': return handleRevivePlayer(args, saveData);
         // ---- 角色系统工具 ----
@@ -211,18 +209,6 @@ function handleCheckDeath(args, saveData) {
     return { is_dead: false, hp };
 }
 
-function handleCreateNpc(args, saveData) {
-    const loc = saveData.map.locations[saveData.map.currentLocation];
-    if (!loc) return { success: false, error: '当前位置信息丢失' };
-    if (!loc.npcs) loc.npcs = [];
-    if (loc.npcs.includes(args.name)) return { success: false, error: `NPC "${args.name}" 已经在此处` };
-    loc.npcs.push(args.name);
-    // 初始化NPC交互计数
-    if (!saveData.npcInteractionCounts) saveData.npcInteractionCounts = {};
-    if (!saveData.npcInteractionCounts[args.name]) saveData.npcInteractionCounts[args.name] = 0;
-    return { success: true, npc: args.name, location: saveData.map.currentLocation, all_npcs: loc.npcs, notifications: [{ text: `👤 遇到新角色：${args.name}`, type: 'positive' }] };
-}
-
 function handleRemoveNpc(args, saveData) {
     const loc = saveData.map.locations[saveData.map.currentLocation];
     if (!loc || !loc.npcs) return { success: false, error: '当前位置没有NPC' };
@@ -230,61 +216,6 @@ function handleRemoveNpc(args, saveData) {
     if (idx === -1) return { success: false, error: `NPC "${args.name}" 不在此处` };
     loc.npcs.splice(idx, 1);
     return { success: true, removed: args.name, remaining_npcs: loc.npcs, notifications: [{ text: `${args.name} 离开了（${args.reason || ''}）`, type: 'info' }] };
-}
-
-function handleUpgradeNpcToCharacter(args, saveData) {
-    const name = args.name;
-    if (!name) return { success: false, error: 'NPC名称不能为空' };
-
-    // 检查是否已是重要角色
-    if (!saveData.characters) saveData.characters = {};
-    const existing = Object.values(saveData.characters).find(c => c.name === name);
-    if (existing) return { success: false, error: `重要角色"${name}"已存在，无需升级` };
-
-    // 从当前位置的NPC列表中移除
-    const loc = saveData.map.locations[saveData.map.currentLocation];
-    if (!loc || !loc.npcs) return { success: false, error: `当前位置没有NPC"${name}"` };
-    const idx = loc.npcs.indexOf(name);
-    if (idx === -1) return { success: false, error: `NPC"${name}"不在当前位置` };
-    loc.npcs.splice(idx, 1);
-
-    // 创建重要角色
-    const now = new Date().toISOString();
-    const charId = 'char_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-
-    const character = {
-        id: charId,
-        name,
-        role: args.role || 'custom',
-        gender: args.gender || '',
-        age: args.age || '',
-        appearance: args.appearance || '',
-        personality: args.personality || '',
-        speechStyle: args.speech_style || '',
-        background: args.background || '',
-        motivation: args.motivation || '',
-        secrets: args.secrets || '',
-        relationship: { value: 10, title: '泛泛之交' },
-        memories: [],
-        location: saveData.map.currentLocation,
-        status: 'alive',
-        createdAt: now,
-        lastInteractedAt: now,
-        extra: args.extra || {},
-    };
-
-    saveData.characters[charId] = character;
-
-    return {
-        success: true,
-        characterId: charId,
-        characterName: name,
-        characterData: character,
-        notifications: [{
-            type: 'positive',
-            text: `🎭 ${name}升级为重要角色（${character.role}）`,
-        }]
-    };
 }
 
 function handleEquipItem(args, saveData) {

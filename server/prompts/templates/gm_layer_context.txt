@@ -11,7 +11,7 @@
 
 ## 当前位置
 {{locationDescription}}
-- 此处NPC：{{npcsInfo}}
+- 此处角色：{{npcsInfo}}
 - 可前往：{{connectionsInfo}}
 
 ## 当前位置的重要角色
