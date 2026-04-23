@@ -269,7 +269,7 @@ class RoleAgent extends BaseAgent {
         super({
             name: 'RA',
             label: '角色Agent',
-            toolNames: ['create_character', 'update_relationship', 'character_action', 'create_npc', 'remove_npc'],
+            toolNames: ['create_character', 'update_relationship', 'character_action', 'create_npc', 'remove_npc', 'upgrade_npc_to_character'],
         });
     }
 

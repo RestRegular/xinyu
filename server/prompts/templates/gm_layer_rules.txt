@@ -44,6 +44,7 @@
 | 提到新地点（不移动） | create_location | 叙事中提及的地点都要创建 |
 | 遇到背景NPC | create_npc | 无深度人设的NPC |
 | 创建重要角色 | create_character | 有完整人设、独立AI的角色 |
+| NPC升级为重要角色 | upgrade_npc_to_character | 普通NPC变得重要时使用 |
 | 获取角色反应 | get_character_reaction | 必须通过此工具 |
 | 调整关系值 | update_relationship | |
 | 角色执行动作 | character_action | |
@@ -63,6 +64,8 @@
 3. 有独特的外貌、性格、说话风格等深度设定
 
 创建时必须填写：name, role, personality, speech_style, appearance
+
+NPC 升级为重要角色：当剧情发展使一个普通NPC变得重要时（如建立了深层关系、成为剧情关键人物），使用 upgrade_npc_to_character 工具将其升级。升级时需补充完整人设信息。
 
 ### 角色交互规则
 当场景中存在重要角色时：
