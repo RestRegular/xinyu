@@ -610,10 +610,17 @@ function renderPlayerBlock(block) {
 function renderDialogueBlock(block) {
     const d = block.data;
     const speaker = escapeHtml(d.speaker || '???');
-    return `<div class="msg msg-dialogue">
-        <div class="dialogue-bubble">
-            <div class="dialogue-speaker">${speaker}</div>
-            <div class="dialogue-text">${escapeHtml(d.text)}</div>
+    // 兜底：如果对话没有引号，自动用「」包裹
+    let text = d.text || '';
+    if (text && !text.startsWith('「') && !text.startsWith('"') && !text.startsWith('"')) {
+        text = `「${text}」`;
+    }
+    return `<div class="msg msg-character">
+        <div class="character-card">
+            <div class="character-card-header">
+                <span class="character-name">${speaker}</span>
+            </div>
+            <div class="character-dialogue">${escapeHtml(text)}</div>
         </div>
     </div>`;
 }
