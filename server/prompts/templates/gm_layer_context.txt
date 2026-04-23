@@ -14,6 +14,9 @@
 - 此处角色：{{npcsInfo}}
 - 可前往：{{connectionsInfo}}
 
+## 已发现地点
+{{discoveredLocations}}
+
 ## 当前位置的重要角色
 {{charactersInfo}}
 

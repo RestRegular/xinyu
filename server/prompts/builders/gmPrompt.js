@@ -173,6 +173,8 @@ function buildGmPrompt(saveData, appConfig) {
         locationDescription: loc ? loc.description : '未知区域',
         npcsInfo: npcs,
         connectionsInfo: loc && loc.connections ? loc.connections.join('、') : '无已知路径',
+        // 已发现地点完整列表（防止 AI 重复创建）
+        discoveredLocations: Object.keys(s.map.locations || {}).join('、') || '无',
         charactersInfo: charsInfo,
         recentPlotSummary: buildRecentPlotSummary(saveData),
         maxTokens: appConfig?.maxTokens || 4096,
