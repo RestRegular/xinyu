@@ -217,6 +217,9 @@ function handleCreateNpc(args, saveData) {
     if (!loc.npcs) loc.npcs = [];
     if (loc.npcs.includes(args.name)) return { success: false, error: `NPC "${args.name}" 已经在此处` };
     loc.npcs.push(args.name);
+    // 初始化NPC交互计数
+    if (!saveData.npcInteractionCounts) saveData.npcInteractionCounts = {};
+    if (!saveData.npcInteractionCounts[args.name]) saveData.npcInteractionCounts[args.name] = 0;
     return { success: true, npc: args.name, location: saveData.map.currentLocation, all_npcs: loc.npcs, notifications: [{ text: `👤 遇到新角色：${args.name}`, type: 'positive' }] };
 }
 

@@ -627,13 +627,11 @@ function renderDialogueBlock(block) {
 
 function renderCharacterBlock(block) {
     const d = block.data;
-    const moodEmoji = getMoodEmoji(d.mood);
-    const moodLabel = getMoodLabel(d.mood);
     let html = `<div class="msg msg-character">
         <div class="character-card">
             <div class="character-card-header">
                 <span class="character-name">${escapeHtml(d.characterName || '未知角色')}</span>
-                <span class="character-mood ${d.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>
+                ${d.mood ? `<span class="character-mood ${d.mood}">${getMoodEmoji(d.mood)} ${getMoodLabel(d.mood)}</span>` : ''}
             </div>`;
 
     if (d.segments && Array.isArray(d.segments)) {

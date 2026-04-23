@@ -204,8 +204,18 @@ class RenderDataManager {
                 if (!block.text) return null;
                 return { type: 'scene', data: { text: block.text } };
             case 'dialogue':
-                if (!block.text) return null;
-                return { type: 'dialogue', data: { speaker: block.speaker, text: block.text } };
+                // 兼容旧格式：dialogue 类型转为 character 类型
+                if (!block.text && !block.action) return null;
+                const dSegs = [];
+                if (block.action) dSegs.push({ type: 'reaction', text: block.action });
+                if (block.text) dSegs.push({ type: 'dialogue', text: block.text });
+                return {
+                    type: 'character',
+                    data: {
+                        characterName: block.speaker || '???',
+                        segments: dSegs,
+                    },
+                };
             case 'action':
                 if (!block.text) return null;
                 return { type: 'action', data: { text: block.text } };

@@ -506,6 +506,41 @@ class Pipeline {
             logger.warn('[Pipeline] Failed to parse GM output');
         }
 
+        // ===== NPC 交互计数 & 自动升级 =====
+        const UPGRADE_THRESHOLD = 5; // 普通NPC对话轮次超过此次数自动升级
+        if (!saveData.npcInteractionCounts) saveData.npcInteractionCounts = {};
+        if (!saveData.characters) saveData.characters = {};
+
+        for (const block of (structuredOutput.content || [])) {
+            if (block.type === 'character' && block.characterName && !block.characterId) {
+                // 普通NPC（无characterId）出现在content中，递增交互计数
+                const npcName = block.characterName;
+                // 确认是普通NPC（在某个地点的npcs列表中）
+                const isNpc = Object.values(saveData.map.locations || {}).some(loc =>
+                    (loc.npcs || []).includes(npcName)
+                );
+                if (isNpc) {
+                    saveData.npcInteractionCounts[npcName] = (saveData.npcInteractionCounts[npcName] || 0) + 1;
+                    const count = saveData.npcInteractionCounts[npcName];
+                    logger.info(`[Pipeline] NPC interaction count: ${npcName} = ${count}`);
+
+                    if (count >= UPGRADE_THRESHOLD) {
+                        // 自动升级：从npcs列表移除，创建重要角色
+                        const upgradeResult = executeGameFunction('upgrade_npc_to_character', {
+                            name: npcName,
+                            role: 'custom',
+                            personality: '待补充',
+                            speech_style: '待补充',
+                        }, saveData);
+                        if (upgradeResult.success) {
+                            logger.info(`[Pipeline] Auto-upgraded NPC "${npcName}" to character`);
+                            allNotifications.push(...(upgradeResult.notifications || []));
+                        }
+                    }
+                }
+            }
+        }
+
         // 清理所有 Agent 日志
         this.agents.forEach(a => a.clearLog());
 
