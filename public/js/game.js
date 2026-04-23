@@ -525,7 +525,16 @@ function appendRenderBlocks(blocks) {
     const container = document.getElementById('gameMessages');
     if (!container) return;
 
+    // 收集前端已即时渲染的 notification 文本（用于去重）
+    const existingNotifs = new Set();
+    container.querySelectorAll('.msg-notification').forEach(el => {
+        const text = el.textContent.replace(/^[✚✖ℹ]\s*/, '').trim();
+        if (text) existingNotifs.add(text);
+    });
+
     for (const block of blocks) {
+        // 跳过与前端已渲染 notification 文本相同的块（避免实时显示时重复）
+        if (block.type === 'notification' && existingNotifs.has(block.data.text)) continue;
         container.insertAdjacentHTML('beforeend', renderBlock(block));
     }
     scrollToBottom();
