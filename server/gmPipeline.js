@@ -403,7 +403,6 @@ class Pipeline {
         const postProcessNotifications = [];  // 后处理/自动升级产生的通知（需追加到末尾）
         const orderedBlocks = [];     // 有序内容块列表（content + notification 交错排列）
         let totalToolCalls = 0;
-        let hasUsedAddContentBlocks = false;  // 标记 AI 是否使用了 add_content_blocks 工具
         let emptyAddContentCount = 0;         // 连续空调用计数
         let toolOptions = null;               // 从工具调用中收集的选项
 
@@ -447,7 +446,6 @@ class Pipeline {
 
                     // 拦截 add_content_blocks 工具：将内容块写入有序列表
                     if (fnName === 'add_content_blocks') {
-                        hasUsedAddContentBlocks = true;
                         const blocks = fnArgs.blocks || [];
                         // 从工具调用中提取 options（AI 通过工具直接提交选项）
                         if (fnArgs.options && Array.isArray(fnArgs.options) && fnArgs.options.length > 0) {
@@ -545,48 +543,18 @@ class Pipeline {
             }
         }
 
-        // ===== Phase 3: 解析最终输出 =====
-        logger.info('[Pipeline] Parsing GM output');
-        // 找到最后一条 assistant 消息（跳过 tool 消息）
-        let lastAssistantMsg = null;
-        for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].role === 'assistant') {
-                lastAssistantMsg = messages[i];
-                break;
-            }
-        }
-        const rawContent = lastAssistantMsg?.content || '';
-        const structuredOutput = parseGMOutput(rawContent);
+        // ===== Phase 3: 组装最终输出 =====
+        logger.info('[Pipeline] Assembling final output');
 
-        if (structuredOutput.content.length === 1 && structuredOutput.content[0].type === 'narrative' && structuredOutput.content[0].text === rawContent) {
-            logger.warn('[Pipeline] Failed to parse GM output');
-        }
-
-        // 合并有序块和最终输出
-        let finalContent;
-        if (hasUsedAddContentBlocks && orderedBlocks.length > 0) {
-            // AI 使用了 add_content_blocks：以 orderedBlocks 为主
-            // 如果 AI 最终输出中还有额外的 content（未被 add_content_blocks 覆盖的），追加到末尾
-            const parsedContent = structuredOutput.content || [];
-            const isFallbackOutput = parsedContent.length === 1 && parsedContent[0].type === 'narrative' && parsedContent[0].text === rawContent;
-            if (!isFallbackOutput && parsedContent.length > 0) {
-                logger.info(`[Pipeline] Merging: ${orderedBlocks.length} ordered blocks + ${parsedContent.length} final content blocks`);
-                orderedBlocks.push(...parsedContent);
+        // 所有内容来自 orderedBlocks（通过工具调用收集）
+        const finalContent = orderedBlocks.map(block => {
+            if (block.type === '_notification') {
+                return { type: '_notification', text: block.text, notifType: block.notifType };
             }
-            // 将 orderedBlocks 中的 _notification 转为标准格式，其他 block 保持原样
-            finalContent = orderedBlocks.map(block => {
-                if (block.type === '_notification') {
-                    return { type: '_notification', text: block.text, notifType: block.notifType };
-                }
-                // 移除内部标记字段
-                const clean = { ...block };
-                delete clean._source;
-                return clean;
-            });
-        } else {
-            // AI 未使用 add_content_blocks：保持旧行为，content 和 notification 分离
-            finalContent = structuredOutput.content || [{ type: 'narrative', text: rawContent }];
-        }
+            const clean = { ...block };
+            delete clean._source;
+            return clean;
+        });
 
         // ===== NPC 交互计数 & 自动升级 =====
         const UPGRADE_THRESHOLD = 3; // 普通NPC对话轮次超过此次数自动升级
@@ -628,7 +596,7 @@ class Pipeline {
 
         logger.info('[Pipeline] Run completed', { totalLoops: loopCount, totalToolCalls });
 
-        let finalOptions = toolOptions || structuredOutput.options || [];
+        let finalOptions = toolOptions || [];
 
         // ===== 选项补充：如果 AI 没有生成选项，自动补充 =====
         if (finalOptions.length === 0 && finalContent.length > 0) {
@@ -651,7 +619,7 @@ class Pipeline {
             loops: loopCount,
             toolCallCount: totalToolCalls,
             toolCallLog,
-            hasOrderedContent: hasUsedAddContentBlocks && orderedBlocks.length > 0,
+            hasOrderedContent: orderedBlocks.length > 0,
         };
     }
 
@@ -763,38 +731,6 @@ class Pipeline {
 // ===== 公共辅助函数 =====
 // ===================================================================
 
-function parseGMOutput(rawContent) {
-    try {
-        const parsed = JSON.parse(rawContent);
-        if (parsed.content && Array.isArray(parsed.content)) {
-            return { content: parsed.content, options: parsed.options || [] };
-        }
-    } catch (e) {}
-
-    const jsonMatch = rawContent.match(/\{[\s\S]*"content"[\s\S]*\}/);
-    if (jsonMatch) {
-        try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.content && Array.isArray(parsed.content)) {
-                return { content: parsed.content, options: parsed.options || [] };
-            }
-        } catch (e) {}
-    }
-
-    // 降级：无法解析为结构化输出
-    // 如果 rawContent 看起来像 JSON（工具结果等），返回空内容而非渲染原始 JSON
-    const trimmed = rawContent.trim();
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        try {
-            const obj = JSON.parse(trimmed);
-            if (typeof obj === 'object' && !Array.isArray(obj) && !obj.content) {
-                // 是工具结果 JSON，不是叙事内容
-                return { content: [], options: [] };
-            }
-        } catch (e) {}
-    }
-    return { content: [{ type: 'narrative', text: rawContent }], options: [] };
-}
 
 async function parseStreamResponse(response) {
     const reader = response.body.getReader();

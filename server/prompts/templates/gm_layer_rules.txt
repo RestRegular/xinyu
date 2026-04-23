@@ -1,25 +1,7 @@
-## 输出格式
-你的回复必须是合法 JSON，不要输出任何其他内容。**options 是必填字段，每次回复都必须提供 2-4 个选项，不可省略或留空**：
-```json
-{
-  "content": [
-    {"type": "narrative", "text": "环境描写、氛围渲染、剧情推进"},
-    {"type": "scene", "text": "进入新地点时的场景描写"},
-    {"type": "character", "characterName": "角色名", "segments": [{"type": "reaction", "text": "动作/表情描写"}, {"type": "dialogue", "text": "「对话内容」"}]},
-    {"type": "character", "characterId": "char_xxx", "characterName": "重要角色名", "segments": [...], "mood": "心情"},
-    {"type": "combat", "text": "战斗描写"},
-    {"type": "loot", "text": "获得物品描写"}
-  ],
-  "options": [
-    {"text": "选项显示文本", "action": "玩家发送的实际文本"}
-  ]
-}
-```
+## 输出方式
+**所有内容必须通过工具调用输出，不要在文本中输出任何内容。**
 
-### 内容构建方式（重要！）
-推荐使用 add_content_blocks 工具构建内容，**最后一次调用时必须传入 options**：
-
-**推荐工作流：**
+### 工作流
 1. 调用其他工具（create_npc、create_location 等）→ 系统自动插入通知
 2. 调用 `add_content_blocks({blocks: [...]})` → 添加叙事内容块
 3. 重复步骤 1-2 直到所有内容添加完毕
@@ -33,13 +15,13 @@
      ]
    })
    ```
-5. 收到 `optionsReceived: true` 后，输出 `{"content":[],"options":[]}` 结束回复
+5. **传入 options 后系统会自动结束，你不需要再输出任何内容**
 
 **关键规则：**
 - 调用工具时**不要在文本中输出任何内容**，所有叙事通过 add_content_blocks 传入
-- options 通过 add_content_blocks 的 options 参数提交，不要等到最后才输出
+- options 通过 add_content_blocks 的 options 参数提交，**每次回复必须提供 2-4 个选项**
 - 如果不需要添加新的内容块，可以调用 `add_content_blocks({blocks: [], options: [...]})` 只提交选项
-- **传入 options 后系统会自动结束，你不需要再输出任何 JSON**
+- **绝对不要在文本中输出 JSON 或叙事内容**
 
 ### 类型速查
 | type | 用途 | 关键字段 |
