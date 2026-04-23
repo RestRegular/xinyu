@@ -449,7 +449,7 @@ router.post('/autofill', async (req, res) => {
 // ===== POST /api/game/create — 创建新游戏 =====
 // ===================================================================
 router.post('/create', (req, res) => {
-    const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId, starterItems: customStarterItems } = req.body;
+    const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, perspective, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId, starterItems: customStarterItems } = req.body;
 
     logger.info('[Create] New game', { name: saveName, world: worldName });
 
