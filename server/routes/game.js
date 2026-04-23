@@ -43,7 +43,7 @@ function getModel() { return getConfigValue('model', 'deepseek-chat'); }
 function getAppConfig() {
     return {
         temperature: getConfigValue('temperature', 0.9),
-        maxTokens: getConfigValue('maxTokens', 2048),
+        maxTokens: getConfigValue('maxTokens', 4096),
         ui: getConfigValue('ui', { fontSize: 'medium', narrativeLength: 'medium' }),
         customInstructions: getConfigValue('customInstructions', ''),
     };

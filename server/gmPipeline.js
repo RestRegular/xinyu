@@ -624,7 +624,7 @@ class Pipeline {
                 const response = await fetch(apiBaseUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model, messages, tools, temperature: temperature || 0.9, max_tokens: maxTokens || 2048, stream: true }),
+                    body: JSON.stringify({ model, messages, tools, temperature: temperature || 0.9, max_tokens: maxTokens || 4096, stream: true }),
                     signal: controller.signal,
                 });
                 clearTimeout(timer);
@@ -745,7 +745,7 @@ async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools
     const response = await fetch(apiBaseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, tools: tools || undefined, temperature: appConfig.temperature || 0.9, max_tokens: appConfig.maxTokens || 2048, stream: false }),
+        body: JSON.stringify({ model, messages, tools: tools || undefined, temperature: appConfig.temperature || 0.9, max_tokens: appConfig.maxTokens || 4096, stream: false }),
     });
     if (!response.ok) { const errText = await response.text(); throw new Error(`AI 请求失败 (${response.status}): ${errText}`); }
     const data = await response.json();
