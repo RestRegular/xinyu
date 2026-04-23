@@ -171,6 +171,7 @@ function buildGmPrompt(saveData, appConfig) {
         connectionsInfo: loc && loc.connections ? loc.connections.join('、') : '无已知路径',
         charactersInfo: charsInfo,
         recentPlotSummary: buildRecentPlotSummary(saveData),
+        maxTokens: appConfig?.maxTokens || 4096,
     }) + customBlock;
 }
 

@@ -10,6 +10,15 @@ function populateSettings() {
     document.getElementById('settingMaxTokens').value = appConfig.maxTokens || 4096;
     document.getElementById('settingNarrative').value = appConfig.ui?.narrativeLength || 'medium';
     document.getElementById('settingCustomInstructions').value = appConfig.customInstructions || '';
+    updateTokenEstimate();
+}
+
+function updateTokenEstimate() {
+    const tokens = parseInt(document.getElementById('settingMaxTokens').value) || 4096;
+    // 中文约 1 token = 1.5 字，但需扣除 JSON 结构和工具调用的开销（约 30%）
+    const charEstimate = Math.round(tokens * 1.5 * 0.7);
+    const el = document.getElementById('maxTokensCharEstimate');
+    if (el) el.textContent = charEstimate.toLocaleString();
 }
 
 function saveSettingsFromUI() {
