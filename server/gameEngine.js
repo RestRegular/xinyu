@@ -291,7 +291,7 @@ function handleCreateCharacter(args, saveData) {
 
     // 检查是否已存在
     const existing = Object.values(saveData.characters).find(c => c.name === name);
-    if (existing) return { success: false, error: `重要角色"${name}"已存在` };
+    if (existing) return { success: false, error: `角色"${name}"已存在（ID: ${existing.id}），不要重复创建。请直接使用 get_character_reaction 获取该角色的反应。`, existingId: existing.id };
 
     const now = new Date().toISOString();
     const charId = 'char_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);

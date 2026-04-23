@@ -455,22 +455,21 @@ class Pipeline {
                             }));
                             logger.info(`[Pipeline] add_content_blocks: ${toolOptions.length} options received via tool call`);
                         }
-                        // 检测空调用，防止 AI 陷入无效循环
+                        // 检测空调用，直接跳过（不增加有效计数，但仍返回 tool result）
                         if (blocks.length === 0 && !fnArgs.options) {
                             emptyAddContentCount = (emptyAddContentCount || 0) + 1;
-                            logger.warn(`[Pipeline] Empty add_content_blocks call #${emptyAddContentCount}`);
-                            messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: 0, warning: '空内容块调用。请传入 blocks 和/或 options，不要提交空调用。' }) });
-                            totalToolCalls++;
+                            logger.warn(`[Pipeline] Empty add_content_blocks call #${emptyAddContentCount}, skipping`);
+                            messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: 0, warning: '空内容块调用已忽略。请传入 blocks 和/或 options。' }) });
                             continue;
                         }
                         for (const block of blocks) {
                             orderedBlocks.push({ ...block, _source: 'add_content_blocks' });
                         }
                         logger.info(`[Pipeline] add_content_blocks: ${blocks.length} blocks added to orderedBlocks`);
-                        // 如果已收到 options，告知 AI 可以结束
+                        // 如果已收到 options，告知 AI 可以结束；否则提示需要提交 options
                         const toolResultContent = toolOptions
                             ? { success: true, added: blocks.length, optionsReceived: true, message: '已收到选项，回复已自动结束。' }
-                            : { success: true, added: blocks.length };
+                            : { success: true, added: blocks.length, reminder: '你还没有提交 options（玩家选项）。请在下一次 add_content_blocks 调用中传入 options 参数来结束回复。' };
                         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResultContent) });
                         totalToolCalls++;
                         continue;
