@@ -404,6 +404,7 @@ class Pipeline {
         const orderedBlocks = [];     // 有序内容块列表（content + notification 交错排列）
         let totalToolCalls = 0;
         let hasUsedAddContentBlocks = false;  // 标记 AI 是否使用了 add_content_blocks 工具
+        let emptyAddContentCount = 0;         // 连续空调用计数
 
         // ===== Phase 1: StoryAgent 主循环 =====
         const systemPrompt = buildSystemPrompt(saveData, appConfig);
@@ -447,6 +448,19 @@ class Pipeline {
                     if (fnName === 'add_content_blocks') {
                         hasUsedAddContentBlocks = true;
                         const blocks = fnArgs.blocks || [];
+                        // 检测连续空调用，防止 AI 陷入无效循环
+                        if (blocks.length === 0) {
+                            emptyAddContentCount = (emptyAddContentCount || 0) + 1;
+                            if (emptyAddContentCount >= 2) {
+                                logger.warn(`[Pipeline] Detected ${emptyAddContentCount} consecutive empty add_content_blocks calls, forcing exit`);
+                                // 返回提示信息让 AI 输出最终 JSON
+                                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: 0, warning: '你已经连续多次提交空内容块。请直接输出最终的 JSON（包含 options 字段）来结束回复，不要再调用 add_content_blocks。' }) });
+                                totalToolCalls++;
+                                continue;
+                            }
+                        } else {
+                            emptyAddContentCount = 0;
+                        }
                         for (const block of blocks) {
                             orderedBlocks.push({ ...block, _source: 'add_content_blocks' });
                         }
