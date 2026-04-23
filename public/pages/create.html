@@ -126,6 +126,11 @@
                     <div class="create-form-hint">这些指令会追加到系统提示词中，仅对本世界生效</div>
                 </div>
                 <div class="create-form-row">
+                    <label class="create-form-label" for="createOpeningPrompt">初始剧情提示 <span style="font-weight:400;color:var(--text-tertiary);">（可选）</span></label>
+                    <textarea class="input create-form-textarea" id="createOpeningPrompt" rows="4" placeholder="指导AI如何开场。例如：&#10;玩家在一个神秘的地下神殿中醒来，周围是古老的符文和微弱的蓝光。远处传来低沉的吟唱声...&#10;开场应营造悬疑氛围，暗示玩家身负某种使命"></textarea>
+                    <div class="create-form-hint">指定AI开场时的剧情方向和氛围，留空则由AI自由发挥</div>
+                </div>
+                <div class="create-form-row">
                     <label class="create-form-label" for="createStartLocation">起始地点名称</label>
                     <input class="input create-form-input" id="createStartLocation" placeholder="玩家最初醒来的地方...">
                 </div>

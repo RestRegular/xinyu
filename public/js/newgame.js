@@ -194,6 +194,7 @@ async function createNewGame() {
     const worldDesc = document.getElementById('createWorldDesc').value.trim() || '一个未知的世界';
     const worldRules = document.getElementById('createWorldRules').value.trim();
     const customPrompt = document.getElementById('createCustomPrompt').value.trim();
+    const openingPrompt = document.getElementById('createOpeningPrompt').value.trim();
     const tone = document.getElementById('createTone').value || '史诗';
     const perspective = document.getElementById('createPerspective').value || 'second_person';
     const startLocation = document.getElementById('createStartLocation').value.trim() || '起始之地';
@@ -213,7 +214,7 @@ async function createNewGame() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, perspective,
+                saveName, worldName, genre, worldDesc, worldRules, customPrompt, openingPrompt, tone, perspective,
                 startLocation, startLocationDesc,
                 playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory,
                 startGold, templateId: selectedTemplate,

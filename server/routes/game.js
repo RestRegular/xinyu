@@ -465,7 +465,7 @@ router.post('/autofill', async (req, res) => {
 // ===== POST /api/game/create — 创建新游戏 =====
 // ===================================================================
 router.post('/create', (req, res) => {
-    const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, tone, perspective, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId, starterItems: customStarterItems } = req.body;
+    const { saveName, worldName, genre, worldDesc, worldRules, customPrompt, openingPrompt, tone, perspective, startLocation, startLocationDesc, playerName, playerGender, playerAge, playerRace, playerClass, playerAppearance, playerPersonality, playerBackstory, startGold, templateId, starterItems: customStarterItems } = req.body;
 
     logger.info('[Create] New game', { name: saveName, world: worldName });
 
@@ -508,7 +508,7 @@ router.post('/create', (req, res) => {
 
     const saveData = {
         id, name: saveName || '未命名的冒险', version: '1.0',
-        world: { name: effectiveWorldName, genre: effectiveGenre, description: effectiveWorldDesc, rules: effectiveWorldRules, tone: effectiveTone, perspective: effectivePerspective, customPrompt: customPrompt || '' },
+        world: { name: effectiveWorldName, genre: effectiveGenre, description: effectiveWorldDesc, rules: effectiveWorldRules, tone: effectiveTone, perspective: effectivePerspective, customPrompt: customPrompt || '', openingPrompt: openingPrompt || '' },
         player: { name: playerName || '旅行者', gender: playerGender || '未设定', age: playerAge || '未设定', appearance: playerAppearance || '', personality: playerPersonality || '', occupation: playerClass || '', backstory: playerBackstory || '', description: playerDesc, level: 1, experience: 0, experienceToNext: 100, attributes: { hp: { current: 100, max: 100, label: '生命值' }, mp: { current: 50, max: 50, label: '魔力值' }, attack: { current: 10, max: 10, label: '攻击力' }, defense: { current: 5, max: 5, label: '防御力' }, agility: { current: 7, max: 7, label: '敏捷' }, luck: { current: 3, max: 3, label: '幸运' } }, statusEffects: [] },
         inventory: { items: finalStarterItems.map((item, i) => ({ id: 'item_' + Date.now() + '_' + i, name: item.name, type: item.type, description: item.description || '', quantity: item.quantity || 1, effects: item.effects || {}, rarity: item.rarity || 'common', usable: item.usable || false, equippable: item.equippable || false, equipped: false })), gold: finalStarterGold, maxSlots: 20 },
         map: { currentLocation: effectiveStartLocation, locations: { [effectiveStartLocation]: { description: effectiveStartLocationDesc, connections: [], npcs: [], discovered: true, dangerLevel: 0 } } },
