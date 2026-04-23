@@ -13,12 +13,12 @@
             enterGameView();
 
             // 优先使用 renderHistory（新格式渲染块）
-            if (data.renderHistory && data.renderHistory.blocks && data.renderHistory.blocks.length > 0) {
-                renderGameMessages(data.renderHistory.blocks);
-                if (data.renderHistory.options && data.renderHistory.options.length > 0) {
-                    renderOptions(data.renderHistory.options);
+            if (data.renderHistory && data.renderHistory.renderBlocks && data.renderHistory.renderBlocks.length > 0) {
+                renderGameMessages(data.renderHistory.renderBlocks);
+                if (data.renderHistory.currentOptions && data.renderHistory.currentOptions.length > 0) {
+                    renderOptions(data.renderHistory.currentOptions);
                 }
-                currentLastBlockIndex = data.renderHistory.blocks.length - 1;
+                currentLastBlockIndex = data.renderHistory.renderBlocks.length - 1;
             } else if (Array.isArray(data.chatHistory) && data.chatHistory.length > 0) {
                 // 旧格式兼容：chatHistory 是数组
                 renderGameMessages(data.chatHistory);

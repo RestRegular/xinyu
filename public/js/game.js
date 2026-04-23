@@ -571,7 +571,7 @@ function renderPlayerBlock(block) {
                 </div>
             </div>`;
     if (d.action) {
-        html += `<div class="player-action">${formatNarratorText(d.action)}</div>`;
+        html += `<div class="player-action">${escapeHtml(d.action)}</div>`;
     }
     if (d.dialogue) {
         html += `<div class="dialogue-text">"${escapeHtml(d.dialogue)}"</div>`;
