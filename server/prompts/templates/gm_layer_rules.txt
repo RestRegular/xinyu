@@ -70,7 +70,7 @@ segments 规则：
 | 逐步添加内容块 | add_content_blocks | 推荐方式，支持批量传入多个块 |
 | 金币增减 | update_gold | amount 正数=获得，负数=花费 |
 | HP/MP/经验变化 | update_attributes | changes: {hp: -10} |
-| 获得物品 | add_item | |
+| 获得物品 | add_item | description 必填，普通物品也要有 15-30 字描述 |
 | 失去/使用物品 | remove_item | |
 | 中毒/灼烧/祝福 | add_status_effect | |
 | 装备/卸下装备 | equip_item | |

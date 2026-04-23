@@ -19,7 +19,7 @@ const gameTools = [
         type: 'function',
         function: {
             name: 'add_item',
-            description: '向玩家背包添加物品。',
+            description: '向玩家背包添加物品。注意：description 为必填项，即使是普通物品（面包、绳子、信件等）也必须提供 15-30 字的有意义描述，说明物品的外观、质地、气味等感官细节。不要传空描述或敷衍描述。',
             parameters: {
                 type: 'object',
                 properties: {
