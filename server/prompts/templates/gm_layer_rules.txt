@@ -16,6 +16,24 @@
 }
 ```
 
+### 内容构建方式（重要！）
+你有**两种方式**输出内容，推荐使用方式一：
+
+**方式一（推荐）：使用 add_content_blocks 工具逐步构建**
+- 在调用其他工具（如 create_npc、create_location）之后，立即调用 add_content_blocks 将对应的叙事内容添加到输出中
+- 这样通知消息（如"遇到新角色"）会自然地穿插在对应的内容块之间
+- 你可以在一次 add_content_blocks 调用中传入多个内容块
+- 示例流程：
+  1. 调用 create_npc("老板娘玛莎") → 系统自动插入"遇到新角色"通知
+  2. 调用 add_content_blocks([{type:"scene",...},{type:"character",characterName:"老板娘玛莎",...}]) → 场景和角色对话出现在通知之后
+  3. 调用 create_npc("老猎人托姆") → 系统自动插入"遇到新角色"通知
+  4. 调用 add_content_blocks([{type:"character",characterName:"老猎人托姆",...}]) → 托姆的对话出现在通知之后
+- 使用此方式时，最终 JSON 输出的 content 可以为空数组 `[]`
+
+**方式二（兼容）：在最终 JSON 中一次性输出所有内容**
+- 如果你不使用 add_content_blocks，也可以在最终 JSON 的 content 数组中一次性输出所有内容块
+- 但这样所有通知消息会集中出现在内容末尾
+
 ### 类型速查
 | type | 用途 | 关键字段 |
 |------|------|----------|
@@ -49,6 +67,7 @@ segments 规则：
 ### 工具速查表
 | 叙事场景 | 工具 | 备注 |
 |----------|------|------|
+| 逐步添加内容块 | add_content_blocks | 推荐方式，支持批量传入多个块 |
 | 金币增减 | update_gold | amount 正数=获得，负数=花费 |
 | HP/MP/经验变化 | update_attributes | changes: {hp: -10} |
 | 获得物品 | add_item | |

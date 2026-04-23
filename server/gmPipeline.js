@@ -400,8 +400,10 @@ class Pipeline {
      * @returns {Promise<{content, options, notifications, saveData}>}
      */
     async run(saveData, userMessage, apiConfig, appConfig, aiMessages = null) {
-        const allNotifications = [];
+        const allNotifications = [];  // 后处理/自动升级产生的通知（无位置信息，追加到末尾）
+        const orderedBlocks = [];     // 有序内容块列表（content + notification 交错排列）
         let totalToolCalls = 0;
+        let hasUsedAddContentBlocks = false;  // 标记 AI 是否使用了 add_content_blocks 工具
 
         // ===== Phase 1: StoryAgent 主循环 =====
         const systemPrompt = buildSystemPrompt(saveData, appConfig);
@@ -441,13 +443,33 @@ class Pipeline {
 
                     logger.info(`[Pipeline] Tool call: ${fnName}`, { args: fnArgs });
 
+                    // 拦截 add_content_blocks 工具：将内容块写入有序列表
+                    if (fnName === 'add_content_blocks') {
+                        hasUsedAddContentBlocks = true;
+                        const blocks = fnArgs.blocks || [];
+                        for (const block of blocks) {
+                            orderedBlocks.push({ ...block, _source: 'add_content_blocks' });
+                        }
+                        logger.info(`[Pipeline] add_content_blocks: ${blocks.length} blocks added to orderedBlocks`);
+                        // 返回成功结果给 AI
+                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: blocks.length }) });
+                        totalToolCalls++;
+                        continue;
+                    }
+
                     // 查找负责的 Agent
                     const agent = this.getAgentForTool(fnName);
                     if (!agent) {
                         // 未知工具，直接执行
                         logger.warn(`[Pipeline] Unknown tool: ${fnName}`);
                         const toolResult = executeGameFunction(fnName, fnArgs, saveData);
-                        if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
+                        // 将工具产生的 notification 写入有序列表
+                        if (toolResult.notifications) {
+                            for (const notif of toolResult.notifications) {
+                                orderedBlocks.push({ type: '_notification', text: notif.text, notifType: notif.type || 'info' });
+                            }
+                            allNotifications.push(...toolResult.notifications);
+                        }
                         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
                         totalToolCalls++;
                         continue;
@@ -458,7 +480,13 @@ class Pipeline {
                     const toolResult = await agent.executeAsync(fnName, fnArgs, saveData, apiConfig);
                     agentTimer.done(`Agent:${agent.name}`);
                     logger.info(`[Pipeline] Tool result: ${fnName}`, { success: !toolResult.error, hasNotifications: !!(toolResult.notifications?.length) });
-                    if (toolResult.notifications) allNotifications.push(...toolResult.notifications);
+                    // 将工具产生的 notification 写入有序列表
+                    if (toolResult.notifications) {
+                        for (const notif of toolResult.notifications) {
+                            orderedBlocks.push({ type: '_notification', text: notif.text, notifType: notif.type || 'info' });
+                        }
+                        allNotifications.push(...toolResult.notifications);
+                    }
                     // 返回真实结果给 AI
                     messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
                     totalToolCalls++;
@@ -506,12 +534,38 @@ class Pipeline {
             logger.warn('[Pipeline] Failed to parse GM output');
         }
 
+        // 合并有序块和最终输出
+        let finalContent;
+        if (hasUsedAddContentBlocks && orderedBlocks.length > 0) {
+            // AI 使用了 add_content_blocks：以 orderedBlocks 为主
+            // 如果 AI 最终输出中还有额外的 content（未被 add_content_blocks 覆盖的），追加到末尾
+            const parsedContent = structuredOutput.content || [];
+            const isFallbackOutput = parsedContent.length === 1 && parsedContent[0].type === 'narrative' && parsedContent[0].text === rawContent;
+            if (!isFallbackOutput && parsedContent.length > 0) {
+                logger.info(`[Pipeline] Merging: ${orderedBlocks.length} ordered blocks + ${parsedContent.length} final content blocks`);
+                orderedBlocks.push(...parsedContent);
+            }
+            // 将 orderedBlocks 中的 _notification 转为标准格式，其他 block 保持原样
+            finalContent = orderedBlocks.map(block => {
+                if (block.type === '_notification') {
+                    return { type: '_notification', text: block.text, notifType: block.notifType };
+                }
+                // 移除内部标记字段
+                const clean = { ...block };
+                delete clean._source;
+                return clean;
+            });
+        } else {
+            // AI 未使用 add_content_blocks：保持旧行为，content 和 notification 分离
+            finalContent = structuredOutput.content || [{ type: 'narrative', text: rawContent }];
+        }
+
         // ===== NPC 交互计数 & 自动升级 =====
         const UPGRADE_THRESHOLD = 3; // 普通NPC对话轮次超过此次数自动升级
         if (!saveData.npcInteractionCounts) saveData.npcInteractionCounts = {};
         if (!saveData.characters) saveData.characters = {};
 
-        for (const block of (structuredOutput.content || [])) {
+        for (const block of (finalContent || [])) {
             if (block.type === 'character' && block.characterName && !block.characterId) {
                 // 普通NPC（无characterId）出现在content中，递增交互计数
                 const npcName = block.characterName;
@@ -547,13 +601,14 @@ class Pipeline {
         logger.info('[Pipeline] Run completed', { totalLoops: loopCount, totalToolCalls });
 
         return {
-            content: structuredOutput.content || [{ type: 'narrative', text: rawContent }],
+            content: finalContent,
             options: structuredOutput.options || [],
             notifications: allNotifications,
             saveData,
             loops: loopCount,
             toolCallCount: totalToolCalls,
             toolCallLog,
+            hasOrderedContent: hasUsedAddContentBlocks && orderedBlocks.length > 0,
         };
     }
 

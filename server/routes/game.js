@@ -262,19 +262,34 @@ router.post('/action', async (req, res) => {
             : result.content;
 
         // 写入 AI 响应到 CHM（包含 player_action 用于 AI 上下文）
+        // CHM 只需要纯 content（不含 _notification），用于 AI 上下文
+        const pureContent = (result.content || []).filter(b => b.type !== '_notification');
         chm.addAssistantResponse(
-            result.content ? JSON.stringify({ content: result.content, options: result.options }) : '',
+            pureContent.length > 0 ? JSON.stringify({ content: pureContent, options: result.options }) : '',
             finalContent,
             result.options,
             playerActionContent
         );
 
-        // 写入 AI 响应到 RDM（排除 player_action，已由 UA 写入）
-        const aiOnlyContent = finalContent.filter(b => b.type !== 'player_action');
-        rdm.appendAssistantContent(aiOnlyContent);
+        // 写入 AI 响应到 RDM
+        if (result.hasOrderedContent) {
+            // 新模式：content 中包含交错的 content 块和 _notification 块，按顺序写入
+            const aiOnlyBlocks = finalContent.filter(b => b.type !== 'player_action');
+            for (const block of aiOnlyBlocks) {
+                if (block.type === '_notification') {
+                    rdm.appendNotification(block.text, block.notifType);
+                } else {
+                    rdm.appendAssistantContent([block]);
+                }
+            }
+        } else {
+            // 旧模式：content 和 notification 分离写入（向后兼容）
+            const aiOnlyContent = finalContent.filter(b => b.type !== 'player_action' && b.type !== '_notification');
+            rdm.appendAssistantContent(aiOnlyContent);
+        }
         rdm.updateOptions(result.options);
 
-        // 将通知持久化到 CHM 和 RDM
+        // 将后处理/自动升级产生的通知持久化到 CHM 和 RDM（追加到末尾）
         if (result.notifications && result.notifications.length > 0) {
             for (const notif of result.notifications) {
                 chm.addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
