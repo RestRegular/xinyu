@@ -579,18 +579,28 @@ function renderPlayerBlock(block) {
                     ${time ? `<span class="msg-time">${time}</span>` : ''}
                 </div>
             </div>`;
-    if (d.action) {
-        // 支持换行分隔的多段 action
-        const actions = d.action.split('\n').filter(s => s.trim());
-        for (const a of actions) {
-            html += `<div class="player-action">${escapeHtml(a.trim())}</div>`;
+    if (d.segments && Array.isArray(d.segments)) {
+        // 新格式：按 segments 数组顺序渲染
+        for (const seg of d.segments) {
+            if (seg.type === 'action' && seg.text) {
+                html += `<div class="player-action">${escapeHtml(seg.text)}</div>`;
+            } else if (seg.type === 'dialogue' && seg.text) {
+                html += `<div class="dialogue-text">${escapeHtml(seg.text)}</div>`;
+            }
         }
-    }
-    if (d.dialogue) {
-        // 支持换行分隔的多段 dialogue
-        const dialogues = d.dialogue.split('\n').filter(s => s.trim());
-        for (const dl of dialogues) {
-            html += `<div class="dialogue-text">${escapeHtml(dl.trim())}</div>`;
+    } else {
+        // 兼容旧格式：action + dialogue
+        if (d.action) {
+            const actions = d.action.split('\n').filter(s => s.trim());
+            for (const a of actions) {
+                html += `<div class="player-action">${escapeHtml(a.trim())}</div>`;
+            }
+        }
+        if (d.dialogue) {
+            const dialogues = d.dialogue.split('\n').filter(s => s.trim());
+            for (const dl of dialogues) {
+                html += `<div class="dialogue-text">${escapeHtml(dl.trim())}</div>`;
+            }
         }
     }
     html += '</div></div>';

@@ -738,10 +738,15 @@ async function runUserAgent(saveData, optionText, apiConfig) {
         const parsed = JSON.parse(cleanContent);
         logger.info('[UserAgent] Completed');
         uaTimer.done('UserAgent');
-        return {
-            action: parsed.action || optionText,
-            dialogue: parsed.dialogue || null,
-        };
+        // 新格式：segments 数组
+        if (parsed.segments && Array.isArray(parsed.segments)) {
+            return { segments: parsed.segments };
+        }
+        // 兼容旧格式：action + dialogue 转换为 segments
+        const segs = [];
+        if (parsed.action) segs.push({ type: 'action', text: parsed.action });
+        if (parsed.dialogue) segs.push({ type: 'dialogue', text: parsed.dialogue });
+        return { segments: segs.length > 0 ? segs : [{ type: 'action', text: optionText }] };
     } catch (e) {
         // JSON 解析失败，尝试从文本中提取
         const jsonMatch = cleanContent.match(/\{[\s\S]*"action"[\s\S]*}/);
@@ -750,17 +755,20 @@ async function runUserAgent(saveData, optionText, apiConfig) {
                 const parsed = JSON.parse(jsonMatch[0]);
                 logger.info('[UserAgent] Completed');
                 uaTimer.done('UserAgent');
-                return {
-                    action: parsed.action || optionText,
-                    dialogue: parsed.dialogue || null,
-                };
+                if (parsed.segments && Array.isArray(parsed.segments)) {
+                    return { segments: parsed.segments };
+                }
+                const segs = [];
+                if (parsed.action) segs.push({ type: 'action', text: parsed.action });
+                if (parsed.dialogue) segs.push({ type: 'dialogue', text: parsed.dialogue });
+                return { segments: segs.length > 0 ? segs : [{ type: 'action', text: optionText }] };
             } catch (e2) {}
         }
         // 降级：直接使用选项文本作为行为描述
         logger.warn('[UserAgent] JSON parse failed, using raw text');
         logger.info('[UserAgent] Completed');
         uaTimer.done('UserAgent');
-        return { action: optionText, dialogue: null };
+        return { segments: [{ type: 'action', text: optionText }] };
     }
 }
 

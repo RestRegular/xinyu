@@ -46,11 +46,22 @@ class RenderDataManager {
             id: this._generateId(),
             type: 'player',
             timestamp: new Date().toISOString(),
-            data: {
-                action: playerAction?.action || null,
-                dialogue: playerAction?.dialogue || text,
-            },
+            data: {},
         };
+        // 新格式：segments 数组
+        if (playerAction?.segments && Array.isArray(playerAction.segments)) {
+            renderBlock.data.segments = playerAction.segments;
+        } else {
+            // 兼容旧格式：action + dialogue 转换为 segments
+            const segs = [];
+            if (playerAction?.action) segs.push({ type: 'action', text: playerAction.action });
+            if (playerAction?.dialogue) segs.push({ type: 'dialogue', text: playerAction.dialogue });
+            if (segs.length > 0) {
+                renderBlock.data.segments = segs;
+            } else {
+                renderBlock.data.segments = [{ type: 'action', text }];
+            }
+        }
         this.renderBlocks.push(renderBlock);
     }
 
@@ -230,11 +241,16 @@ class RenderDataManager {
                     },
                 };
             case 'player_action':
+                // 新格式：segments 数组
+                if (block.segments && Array.isArray(block.segments) && block.segments.length > 0) {
+                    return { type: 'player', data: { segments: block.segments } };
+                }
+                // 兼容旧格式：action + dialogue 转换为 segments
                 if (!block.action && !block.dialogue) return null;
-                return {
-                    type: 'player',
-                    data: { action: block.action, dialogue: block.dialogue },
-                };
+                const pSegs = [];
+                if (block.action) pSegs.push({ type: 'action', text: block.action });
+                if (block.dialogue) pSegs.push({ type: 'dialogue', text: block.dialogue });
+                return { type: 'player', data: { segments: pSegs } };
             default:
                 logger.debug(`[RDM] Unknown block type: ${block.type}, falling back to narrative`);
                 if (!block.text) return null;
