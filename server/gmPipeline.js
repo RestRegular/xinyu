@@ -598,9 +598,24 @@ class Pipeline {
 
         logger.info('[Pipeline] Run completed', { totalLoops: loopCount, totalToolCalls });
 
+        let finalOptions = structuredOutput.options || [];
+
+        // ===== 选项补充：如果 AI 没有生成选项，自动补充 =====
+        if (finalOptions.length === 0 && finalContent.length > 0) {
+            logger.info('[Pipeline] No options generated, requesting fallback options');
+            try {
+                finalOptions = await this._requestFallbackOptions(saveData, apiConfig, messages);
+                if (finalOptions.length > 0) {
+                    logger.info(`[Pipeline] Fallback options generated: ${finalOptions.length}`);
+                }
+            } catch (err) {
+                logger.warn('[Pipeline] Failed to generate fallback options', { error: err.message });
+            }
+        }
+
         return {
             content: finalContent,
-            options: structuredOutput.options || [],
+            options: finalOptions,
             notifications: postProcessNotifications,
             saveData,
             loops: loopCount,
@@ -608,6 +623,57 @@ class Pipeline {
             toolCallLog,
             hasOrderedContent: hasUsedAddContentBlocks && orderedBlocks.length > 0,
         };
+    }
+
+    /**
+     * 请求 AI 补充选项（当主循环未生成选项时调用）
+     */
+    async _requestFallbackOptions(saveData, apiConfig, messages) {
+        const { apiKey, apiBaseUrl, model } = apiConfig;
+        const loc = saveData.map?.locations?.[saveData.map.currentLocation];
+        const locationHint = loc ? `当前位置：${saveData.map.currentLocation}。` : '';
+
+        const promptMessages = [
+            ...messages,
+            { role: 'user', content: `你刚才的回复中没有提供选项。${locationHint}请根据当前剧情，生成 2-4 个有实质差异的行动选项。只输出 JSON，不要输出其他内容：\n{"options":[{"text":"选项文本","action":"玩家发送的实际文本"}]}` },
+        ];
+
+        const response = await fetch(apiBaseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify({ model, messages: promptMessages, temperature: 0.7, max_tokens: 512, stream: false }),
+        });
+
+        if (!response.ok) return [];
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '';
+
+        // 尝试解析 JSON
+        try {
+            const parsed = JSON.parse(content);
+            if (parsed.options && Array.isArray(parsed.options)) {
+                return parsed.options.map(opt => ({
+                    text: opt.text || opt.label || '',
+                    action: opt.action || opt.text || opt.label || '',
+                }));
+            }
+        } catch (e) {}
+
+        // 尝试从文本中提取 JSON
+        const jsonMatch = content.match(/\{[\s\S]*"options"[\s\S]*\}/);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.options && Array.isArray(parsed.options)) {
+                    return parsed.options.map(opt => ({
+                        text: opt.text || opt.label || '',
+                        action: opt.action || opt.text || opt.label || '',
+                    }));
+                }
+            } catch (e) {}
+        }
+
+        return [];
     }
 
     /**
