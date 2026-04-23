@@ -204,6 +204,17 @@ function buildMapPreviewHtml() {
             html += `<div class="panel-show-all" onclick="showPanelModal('map')" style="text-align:center;padding:6px 0;font-size:12px;color:var(--accent);cursor:pointer;">查看全部 (${conns.length})</div>`;
         }
     }
+    const discovered = Object.entries(locations).filter(([k, v]) => v.discovered && k !== cur && !conns.includes(k));
+    if (discovered.length > 0) {
+        html += '<div class="map-section-title">已探索</div>';
+        const maxDiscovered = 3;
+        discovered.slice(0, maxDiscovered).forEach(([name]) => {
+            html += `<div class="map-card" onclick="showLocationDetail('${escapeHtml(name)}')"><div class="map-card-header"><span class="map-card-name">${escapeHtml(name)}</span></div></div>`;
+        });
+        if (discovered.length > maxDiscovered) {
+            html += `<div class="panel-show-all" onclick="showPanelModal('map')" style="text-align:center;padding:6px 0;font-size:12px;color:var(--accent);cursor:pointer;">查看全部 (${discovered.length})</div>`;
+        }
+    }
     return html;
 }
 
