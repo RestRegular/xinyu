@@ -234,11 +234,11 @@ router.post('/action', async (req, res) => {
                     dialogue: uaResult.dialogue,
                     timestamp: new Date().toISOString(),
                 };
-                // UA 完成后写入完整的 player 块到 RDM
-                rdm.appendUserMessage(userMessage, { action: uaResult.action, dialogue: uaResult.dialogue });
                 // 选项选择的 notification 写入 CHM 和 RDM（前端已即时渲染，这里持久化保证刷新后保留）
                 chm.addNotification(`玩家选择了「${userMessage}」`, 'info');
                 rdm.appendNotification(`玩家选择了「${userMessage}」`, 'info');
+                // UA 完成后写入完整的 player 块到 RDM（在 notification 之后）
+                rdm.appendUserMessage(userMessage, { action: uaResult.action, dialogue: uaResult.dialogue });
             } catch (uaErr) {
                 logger.error('[Action] UserAgent failed:', { error: uaErr.message, stack: uaErr.stack });
             }
