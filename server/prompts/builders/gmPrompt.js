@@ -98,15 +98,16 @@ function buildGmPrompt(saveData, appConfig) {
     // NPC 和角色合并显示
     const locationNpcs = loc && loc.npcs && loc.npcs.length > 0 ? loc.npcs : [];
     const characters = s.characters || {};
-    const charsAtLocation = Object.values(characters).filter(c => c.location === s.map.currentLocation && c.status === 'alive');
-    const charNames = charsAtLocation.map(c => c.name);
+    // 显示所有活跃角色（不限 location），因为角色可能跟随玩家移动
+    const activeChars = Object.values(characters).filter(c => c.status === 'alive' || !c.status);
+    const charNames = activeChars.map(c => c.name);
     const allNames = [...new Set([...locationNpcs, ...charNames])];
     const npcs = allNames.length > 0 ? allNames.join('、') : '无';
 
     // 重要角色详情（供 user_agent_system.txt 使用）
     let charsInfo = '无';
-    if (charsAtLocation.length > 0) {
-        charsInfo = charsAtLocation.map(c =>
+    if (activeChars.length > 0) {
+        charsInfo = activeChars.map(c =>
             `- ${c.name}（${c.role}）| 关系：${c.relationship.title}(${c.relationship.value}/100）`
         ).join('\n');
     }
