@@ -455,17 +455,13 @@ class Pipeline {
                             }));
                             logger.info(`[Pipeline] add_content_blocks: ${toolOptions.length} options received via tool call`);
                         }
-                        // 检测连续空调用，防止 AI 陷入无效循环
+                        // 检测空调用，防止 AI 陷入无效循环
                         if (blocks.length === 0 && !fnArgs.options) {
                             emptyAddContentCount = (emptyAddContentCount || 0) + 1;
-                            if (emptyAddContentCount >= 2) {
-                                logger.warn(`[Pipeline] Detected ${emptyAddContentCount} consecutive empty add_content_blocks calls, forcing exit`);
-                                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: 0, warning: '你已经连续多次提交空内容块且没有 options。请调用 add_content_blocks 传入 options 来结束回复。' }) });
-                                totalToolCalls++;
-                                continue;
-                            }
-                        } else {
-                            emptyAddContentCount = 0;
+                            logger.warn(`[Pipeline] Empty add_content_blocks call #${emptyAddContentCount}`);
+                            messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, added: 0, warning: '空内容块调用。请传入 blocks 和/或 options，不要提交空调用。' }) });
+                            totalToolCalls++;
+                            continue;
                         }
                         for (const block of blocks) {
                             orderedBlocks.push({ ...block, _source: 'add_content_blocks' });
