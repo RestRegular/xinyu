@@ -2,7 +2,7 @@
 // ===== DeepSeek API 接口层（重构版 - 仅保留前端展示逻辑） =====
 // ===================================================================
 
-const API_TIMEOUT = 60000;
+const API_TIMEOUT = 5 * 60 * 1000; // 5分钟，与后端 Pipeline API_TIMEOUT 一致
 
 // ----- 错误分类 -----
 function classifyError(status, body) {
