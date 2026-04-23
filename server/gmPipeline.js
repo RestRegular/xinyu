@@ -475,7 +475,7 @@ class Pipeline {
                         logger.info(`[Pipeline] add_content_blocks: ${blocks.length} blocks added to orderedBlocks`);
                         // 如果已收到 options，告知 AI 可以结束
                         const toolResultContent = toolOptions
-                            ? { success: true, added: blocks.length, optionsReceived: true, message: '已收到选项，你可以直接输出 {"content":[],"options":[]} 来结束，或继续添加内容。' }
+                            ? { success: true, added: blocks.length, optionsReceived: true, message: '已收到选项，回复已自动结束。' }
                             : { success: true, added: blocks.length };
                         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResultContent) });
                         totalToolCalls++;
@@ -515,6 +515,11 @@ class Pipeline {
                     totalToolCalls++;
                 }
                 logger.info(`[Pipeline] Loop ${loopCount} completed`, { toolCalls: result.tool_calls.length });
+                // 如果已通过工具收到 options，直接结束循环，不需要 AI 再输出结束 JSON
+                if (toolOptions) {
+                    logger.info('[Pipeline] Options received via tool call, ending loop');
+                    break;
+                }
                 continue;
             }
             break;

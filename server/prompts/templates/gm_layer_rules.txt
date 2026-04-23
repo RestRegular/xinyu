@@ -39,7 +39,7 @@
 - 调用工具时**不要在文本中输出任何内容**，所有叙事通过 add_content_blocks 传入
 - options 通过 add_content_blocks 的 options 参数提交，不要等到最后才输出
 - 如果不需要添加新的内容块，可以调用 `add_content_blocks({blocks: [], options: [...]})` 只提交选项
-- 最终仍需输出 `{"content":[],"options":[]}` 来结束，但 content 和 options 可以为空数组（因为已通过工具提交）
+- **传入 options 后系统会自动结束，你不需要再输出任何 JSON**
 
 ### 类型速查
 | type | 用途 | 关键字段 |
