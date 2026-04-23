@@ -62,7 +62,15 @@ function buildCharacterPrompt(character, saveData) {
 
     // 背包摘要
     const inventoryStr = inv.items.length > 0
-        ? inv.items.map(i => `${i.name}${i.quantity > 1 ? 'x' + i.quantity : ''}`).join('、')
+        ? inv.items.map(i => {
+            let str = i.name;
+            if (i.quantity > 1) str += 'x' + i.quantity;
+            str += '[' + i.type + ']';
+            if (i.rarity && i.rarity !== 'common') str += '(' + i.rarity + ')';
+            if (i.description) str += '：' + i.description;
+            if (i.equipped) str += '【已装备】';
+            return str;
+        }).join('\n  ')
         : '空';
 
     return registry.render('character_system', {

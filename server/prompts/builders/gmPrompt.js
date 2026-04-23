@@ -80,10 +80,12 @@ function buildGmPrompt(saveData, appConfig) {
             let str = i.name;
             if (i.quantity > 1) str += 'x' + i.quantity;
             str += '[' + i.type + ']';
-            if (i.equipped) str += '(已装备)';
-            if (i.effects && Object.keys(i.effects).length > 0) str += '(' + Object.entries(i.effects).map(([k,v]) => k + (v>0?'+':'') + v).join(',') + ')';
+            if (i.rarity && i.rarity !== 'common') str += '(' + i.rarity + ')';
+            if (i.description) str += '：' + i.description;
+            if (i.equipped) str += '【已装备】';
+            if (i.effects && Object.keys(i.effects).length > 0) str += ' | 属性:' + Object.entries(i.effects).map(([k,v]) => k + (v>0?'+':'') + v).join(',');
             return str;
-        }).join('、')
+        }).join('\n  ')
         : '空';
 
     // 状态效果
