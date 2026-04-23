@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 600 840" width="600" height="840">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="40%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f0f23"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4a5568"/>
+      <stop offset="50%" stop-color="#718096"/>
+      <stop offset="100%" stop-color="#4a5568"/>
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="50%" stop-color="#f7fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="fogGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a5568" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#2d3748" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="softShadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+    <filter id="fogBlur">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- 卡片背景 -->
+  <rect x="10" y="10" width="580" height="820" rx="16" fill="url(#bgGrad)" stroke="#2d3748" stroke-width="2" filter="url(#softShadow)"/>
+
+  <!-- 雾气效果 -->
+  <g opacity="0.3" filter="url(#fogBlur)">
+    <ellipse cx="100" cy="150" rx="120" ry="60" fill="#4a5568"/>
+    <ellipse cx="500" cy="100" rx="100" ry="50" fill="#4a5568"/>
+    <ellipse cx="300" cy="200" rx="150" ry="40" fill="#4a5568"/>
+    <ellipse cx="150" cy="300" rx="80" ry="30" fill="#4a5568"/>
+    <ellipse cx="450" cy="250" rx="100" ry="35" fill="#4a5568"/>
+  </g>
+
+  <!-- 内边框装饰 -->
+  <rect x="20" y="20" width="560" height="800" rx="12" fill="none" stroke="#2d374844" stroke-width="1"/>
+
+  <!-- 顶部装饰线 -->
+  <line x1="60" y1="60" x2="540" y2="60" stroke="url(#accentGrad)" stroke-width="1" opacity="0.5"/>
+  <text x="300" y="63" text-anchor="middle" fill="#718096" font-size="10" opacity="0.6">◆</text>
+  <circle cx="60" cy="60" r="2" fill="#718096" opacity="0.4"/>
+  <circle cx="540" cy="60" r="2" fill="#718096" opacity="0.4"/>
+
+  <!-- 类型标签 -->
+  <rect x="240" y="75" width="120" height="28" rx="14" fill="#2d374888" stroke="#4a556844" stroke-width="1"/>
+  <text x="300" y="94" text-anchor="middle" fill="#a0aec0" font-family="sans-serif" font-size="13" letter-spacing="4">悬 疑</text>
+
+  <!-- 图标 -->
+  <text x="300" y="155" text-anchor="middle" font-size="56" filter="url(#glow)">🔍</text>
+
+  <!-- 世界名称 -->
+  <text x="300" y="195" text-anchor="middle" fill="url(#titleGrad)" font-family="sans-serif" font-size="28" font-weight="bold" letter-spacing="2">雾 城</text>
+  <text x="300" y="222" text-anchor="middle" fill="#a0aec0" font-family="sans-serif" font-size="16" letter-spacing="6" opacity="0.8">迷 雾 侦 探</text>
+
+  <!-- 分隔线 -->
+  <line x1="100" y1="242" x2="500" y2="242" stroke="url(#accentGrad)" stroke-width="0.5" opacity="0.4"/>
+  <text x="300" y="246" text-anchor="middle" fill="#718096" font-size="10" opacity="0.5">◇</text>
+
+  <!-- 世界描述 -->
+  <text x="300" y="272" text-anchor="middle" fill="#cbd5e0" font-family="sans-serif" font-size="11" opacity="0.85">在永夜般的浓雾中，揭开层层迷雾背后的真相</text>
+
+  <!-- 世界详情区域 -->
+  <text x="50" y="310" fill="#e2e8f0" font-family="sans-serif" font-size="13" font-weight="bold" letter-spacing="2">◆ 雾城概览</text>
+  <line x1="50" y1="318" x2="180" y2="318" stroke="#4a556833" stroke-width="0.5"/>
+
+  <text x="50" y="340" fill="#a0aec0" font-family="sans-serif" font-size="10.5" opacity="0.9">
+    <tspan x="50" dy="0">雾城，一座被永夜般的浓雾笼罩的城市。这里曾</tspan>
+    <tspan x="50" dy="16">是繁华的港口都市，如今却因连环失踪案而人心</tspan>
+    <tspan x="50" dy="16">惶惶。警方的调查陷入僵局，民间流传着各种阴</tspan>
+    <tspan x="50" dy="16">谋论。你是一名私家侦探，刚刚收到一封匿名委</tspan>
+    <tspan x="50" dy="16">托信，信中只有一张泛黄的照片和一句话：</tspan>
+    <tspan x="50" dy="16">「找出真相，否则雾永远不会散去。」</tspan>
+  </text>
+
+  <!-- 城区地点 -->
+  <text x="50" y="460" fill="#e2e8f0" font-family="sans-serif" font-size="13" font-weight="bold" letter-spacing="2">◆ 城区分布</text>
+  <line x1="50" y1="468" x2="180" y2="468" stroke="#4a556833" stroke-width="0.5"/>
+
+  <rect x="50" y="480" width="240" height="52" rx="6" fill="#2d374844" stroke="#4a556822" stroke-width="0.5"/>
+  <text x="66" y="500" fill="#e2e8f0" font-size="12">🏢 上城区</text>
+  <text x="66" y="518" fill="#718096" font-size="9.5" opacity="0.8">富人区·市政厅与警察局</text>
+
+  <rect x="310" y="480" width="240" height="52" rx="6" fill="#2d374844" stroke="#4a556822" stroke-width="0.5"/>
+  <text x="326" y="500" fill="#e2e8f0" font-size="12">🏚️ 下城区</text>
+  <text x="326" y="518" fill="#718096" font-size="9.5" opacity="0.8">贫民窟·黑市与地下势力</text>
+
+  <rect x="50" y="542" width="240" height="52" rx="6" fill="#2d374844" stroke="#4a556822" stroke-width="0.5"/>
+  <text x="66" y="562" fill="#e2e8f0" font-size="12">⚓ 港口区</text>
+  <text x="66" y="580" fill="#718096" font-size="9.5" opacity="0.8">商业中心·走私与贸易</text>
+
+  <rect x="310" y="542" width="240" height="52" rx="6" fill="#2d374844" stroke="#4a556822" stroke-width="0.5"/>
+  <text x="326" y="562" fill="#e2e8f0" font-size="12">🏚️ 旧城区</text>
+  <text x="326" y="580" fill="#718096" font-size="9.5" opacity="0.8">废弃区域·秘密与危险</text>
+
+  <!-- 侦探系统 -->
+  <text x="50" y="618" fill="#e2e8f0" font-family="sans-serif" font-size="13" font-weight="bold" letter-spacing="2">◆ 侦探系统</text>
+  <line x1="50" y1="626" x2="180" y2="626" stroke="#4a556833" stroke-width="0.5"/>
+
+  <text fill="#a0aec0" font-family="sans-serif" font-size="10" opacity="0.8">
+    <tspan x="50" y="646">🔍线索收集</tspan>
+    <tspan x="170" y="646">🗣️审讯系统</tspan>
+    <tspan x="290" y="646">📝推理笔记</tspan>
+    <tspan x="410" y="646">⏰时间流逝</tspan>
+  </text>
+
+  <!-- 起始信息 -->
+  <text x="50" y="680" fill="#e2e8f0" font-family="sans-serif" font-size="13" font-weight="bold" letter-spacing="2">◆ 故事起点</text>
+  <line x1="50" y1="688" x2="180" y2="688" stroke="#4a556833" stroke-width="0.5"/>
+
+  <text x="50" y="708" fill="#cbd5e0" font-family="sans-serif" font-size="11">📍 侦探事务所 · 下城区</text>
+  <text x="50" y="728" fill="#718096" font-family="sans-serif" font-size="9.5" opacity="0.8">桌上放着一封匿名委托信和一张泛黄的照片</text>
+
+  <!-- 底部信息栏 -->
+  <line x1="60" y1="752" x2="540" y2="752" stroke="url(#accentGrad)" stroke-width="0.5" opacity="0.3"/>
+
+  <text x="50" y="774" fill="#718096" font-family="sans-serif" font-size="9.5" opacity="0.7">
+    <tspan>🔍 线索系统</tspan>
+    <tspan x="170">⏰ 时限机制</tspan>
+    <tspan x="290">🎒 5件初始物品</tspan>
+    <tspan x="440">💰 200元</tspan>
+  </text>
+
+  <!-- 底部品牌 -->
+  <text x="300" y="806" text-anchor="middle" fill="#4a5568" font-family="sans-serif" font-size="11" opacity="0.35" letter-spacing="3">心 隅 · XINYU</text>
+
+  <!-- ====== 嵌入的世界数据（供导入使用） ====== -->
+  <script type="application/json" id="xinyu-world-data">{"name":"迷雾侦探","genre":"现代","icon":"🔍","description":"在永夜般的浓雾中，揭开层层迷雾背后的真相","world":{"name":"雾城","genre":"现代","description":"雾城，一座被永夜般的浓雾笼罩的城市。这里曾是繁华的港口都市，如今却因连环失踪案而人心惶惶。警方的调查陷入僵局，民间流传着各种阴谋论——有人说雾中藏着不为人知的秘密组织，有人声称在深夜看到过不该存在的人影。你是一名私家侦探，刚刚收到一封匿名委托信，信中只有一张泛黄的照片和一句话：「找出真相，否则雾永远不会散去。」","rules":"【侦探系统】\n- 线索收集：调查现场可获得线索，线索之间可以关联推理\n- 审讯系统：与嫌疑人对话时可以观察其表情、语气，判断是否说谎\n- 推理笔记：重要信息会自动记录，可随时查阅\n- 时间流逝：案件有调查时限，错过关键时机可能导致线索消失\n\n【社会规则】\n- 雾城分为上城区（富人区）、下城区（贫民窟）、港口区（商业中心）、旧城区（废弃区域）\n- 警察局与私家侦探之间关系微妙，有时合作有时竞争\n- 地下势力盘根错节，黑帮、走私集团、秘密结社各有地盘\n- 雾中行动危险，长时间暴露可能导致精神恍惚","tone":"黑暗","customPrompt":"1. 每个案件都要有合理的逻辑链条，不要随意编造无法解释的情节\n2. 线索要自然融入环境描写，不要生硬地「你发现了一个线索」\n3. 嫌疑人的证词可以有矛盾，让玩家自己发现\n4. 氛围要压抑神秘，多用雾、阴影、雨夜等意象\n5. NPC要有各自的秘密，不要让所有人都配合调查\n6. 可以设置误导性线索，但最终必须能自圆其说\n7. 案件难度适中，给玩家思考空间但不要过于晦涩"},"starterItems":[{"name":"侦探笔记本","type":"misc","description":"一本皮面笔记本，用于记录案件线索和推理","quantity":1,"effects":{},"rarity":"common"},{"name":"放大镜","type":"misc","description":"精铜边框的放大镜，用于仔细检查现场细节","quantity":1,"effects":{},"rarity":"common"},{"name":"手电筒","type":"misc","description":"警用级手电筒，可在黑暗环境中照明","quantity":1,"effects":{},"rarity":"common"},{"name":"急救包","type":"consumable","description":"恢复30点生命值","quantity":2,"effects":{"hp":30},"rarity":"common"},{"name":"折叠刀","type":"weapon","description":"一把锋利的折叠刀，用于防身","quantity":1,"effects":{"attack":3},"rarity":"common"}],"starterLocation":"侦探事务所","starterLocationDesc":"你的事务所位于下城区一栋老旧建筑的二层。房间不大，一张办公桌、一个档案柜、一面贴满案件照片的软木板。窗外是永远不散的浓雾，街灯在雾中发出昏黄的光。桌上放着那封匿名委托信，照片上是一个模糊的人影，背景似乎是一座废弃的教堂。","starterGold":200}</script>
+</svg>
