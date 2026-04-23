@@ -573,10 +573,7 @@ function renderPlayerBlock(block) {
     if (d.action) {
         html += `<div class="player-action">${escapeHtml(d.action)}</div>`;
     }
-    // 如果 action 中已包含对话内容，不重复渲染 dialogue
-    if (d.dialogue && d.action && !d.action.includes(d.dialogue)) {
-        html += `<div class="dialogue-text">"${escapeHtml(d.dialogue)}"</div>`;
-    } else if (d.dialogue && !d.action) {
+    if (d.dialogue) {
         html += `<div class="dialogue-text">"${escapeHtml(d.dialogue)}"</div>`;
     }
     html += '</div></div>';
@@ -894,9 +891,9 @@ async function sendGameMessage(text, isOption = false) {
     isGenerating = true;
     document.getElementById('gameSendBtn').disabled = true;
 
-    // 选项选择：后端 UA 会生成 player-action 和 notification，前端不需要额外添加
+    // 选项选择：前端即时显示 notification 作为用户反馈
     if (isOption) {
-        // 不再前端添加 notification，避免与后端重复
+        addNotification(`玩家选择了「${text}」`, 'info');
     } else {
         addUserMessage(text);
     }

@@ -673,12 +673,6 @@ async function runUserAgent(saveData, optionText, apiConfig) {
     logger.info('[UserAgent] Starting', { option: selectedOption.text });
     const uaTimer = logger.timer();
 
-    // 返回通知信息，由调用方写入 CHM 和 RDM
-    const uaNotifications = [{
-        text: `玩家选择了「${optionText}」`,
-        type: 'info',
-    }];
-
     const messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `玩家选择了以下行动选项，请生成角色行为描写：\n\n"${optionText}"` },
@@ -735,7 +729,6 @@ async function runUserAgent(saveData, optionText, apiConfig) {
         return {
             action: parsed.action || optionText,
             dialogue: parsed.dialogue || null,
-            notifications: uaNotifications,
         };
     } catch (e) {
         // JSON 解析失败，尝试从文本中提取
@@ -748,7 +741,6 @@ async function runUserAgent(saveData, optionText, apiConfig) {
                 return {
                     action: parsed.action || optionText,
                     dialogue: parsed.dialogue || null,
-                    notifications: uaNotifications,
                 };
             } catch (e2) {}
         }
@@ -756,7 +748,7 @@ async function runUserAgent(saveData, optionText, apiConfig) {
         logger.warn('[UserAgent] JSON parse failed, using raw text');
         logger.info('[UserAgent] Completed');
         uaTimer.done('UserAgent');
-        return { action: optionText, dialogue: null, notifications: uaNotifications };
+        return { action: optionText, dialogue: null };
     }
 }
 
