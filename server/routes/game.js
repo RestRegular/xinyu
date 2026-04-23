@@ -290,6 +290,7 @@ router.post('/action', async (req, res) => {
         rdm.updateOptions(result.options);
 
         // 将后处理/自动升级产生的通知持久化到 CHM 和 RDM（追加到末尾）
+        // 注意：result.notifications 现在只包含后处理阶段的通知（工具调用的通知已在 orderedBlocks 中处理）
         if (result.notifications && result.notifications.length > 0) {
             for (const notif of result.notifications) {
                 chm.addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));

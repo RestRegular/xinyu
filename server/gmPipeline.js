@@ -400,7 +400,7 @@ class Pipeline {
      * @returns {Promise<{content, options, notifications, saveData}>}
      */
     async run(saveData, userMessage, apiConfig, appConfig, aiMessages = null) {
-        const allNotifications = [];  // 后处理/自动升级产生的通知（无位置信息，追加到末尾）
+        const postProcessNotifications = [];  // 后处理/自动升级产生的通知（需追加到末尾）
         const orderedBlocks = [];     // 有序内容块列表（content + notification 交错排列）
         let totalToolCalls = 0;
         let hasUsedAddContentBlocks = false;  // 标记 AI 是否使用了 add_content_blocks 工具
@@ -463,12 +463,11 @@ class Pipeline {
                         // 未知工具，直接执行
                         logger.warn(`[Pipeline] Unknown tool: ${fnName}`);
                         const toolResult = executeGameFunction(fnName, fnArgs, saveData);
-                        // 将工具产生的 notification 写入有序列表
+                        // 将工具产生的 notification 写入有序列表（已处理，不需要再写入 allNotifications）
                         if (toolResult.notifications) {
                             for (const notif of toolResult.notifications) {
                                 orderedBlocks.push({ type: '_notification', text: notif.text, notifType: notif.type || 'info' });
                             }
-                            allNotifications.push(...toolResult.notifications);
                         }
                         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
                         totalToolCalls++;
@@ -480,12 +479,11 @@ class Pipeline {
                     const toolResult = await agent.executeAsync(fnName, fnArgs, saveData, apiConfig);
                     agentTimer.done(`Agent:${agent.name}`);
                     logger.info(`[Pipeline] Tool result: ${fnName}`, { success: !toolResult.error, hasNotifications: !!(toolResult.notifications?.length) });
-                    // 将工具产生的 notification 写入有序列表
+                    // 将工具产生的 notification 写入有序列表（已处理，不需要再写入 allNotifications）
                     if (toolResult.notifications) {
                         for (const notif of toolResult.notifications) {
                             orderedBlocks.push({ type: '_notification', text: notif.text, notifType: notif.type || 'info' });
                         }
-                        allNotifications.push(...toolResult.notifications);
                     }
                     // 返回真实结果给 AI
                     messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
@@ -502,7 +500,7 @@ class Pipeline {
         const postProcessPromises = this.agents.map(agent => agent.postProcess(saveData, apiConfig));
         const postResults = await Promise.all(postProcessPromises);
         for (const notifications of postResults) {
-            if (notifications.length > 0) allNotifications.push(...notifications);
+            if (notifications.length > 0) postProcessNotifications.push(...notifications);
         }
 
         // Agent 调用摘要
@@ -588,7 +586,7 @@ class Pipeline {
                         }, saveData);
                         if (upgradeResult.success) {
                             logger.info(`[Pipeline] Auto-upgraded NPC "${npcName}" to character`);
-                            allNotifications.push(...(upgradeResult.notifications || []));
+                            postProcessNotifications.push(...(upgradeResult.notifications || []));
                         }
                     }
                 }
@@ -603,7 +601,7 @@ class Pipeline {
         return {
             content: finalContent,
             options: structuredOutput.options || [],
-            notifications: allNotifications,
+            notifications: postProcessNotifications,
             saveData,
             loops: loopCount,
             toolCallCount: totalToolCalls,
