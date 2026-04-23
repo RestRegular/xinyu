@@ -75,13 +75,15 @@ function buildGmPrompt(saveData, appConfig) {
     const itemNamingLine = itemNaming ? '- 物品命名风格：' + itemNaming : '';
 
     // 背包
+    const typeLabels = { weapon: '武器', armor: '防具', consumable: '消耗品', key: '钥匙', quest: '任务物品', misc: '杂物' };
     const inventoryStr = inv.items.length > 0
         ? inv.items.map(i => {
             let str = i.name;
             if (i.quantity > 1) str += 'x' + i.quantity;
-            str += '[' + i.type + ']';
+            str += '[' + (typeLabels[i.type] || i.type) + ']';
             if (i.rarity && i.rarity !== 'common') str += '(' + i.rarity + ')';
             if (i.description) str += '：' + i.description;
+            else str += '（无详细描述）';
             if (i.equipped) str += '【已装备】';
             if (i.effects && Object.keys(i.effects).length > 0) str += ' | 属性:' + Object.entries(i.effects).map(([k,v]) => k + (v>0?'+':'') + v).join(',');
             return str;
