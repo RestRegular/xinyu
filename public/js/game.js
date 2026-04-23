@@ -24,6 +24,7 @@ function enterGameView() {
     updateAttributesPanel();
     updateInventoryPanel();
     updateMapPanel();
+    updateNpcsPanel();
     updateCharactersPanel();
     renderGameMessages();
 }
@@ -237,6 +238,28 @@ function updateCharactersPanel() {
     }).join('');
 }
 
+function updateNpcsPanel() {
+    const el = document.getElementById('npcsPanel');
+    const loc = currentSave.map?.locations?.[currentSave.map?.currentLocation];
+    const npcs = loc?.npcs || [];
+    const counts = currentSave.npcInteractionCounts || {};
+
+    if (npcs.length === 0) {
+        el.innerHTML = '<span style="font-size:12px;color:var(--text-tertiary);">暂无</span>';
+        return;
+    }
+
+    el.innerHTML = npcs.map(name => {
+        const count = counts[name] || 0;
+        return `
+            <div class="character-list-item">
+                <div class="character-list-name">${escapeHtml(name)}</div>
+                <div class="character-list-role" style="font-size:11px;color:var(--text-tertiary);">互动 ${count} 次</div>
+            </div>
+        `;
+    }).join('');
+}
+
 async function showCharacterDetail(charId) {
     if (!currentSaveId) return;
     try {
@@ -357,6 +380,7 @@ function refreshAllPanels() {
         updateAttributesPanel();
         updateInventoryPanel();
         updateMapPanel();
+        updateNpcsPanel();
         updateCharactersPanel();
     } catch (err) {
         console.error('[refreshAllPanels] Error:', err);

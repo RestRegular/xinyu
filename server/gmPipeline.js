@@ -507,7 +507,7 @@ class Pipeline {
         }
 
         // ===== NPC 交互计数 & 自动升级 =====
-        const UPGRADE_THRESHOLD = 5; // 普通NPC对话轮次超过此次数自动升级
+        const UPGRADE_THRESHOLD = 3; // 普通NPC对话轮次超过此次数自动升级
         if (!saveData.npcInteractionCounts) saveData.npcInteractionCounts = {};
         if (!saveData.characters) saveData.characters = {};
 
