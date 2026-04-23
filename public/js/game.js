@@ -171,10 +171,16 @@ function buildMapHtml() {
     const conns = loc?.connections || [];
     if (conns.length > 0) {
         html += '<div class="map-section-title">可前往</div>';
-        conns.forEach(c => {
+        const maxShow = 3;
+        const needCollapse = conns.length > maxShow;
+        conns.forEach((c, i) => {
+            const hidden = needCollapse && i >= maxShow ? ' style="display:none"' : '';
             const cLoc = locations[c];
-            html += `<div class="map-card" onclick="showLocationDetail('${escapeHtml(c)}')"><div class="map-card-header"><span class="map-card-name">${escapeHtml(c)}</span></div><div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div><div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div></div>`;
+            html += `<div class="map-conn-item"${hidden} onclick="showLocationDetail('${escapeHtml(c)}')"><div class="map-card" ><div class="map-card-header"><span class="map-card-name">${escapeHtml(c)}</span></div><div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div><div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div></div></div>`;
         });
+        if (needCollapse) {
+            html += `<div class="panel-show-all" id="mapConnToggle" onclick="toggleMapConnections()" style="text-align:center;padding:6px 0;font-size:12px;color:var(--accent);cursor:pointer;">展开全部 (${conns.length})</div>`;
+        }
     }
     const discovered = Object.entries(locations).filter(([k, v]) => v.discovered && k !== cur && !conns.includes(k));
     if (discovered.length > 0) {
@@ -184,6 +190,24 @@ function buildMapHtml() {
         });
     }
     return html;
+}
+
+let _mapConnsExpanded = false;
+function toggleMapConnections() {
+    _mapConnsExpanded = !_mapConnsExpanded;
+    document.querySelectorAll('.map-conn-item').forEach(el => {
+        el.style.display = _mapConnsExpanded ? '' : 'none';
+    });
+    // 始终显示前3个（收起时）
+    if (!_mapConnsExpanded) {
+        const items = document.querySelectorAll('.map-conn-item');
+        items.forEach((el, i) => { if (i < 3) el.style.display = ''; });
+    }
+    const toggle = document.getElementById('mapConnToggle');
+    if (toggle) {
+        const total = document.querySelectorAll('.map-conn-item').length;
+        toggle.textContent = _mapConnsExpanded ? `收起` : `展开全部 (${total})`;
+    }
 }
 
 function buildNpcsHtml() {
