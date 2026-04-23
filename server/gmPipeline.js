@@ -520,6 +520,15 @@ class Pipeline {
                 }
                 continue;
             }
+            // ===== AI 未调用工具 = 异常，注入提示后重试 =====
+            if (loopCount === 1 && orderedBlocks.length === 0 && !toolOptions) {
+                logger.warn('[Pipeline] AI responded without tool calls, injecting retry prompt');
+                messages.push({
+                    role: 'user',
+                    content: '【系统提示】你必须通过调用 add_content_blocks 工具来输出内容和选项，不要直接在文本中回复。请重新生成回复，使用工具调用。'
+                });
+                continue;
+            }
             break;
         }
 
@@ -599,7 +608,7 @@ class Pipeline {
         let finalOptions = toolOptions || [];
 
         // ===== 选项补充：如果 AI 没有生成选项，自动补充 =====
-        if (finalOptions.length === 0 && finalContent.length > 0) {
+        if (finalOptions.length === 0) {
             logger.info('[Pipeline] No options generated, requesting fallback options');
             try {
                 finalOptions = await this._requestFallbackOptions(saveData, apiConfig, messages);

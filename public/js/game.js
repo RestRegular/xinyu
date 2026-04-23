@@ -899,6 +899,9 @@ function getMoodEmoji(mood) {
         contempt: '😤', disgusted: '🤢', loving: '🥰',
         anxious: '😰', excited: '😄', cold: '🧊',
         friendly: '🙂', hostile: '😈', suspicious: '👁️',
+        friendly_concerned: '🙂', concerned: '😟', warm: '😊',
+        serious: '😐', playful: '😄', thoughtful: '🤔',
+        nervous: '😰', calm: '😌', grateful: '😊',
     };
     return map[mood] || '😐';
 }
@@ -910,8 +913,11 @@ function getMoodLabel(mood) {
         contempt: '轻蔑', disgusted: '厌恶', loving: '喜爱',
         anxious: '焦虑', excited: '兴奋', cold: '冷淡',
         friendly: '友好', hostile: '敌意', suspicious: '怀疑',
+        friendly_concerned: '关切', concerned: '担忧', warm: '温暖',
+        serious: '严肃', playful: '俏皮', thoughtful: '沉思',
+        nervous: '紧张', calm: '从容', grateful: '感激',
     };
-    return map[mood] || '平静';
+    return map[mood] || mood || '平静';
 }
 
 function addNotification(text, type = 'info') {
