@@ -171,16 +171,10 @@ function buildMapHtml() {
     const conns = loc?.connections || [];
     if (conns.length > 0) {
         html += '<div class="map-section-title">可前往</div>';
-        const maxShow = 3;
-        const needCollapse = conns.length > maxShow;
-        conns.forEach((c, i) => {
-            const hidden = needCollapse && i >= maxShow ? ' style="display:none"' : '';
+        conns.forEach(c => {
             const cLoc = locations[c];
-            html += `<div class="map-conn-item"${hidden} onclick="showLocationDetail('${escapeHtml(c)}')"><div class="map-card" ><div class="map-card-header"><span class="map-card-name">${escapeHtml(c)}</span></div><div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div><div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div></div></div>`;
+            html += `<div class="map-card" onclick="showLocationDetail('${escapeHtml(c)}')"><div class="map-card-header"><span class="map-card-name">${escapeHtml(c)}</span></div><div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div><div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div></div>`;
         });
-        if (needCollapse) {
-            html += `<div class="panel-show-all" id="mapConnToggle" onclick="toggleMapConnections()" style="text-align:center;padding:6px 0;font-size:12px;color:var(--accent);cursor:pointer;">展开全部 (${conns.length})</div>`;
-        }
     }
     const discovered = Object.entries(locations).filter(([k, v]) => v.discovered && k !== cur && !conns.includes(k));
     if (discovered.length > 0) {
@@ -192,22 +186,25 @@ function buildMapHtml() {
     return html;
 }
 
-let _mapConnsExpanded = false;
-function toggleMapConnections() {
-    _mapConnsExpanded = !_mapConnsExpanded;
-    document.querySelectorAll('.map-conn-item').forEach(el => {
-        el.style.display = _mapConnsExpanded ? '' : 'none';
-    });
-    // 始终显示前3个（收起时）
-    if (!_mapConnsExpanded) {
-        const items = document.querySelectorAll('.map-conn-item');
-        items.forEach((el, i) => { if (i < 3) el.style.display = ''; });
+function buildMapPreviewHtml() {
+    const cur = currentSave.map.currentLocation;
+    const loc = currentSave.map.locations[cur];
+    const locations = currentSave.map.locations || {};
+    let html = '';
+    html += `<div class="map-card map-card-current" onclick="showLocationDetail('${escapeHtml(cur)}')"><div class="map-card-header"><span class="map-card-name">📍 ${escapeHtml(cur)}</span><span class="map-card-tag current">当前</span></div><div class="map-card-desc">${escapeHtml(loc?.description || '').slice(0, 60)}${(loc?.description || '').length > 60 ? '...' : ''}</div></div>`;
+    const conns = loc?.connections || [];
+    if (conns.length > 0) {
+        html += '<div class="map-section-title">可前往</div>';
+        const maxShow = 3;
+        conns.slice(0, maxShow).forEach(c => {
+            const cLoc = locations[c];
+            html += `<div class="map-card" onclick="showLocationDetail('${escapeHtml(c)}')"><div class="map-card-header"><span class="map-card-name">${escapeHtml(c)}</span></div><div class="map-card-desc">${escapeHtml(cLoc?.description || '').slice(0, 50)}${(cLoc?.description || '').length > 50 ? '...' : ''}</div><div class="map-card-action" onclick="event.stopPropagation();moveToLocation('${escapeHtml(c)}')">前往 →</div></div>`;
+        });
+        if (conns.length > maxShow) {
+            html += `<div class="panel-show-all" onclick="showPanelModal('map')" style="text-align:center;padding:6px 0;font-size:12px;color:var(--accent);cursor:pointer;">查看全部 (${conns.length})</div>`;
+        }
     }
-    const toggle = document.getElementById('mapConnToggle');
-    if (toggle) {
-        const total = document.querySelectorAll('.map-conn-item').length;
-        toggle.textContent = _mapConnsExpanded ? `收起` : `展开全部 (${total})`;
-    }
+    return html;
 }
 
 function buildNpcsHtml() {
@@ -251,7 +248,7 @@ function updateInventoryPanel() {
 }
 
 function updateMapPanel() {
-    renderPanelPreview('mapPanel', buildMapHtml(), 'map', '暂无', true);
+    renderPanelPreview('mapPanel', buildMapPreviewHtml(), 'map', '暂无', true);
 }
 
 function updateCharactersPanel() {
