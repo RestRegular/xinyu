@@ -405,9 +405,9 @@ function renderGameMessages(data) {
                     if (block.action) {
                         contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
                     } else if (block.dialogue) {
-                        contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+                        contentHtml = `<div class="dialogue-text">${escapeHtml(block.dialogue)}</div>`;
                     } else {
-                        contentHtml = `<div class="dialogue-text">"${escapeHtml(msg.content)}"</div>`;
+                        contentHtml = `<div class="dialogue-text">${escapeHtml(msg.content)}</div>`;
                     }
 
                     html += `
@@ -440,9 +440,9 @@ function renderGameMessages(data) {
                             if (block.action) {
                                 contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
                             } else if (block.dialogue) {
-                                contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+                                contentHtml = `<div class="dialogue-text">${escapeHtml(block.dialogue)}</div>`;
                             } else {
-                                contentHtml = `<div class="dialogue-text">"${escapeHtml(block.action || block.dialogue || '')}"</div>`;
+                                contentHtml = `<div class="dialogue-text">${escapeHtml(block.action || block.dialogue || '')}</div>`;
                             }
 
                             html += `
@@ -580,10 +580,18 @@ function renderPlayerBlock(block) {
                 </div>
             </div>`;
     if (d.action) {
-        html += `<div class="player-action">${escapeHtml(d.action)}</div>`;
+        // 支持换行分隔的多段 action
+        const actions = d.action.split('\n').filter(s => s.trim());
+        for (const a of actions) {
+            html += `<div class="player-action">${escapeHtml(a.trim())}</div>`;
+        }
     }
     if (d.dialogue) {
-        html += `<div class="dialogue-text">"${escapeHtml(d.dialogue)}"</div>`;
+        // 支持换行分隔的多段 dialogue
+        const dialogues = d.dialogue.split('\n').filter(s => s.trim());
+        for (const dl of dialogues) {
+            html += `<div class="dialogue-text">${escapeHtml(dl.trim())}</div>`;
+        }
     }
     html += '</div></div>';
     return html;
@@ -611,10 +619,18 @@ function renderCharacterBlock(block) {
                 <span class="character-mood ${d.mood || 'neutral'}">${moodEmoji} ${moodLabel}</span>
             </div>`;
     if (d.reaction) {
-        html += `<div class="character-reaction">${escapeHtml(d.reaction)}</div>`;
+        // 支持换行分隔的多段 reaction
+        const reactions = d.reaction.split('\n').filter(s => s.trim());
+        for (const r of reactions) {
+            html += `<div class="character-reaction">${escapeHtml(r.trim())}</div>`;
+        }
     }
     if (d.dialogue) {
-        html += `<div class="character-dialogue">${escapeHtml(d.dialogue)}</div>`;
+        // 支持换行分隔的多段 dialogue
+        const dialogues = d.dialogue.split('\n').filter(s => s.trim());
+        for (const dl of dialogues) {
+            html += `<div class="character-dialogue">${escapeHtml(dl.trim())}</div>`;
+        }
     }
     html += '</div></div>';
     return html;
@@ -672,11 +688,11 @@ function addUserMessage(block) {
         // 动作：不带引号，用斜体或特殊样式表示
         contentHtml = `<div class="player-action">${escapeHtml(block.action)}</div>`;
     } else if (block.dialogue) {
-        // 对话：带引号
-        contentHtml = `<div class="dialogue-text">"${escapeHtml(block.dialogue)}"</div>`;
+        // 对话：由 AI 自行决定引号风格
+        contentHtml = `<div class="dialogue-text">${escapeHtml(block.dialogue)}</div>`;
     } else if (typeof block === 'string') {
         // 兼容旧的字符串调用方式
-        contentHtml = `<div class="dialogue-text">"${escapeHtml(block)}"</div>`;
+        contentHtml = `<div class="dialogue-text">${escapeHtml(block)}</div>`;
     }
 
     div.innerHTML = `
