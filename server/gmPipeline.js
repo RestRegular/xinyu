@@ -503,6 +503,7 @@ class Pipeline {
         const fullContent = allContentParts.join('\n\n');
         let extractedOptions = null;
         let extractedCharacterBlocks = [];
+        let cleanedNarrative = fullContent;
 
         if (fullContent) {
             logger.info('[Pipeline] Phase 1.5: Running content extractor');
@@ -511,7 +512,8 @@ class Pipeline {
             extractTimer.done('Content extractor');
             extractedOptions = extracted.options;
             extractedCharacterBlocks = extracted.characterBlocks;
-            logger.info(`[Pipeline] Extractor result: ${extractedOptions.length} options, ${extractedCharacterBlocks.length} character blocks`);
+            cleanedNarrative = extracted.cleanedNarrative;
+            logger.info(`[Pipeline] Extractor result: ${extractedOptions.length} options, ${extractedCharacterBlocks.length} character blocks, cleaned ${fullContent.length} -> ${cleanedNarrative.length} chars`);
         }
 
         // ===== Phase 2: 各 Agent 后处理（并行） =====
@@ -537,12 +539,12 @@ class Pipeline {
         // ===== Phase 3: 组装最终输出 =====
         logger.info('[Pipeline] Assembling final output');
 
-        // 构建内容块：叙事文本 + 提取的角色对话 + 工具通知
+        // 构建内容块：清洗后的叙事文本 + 提取的角色对话 + 工具通知
         const finalContent = [];
 
-        // 1. 叙事文本作为 narrative 块
-        if (fullContent) {
-            finalContent.push({ type: 'narrative', text: fullContent });
+        // 1. 清洗后的叙事文本（已移除角色对话部分）
+        if (cleanedNarrative && cleanedNarrative.trim()) {
+            finalContent.push({ type: 'narrative', text: cleanedNarrative.trim() });
         }
 
         // 2. 提取的角色对话块
@@ -590,8 +592,9 @@ class Pipeline {
     }
 
     /**
-     * 内容提取器：从 AI 的纯文本叙事中提取玩家选项和角色对话
+     * 内容提取器：从 AI 的纯文本叙事中提取玩家选项、角色对话，并清洗叙事文本
      * 使用低温度、结构化 prompt 确保输出稳定
+     * 返回清洗后的叙事文本（移除角色对话部分，避免重复渲染）
      */
     async _extractStructuredContent(narrativeText, saveData, apiConfig) {
         const { apiKey, apiBaseUrl, model } = apiConfig;
@@ -600,7 +603,9 @@ class Pipeline {
         const characters = saveData.characters || {};
         const characterList = Object.values(characters).map(c => c.name).filter(Boolean).join('、') || '无';
 
-        const extractPrompt = `你是一个内容分析器。分析以下 GM 叙事文本，提取结构化信息。
+        const extractPrompt = `你是一个内容分析器。分析以下 GM 叙事文本，完成两个任务：
+1. 提取角色对话和玩家选项
+2. 清洗叙事文本（移除已被提取的角色对话和玩家行动部分，只保留纯叙事描写）
 
 ## 当前游戏状态
 - ${locationHint}
@@ -613,6 +618,7 @@ ${narrativeText}
 请严格按以下 JSON 格式输出，不要输出任何其他内容：
 
 {
+  "cleanedNarrative": "清洗后的纯叙事文本。移除所有角色的具体对话内容（用「」包裹的部分）和角色的具体动作描写（已被提取到 characters 中的部分）。只保留环境描写、氛围渲染、剧情推进等纯叙事内容。如果移除后没有剩余内容，返回空字符串。",
   "options": [
     {"text": "玩家看到的选项文本（简短有力）", "action": "玩家发送的实际文本（描述具体行动）"},
     {"text": "选项2", "action": "行动2"},
@@ -623,18 +629,19 @@ ${narrativeText}
       "name": "角色名",
       "mood": "当前心情",
       "segments": [
-        {"type": "reaction", "text": "角色的动作/表情描写"},
-        {"type": "dialogue", "text": "角色的口语内容"}
+        {"type": "reaction", "text": "角色的动作/表情描写（第三人称）"},
+        {"type": "dialogue", "text": "角色的口语内容（不含「」）"}
       ]
     }
   ]
 }
 
 规则：
-1. options：生成 2-4 个有实质差异的行动选项。text 是简短描述（10字以内），action 是具体行动描述（15-30字）
-2. characters：提取文本中所有有名字的角色的对话和动作。如果文本中没有角色对话，返回空数组
-3. segments 中 reaction 是动作/表情（第三人称），dialogue 是口语内容
-4. 只输出 JSON，不要输出任何其他文本`;
+1. cleanedNarrative：只保留纯叙事描写（环境、氛围、剧情推进）。移除所有角色对话（「...」中的内容）和已被提取到 characters 中的角色动作描写。注意保持叙事连贯性，不要留下突兀的断句
+2. options：生成 2-4 个有实质差异的行动选项。text 是简短描述（10字以内），action 是具体行动描述（15-30字）
+3. characters：提取文本中所有有名字的角色的对话和动作。dialogue 中不要包含「」符号。如果文本中没有角色对话，返回空数组
+4. segments 中 reaction 是动作/表情（第三人称），dialogue 是口语内容
+5. 只输出 JSON，不要输出任何其他文本`;
 
         try {
             const response = await fetch(apiBaseUrl, {
@@ -643,27 +650,24 @@ ${narrativeText}
                 body: JSON.stringify({
                     model,
                     messages: [{ role: 'user', content: extractPrompt }],
-                    temperature: 0.3,  // 低温度确保稳定
-                    max_tokens: 1024,
+                    temperature: 0.3,
+                    max_tokens: 2048,
                     stream: false,
                 }),
             });
 
             if (!response.ok) {
                 logger.warn('[Extractor] Request failed', { status: response.status });
-                return { options: [], characterBlocks: [] };
+                return { cleanedNarrative: narrativeText, options: [], characterBlocks: [] };
             }
 
             const data = await response.json();
             const content = data.choices?.[0]?.message?.content || '';
 
-            // 解析 JSON
             let parsed;
             try {
-                // 尝试直接解析
                 parsed = JSON.parse(content);
             } catch (e) {
-                // 尝试从文本中提取 JSON
                 const jsonMatch = content.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
                     parsed = JSON.parse(jsonMatch[0]);
@@ -671,6 +675,9 @@ ${narrativeText}
                     throw new Error('No JSON found in response');
                 }
             }
+
+            // 清洗后的叙事文本
+            const cleanedNarrative = parsed.cleanedNarrative || narrativeText;
 
             // 提取选项
             const options = (parsed.options || []).map(opt => ({
@@ -686,10 +693,10 @@ ${narrativeText}
                 segments: (char.segments || []).filter(seg => seg.text),
             })).filter(char => char.segments.length > 0);
 
-            return { options, characterBlocks };
+            return { cleanedNarrative, options, characterBlocks };
         } catch (err) {
             logger.warn('[Extractor] Failed to extract structured content', { error: err.message });
-            return { options: [], characterBlocks: [] };
+            return { cleanedNarrative: narrativeText, options: [], characterBlocks: [] };
         }
     }
 
