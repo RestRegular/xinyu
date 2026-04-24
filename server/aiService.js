@@ -1,6 +1,5 @@
 const logger = require('./logger');
 const { buildGmPrompt } = require('./prompts/builders/gmPrompt');
-const { buildUserAgentPrompt: buildUserAgentPromptNew } = require('./prompts/builders/userAgentPrompt');
 const { gameTools } = require('./prompts/tools/gameTools');
 const { GENRE_PRESETS } = require('./prompts/presets/genrePresets');
 
@@ -40,14 +39,9 @@ function buildMessageHistory(chatHistory) {
     ];
 }
 
-function buildUserAgentPrompt(saveData) {
-    return buildUserAgentPromptNew(saveData);
-}
-
 module.exports = {
     buildSystemPrompt,
     buildMessageHistory,
-    buildUserAgentPrompt,
     gameTools,
     GENRE_PRESETS,
 };

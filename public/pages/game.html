@@ -16,7 +16,6 @@
     <div class="topbar-left">
         <button class="btn btn-ghost btn-sm" onclick="window.location.href='lobby.html'">← 大厅</button>
         <span style="font-size:13px;font-weight:500;" id="gameTopbarName"></span>
-        <span style="font-size:12px;color:var(--text-tertiary);" id="gameTopbarTurn"></span>
     </div>
     <div class="topbar-right">
         <button class="btn btn-ghost btn-sm" onclick="manualSave()" id="btnSave">保存</button>
@@ -34,19 +33,9 @@
     </div>
 </div>
 <div class="game-container">
-    <!-- 左侧栏 -->
-    <div class="game-sidebar" id="gameSidebar">
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">角色</div>
-            <div class="sidebar-char-name" id="sidebarCharName">—</div>
-            <div class="sidebar-char-info" id="sidebarCharInfo">—</div>
-        </div>
-    </div>
-
     <!-- 主对话区域 -->
     <div class="game-main">
         <div class="game-messages" id="gameMessages"></div>
-        <div class="game-options-area" id="gameOptionsArea"></div>
         <div class="game-input-area">
             <div class="game-input-wrapper">
                 <textarea class="game-input" id="gameInput" placeholder="描述你的行动..." rows="1"

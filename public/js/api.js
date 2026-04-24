@@ -1,10 +1,9 @@
 // ===================================================================
-// ===== DeepSeek API 接口层（纯叙事RP版 - 仅保留前端展示逻辑） =====
+// ===== API 接口层（极简版） =====
 // ===================================================================
 
-const API_TIMEOUT = 5 * 60 * 1000; // 5分钟，与后端 Pipeline API_TIMEOUT 一致
+const API_TIMEOUT = 5 * 60 * 1000;
 
-// ----- 错误分类 -----
 function classifyError(status, body) {
     if (body && body.error && typeof body.error === 'string') {
         return { type: 'proxy', message: body.error };
@@ -25,11 +24,10 @@ function classifyError(status, body) {
     return { type: 'unknown', message: `API 错误 (${status}): ${body.slice(0, 200)}` };
 }
 
-// ===================================================================
-// ===== 核心游戏消息发送（重构版 - 调用后端统一 API） =====
-// ===================================================================
-async function callAI(userText, isOption = false) {
+async function callAI(userText) {
     addTypingIndicator();
+    isGenerating = true;
+    document.getElementById('gameSendBtn').disabled = true;
 
     try {
         const response = await fetchWithTimeout('/api/game/action', {
@@ -38,7 +36,6 @@ async function callAI(userText, isOption = false) {
             body: JSON.stringify({
                 saveId: currentSaveId,
                 userMessage: userText,
-                isOption: isOption || undefined,
                 lastBlockIndex: currentLastBlockIndex >= 0 ? currentLastBlockIndex : undefined,
             }),
         });
@@ -50,137 +47,44 @@ async function callAI(userText, isOption = false) {
         }
 
         const result = await response.json();
-
-        // 移除打字指示器
         removeTypingIndicator();
 
-        // 用后端返回的完整存档数据更新前端状态
         if (result.saveData) {
             currentSave = result.saveData;
         }
 
-        // 新格式：renderData（包含 newBlocks 和 options）
+        // 新格式：renderData
         if (result.renderData) {
             appendRenderBlocks(result.renderData.newBlocks);
-            if (result.renderData.options && result.renderData.options.length > 0) {
-                renderOptions(result.renderData.options);
-            } else {
-                clearOptions();
-            }
             currentLastBlockIndex += (result.renderData.newBlocks || []).length;
         } else if (result.content) {
-            // 旧格式兼容：content 数组 + options 按钮
-            await renderStructuredContent(result.content);
-            if (result.options && result.options.length > 0) {
-                renderOptions(result.options);
+            // 旧格式兼容
+            for (const block of result.content) {
+                if (block.type === 'narrative' || block.type === 'scene') {
+                    await simulateStreamingText(block.text);
+                } else if (block.type === 'player_action') {
+                    addUserMessage(block);
+                } else {
+                    addAssistantMessage(block.text || '');
+                }
             }
         }
-
-        // 显示后端产生的通知（仅旧格式时需要，新格式已包含在 renderData.newBlocks 中）
-        if (!result.renderData && result.notifications && result.notifications.length > 0) {
-            for (const notif of result.notifications) {
-                addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
-            }
-        }
-
-        // 刷新所有 UI 面板
-        refreshAllPanels();
 
     } catch(err) {
         removeTypingIndicator();
-        throw err;
-    }
-}
-
-// ----- 渲染结构化内容（content 数组） -----
-async function renderStructuredContent(contentBlocks) {
-    const container = document.getElementById('gameMessages');
-
-    for (const block of contentBlocks) {
-        if (block.type === 'player_action') {
-            addUserMessage(block);
-        } else if (block.type === 'narrative') {
-            await simulateStreamingText(block.text);
-        } else if (block.type === 'scene') {
-            addSceneMessage(block);
-        } else if (block.type === 'dialogue') {
-            addDialogueMessage(block);
-        } else if (block.type === 'action') {
-            addActionMessage(block);
-        } else if (block.type === 'combat') {
-            addCombatMessage(block);
-        } else if (block.type === 'loot') {
-            addLootMessage(block);
-        } else if (block.type === 'character') {
-            addCharacterMessage(block);
-        } else {
-            // 未知类型降级为 narrative
-            await simulateStreamingText(block.text);
-        }
-    }
-}
-
-// ----- 渲染选项按钮 -----
-function renderOptions(options) {
-    const container = document.getElementById('gameOptionsArea');
-
-    // 清空旧选项
-    container.innerHTML = '';
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'options-list';
-
-    options.forEach((opt, index) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.textContent = opt.text || opt.label || '';
-        btn.style.animationDelay = `${index * 0.04}s`;
-        btn.onclick = () => {
-            container.innerHTML = '';
-            const actionText = opt.action || opt.text || opt.label || '';
-            sendGameMessage(actionText, true);
-        };
-        wrapper.appendChild(btn);
-    });
-
-    container.appendChild(wrapper);
-
-    // 超过3个选项时添加折叠按钮
-    if (options.length > 3) {
-        const toggle = document.createElement('div');
-        toggle.className = 'options-toggle';
-        toggle.innerHTML = `<span class="options-toggle-arrow">▼</span> <span>收起选项</span>`;
-        let collapsed = false;
-        toggle.onclick = () => {
-            collapsed = !collapsed;
-            if (collapsed) {
-                wrapper.classList.add('collapsed');
-                toggle.innerHTML = `<span class="options-toggle-arrow up">▼</span> <span>展开选项 (${options.length})</span>`;
-            } else {
-                wrapper.classList.remove('collapsed');
-                toggle.innerHTML = `<span class="options-toggle-arrow">▼</span> <span>收起选项</span>`;
-            }
-        };
-        container.appendChild(toggle);
+        showToast('请求失败: ' + err.message, 'error');
     }
 
-    scrollToBottom();
+    isGenerating = false;
+    document.getElementById('gameSendBtn').disabled = false;
 }
 
-// ----- 清除选项按钮 -----
-function clearOptions() {
-    const container = document.getElementById('gameOptionsArea');
-    if (container) container.innerHTML = '';
-}
-
-// ----- 模拟流式打字效果 -----
 async function simulateStreamingText(text) {
-    // 先添加一个空的 assistant 消息占位
     addAssistantMessage('');
     const container = document.getElementById('gameMessages');
     let lastNarrator = container.querySelector('.msg-narrator:last-of-type');
 
-    const chunkSize = 3; // 每次显示的字符数
+    const chunkSize = 3;
     for (let i = 0; i < text.length; i += chunkSize) {
         const partial = text.slice(0, i + chunkSize);
         if (lastNarrator) {
@@ -190,14 +94,12 @@ async function simulateStreamingText(text) {
         await new Promise(r => setTimeout(r, 10));
     }
 
-    // 确保最终文本完整
     if (lastNarrator) {
         lastNarrator.innerHTML = formatNarratorText(text);
     }
     scrollToBottom();
 }
 
-// ----- 带超时的 fetch -----
 async function fetchWithTimeout(url, options, timeout = API_TIMEOUT) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
@@ -212,12 +114,8 @@ async function fetchWithTimeout(url, options, timeout = API_TIMEOUT) {
     }
 }
 
-// ===================================================================
-// ===== Prompt 预览（仍在前端，用于设置页面展示） =====
-// ===================================================================
 async function getPromptPreview() {
     if (!currentSave) return '请先加载存档';
-    // 调用后端获取 prompt 预览
     try {
         const resp = await fetch('/api/game/prompt-preview', {
             method: 'POST',

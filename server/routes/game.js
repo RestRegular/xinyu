@@ -6,7 +6,7 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../logger');
 const db = require('../db');
-const { Pipeline, runUserAgent } = require('../gmPipeline');
+const { Pipeline } = require('../gmPipeline');
 const { buildAutofillPrompt } = require('../prompts/builders/autofillPrompt');
 const ChatHistoryManager = require('../chatHistoryManager');
 const RenderDataManager = require('../renderDataManager');
@@ -127,7 +127,7 @@ function getTemplateById(id) {
 // ===== POST /api/game/action — 统一游戏动作（核心接口） =====
 // ===================================================================
 router.post('/action', async (req, res) => {
-    const { saveId, userMessage, isOption, lastBlockIndex } = req.body;
+    const { saveId, userMessage, lastBlockIndex } = req.body;
     if (!saveId || !userMessage) return res.status(400).json({ error: '缺少 saveId 或 userMessage' });
 
     const apiKey = getApiKey();
@@ -139,7 +139,7 @@ router.post('/action', async (req, res) => {
         return res.status(404).json({ error: '存档不存在' });
     }
 
-    logger.info(`[Action] saveId=${saveId}, isOption=${isOption}`);
+    logger.info(`[Action] saveId=${saveId}`);
 
     let saveData;
     try { saveData = JSON.parse(row.data); } catch(e) { return res.status(500).json({ error: '存档数据解析失败' }); }
@@ -147,7 +147,6 @@ router.post('/action', async (req, res) => {
     // 初始化或恢复 CHM 和 RDM
     let chm, rdm;
     if (Array.isArray(saveData.chatHistory)) {
-        // 旧格式，直接使用
         chm = ChatHistoryManager.fromJSON(saveData.chatHistory);
         rdm = RenderDataManager.fromJSON(saveData.renderHistory || { renderBlocks: [], currentOptions: [] });
     } else {
@@ -162,45 +161,13 @@ router.post('/action', async (req, res) => {
     chm.addUserMessage(userMessage, isSystemMsg);
     if (isSystemMsg) {
         rdm.appendSystemMessage(userMessage);
-    } else if (!isOption) {
-        // 自由输入直接写入 RDM；选项选择等 UA 完成后再写入
+    } else {
         rdm.appendUserMessage(userMessage);
     }
 
     saveData.stats.turnCount++;
 
     try {
-        // 如果是选项选择，先调用 UserAgent 生成玩家行为描述
-        let playerActionContent = null;
-        let uaNotifications = [];
-        if (isOption) {
-            try {
-                const uaTimer = logger.timer();
-                const apiConfig = {
-                    apiKey,
-                    apiBaseUrl: getApiBaseUrl(),
-                    model: getModel(),
-                    temperature: appConfig.temperature,
-                    maxTokens: appConfig.maxTokens,
-                };
-                const uaResult = await runUserAgent(saveData, userMessage, apiConfig);
-                uaTimer.done('UserAgent');
-                playerActionContent = {
-                    type: 'player_action',
-                    option: userMessage,
-                    segments: uaResult.segments,
-                    timestamp: new Date().toISOString(),
-                };
-                // 选项选择的 notification 写入 CHM 和 RDM（前端已即时渲染，这里持久化保证刷新后保留）
-                chm.addNotification(`玩家选择了「${userMessage}」`, 'info');
-                rdm.appendNotification(`玩家选择了「${userMessage}」`, 'info');
-                // UA 完成后写入完整的 player 块到 RDM（在 notification 之后）
-                rdm.appendUserMessage(userMessage, { segments: uaResult.segments });
-            } catch (uaErr) {
-                logger.error('[Action] UserAgent failed:', { error: uaErr.message, stack: uaErr.stack });
-            }
-        }
-
         // 构建预处理的 AI 消息，传给 Pipeline
         const aiMessages = chm.buildAIMessages();
         const pipelineTimer = logger.timer();
@@ -211,49 +178,20 @@ router.post('/action', async (req, res) => {
             temperature: appConfig.temperature,
             maxTokens: appConfig.maxTokens,
         }, appConfig, aiMessages);
-        logger.info('[Action] Pipeline completed', { loops: result.loops, toolCalls: result.toolCallCount });
+        logger.info('[Action] Pipeline completed');
         pipelineTimer.done('Pipeline');
 
-        // 将 player_action 插入到 content 最前面
-        const finalContent = playerActionContent
-            ? [playerActionContent, ...(result.content || [])]
-            : result.content;
-
-        // 写入 AI 响应到 CHM（包含 player_action 用于 AI 上下文）
-        // CHM 只需要纯 content（不含 _notification），用于 AI 上下文
+        // 写入 AI 响应到 CHM
         const pureContent = (result.content || []).filter(b => b.type !== '_notification');
         chm.addAssistantResponse(
-            pureContent.length > 0 ? JSON.stringify({ content: pureContent, options: result.options }) : '',
-            finalContent,
-            result.options,
-            playerActionContent
+            pureContent.length > 0 ? JSON.stringify({ content: pureContent }) : '',
+            result.content,
+            [],
+            null
         );
 
         // 写入 AI 响应到 RDM
-        if (result.hasOrderedContent) {
-            // 新模式：content 中包含交错的 content 块和 _notification 块，按顺序写入
-            const aiOnlyBlocks = finalContent.filter(b => b.type !== 'player_action');
-            for (const block of aiOnlyBlocks) {
-                if (block.type === '_notification') {
-                    rdm.appendNotification(block.text, block.notifType);
-                } else {
-                    rdm.appendAssistantContent([block]);
-                }
-            }
-        } else {
-            // 旧模式：content 和 notification 分离写入（向后兼容）
-            const aiOnlyContent = finalContent.filter(b => b.type !== 'player_action' && b.type !== '_notification');
-            rdm.appendAssistantContent(aiOnlyContent);
-        }
-        rdm.updateOptions(result.options);
-
-        // 将后处理/自动升级产生的通知持久化到 CHM 和 RDM（追加到末尾）
-        if (result.notifications && result.notifications.length > 0) {
-            for (const notif of result.notifications) {
-                chm.addNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
-                rdm.appendNotification(notif.text, notif.type === 'character_created' ? 'positive' : (notif.type || 'info'));
-            }
-        }
+        rdm.appendAssistantContent(result.content || []);
 
         // 序列化 CHM 和 RDM 回 saveData
         saveData.chatHistory = chm.toJSON();
@@ -266,13 +204,12 @@ router.post('/action', async (req, res) => {
         const renderData = rdm.getRenderData(lastBlockIndex != null ? lastBlockIndex : -1);
         res.json({
             renderData,
-            content: finalContent,
-            options: result.options,
-            notifications: result.notifications,
+            content: result.content,
+            options: [],
+            notifications: [],
             saveData,
         });
     } catch (err) {
-        // 错误时也序列化 CHM 和 RDM
         logger.error('[Action] Pipeline failed:', { error: err.message, stack: err.stack });
         saveData.chatHistory = chm.toJSON();
         saveData.renderHistory = rdm.toJSON();
