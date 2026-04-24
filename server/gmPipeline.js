@@ -402,8 +402,8 @@ class Pipeline {
     async run(saveData, userMessage, apiConfig, appConfig, aiMessages = null) {
         const postProcessNotifications = [];  // 后处理/自动升级产生的通知（需追加到末尾）
         const orderedBlocks = [];     // 有序内容块列表（content + notification 交错排列）
+        const allContentParts = [];   // 收集所有循环中的纯文本内容
         let totalToolCalls = 0;
-        let toolOptions = null;               // 从 <options> 标签中收集的选项
 
         // ===== Phase 1: StoryAgent 主循环 =====
         const systemPrompt = buildSystemPrompt(saveData, appConfig);
@@ -439,18 +439,9 @@ class Pipeline {
             if (result.tool_calls) assistantMsg.tool_calls = result.tool_calls;
             messages.push(assistantMsg);
 
-            // ===== 解析 content 中的标签内容 =====
+            // ===== 收集纯文本内容 =====
             if (result.content && result.content.trim()) {
-                const { blocks: tagBlocks, options: tagOptions } = parseTaggedContent(result.content);
-                // 将解析出的内容块入队
-                for (const block of tagBlocks) {
-                    orderedBlocks.push(block);
-                }
-                // 收集选项
-                if (tagOptions && tagOptions.length > 0) {
-                    toolOptions = tagOptions;
-                    logger.info(`[Pipeline] Options received from <options> tag: ${toolOptions.length}`);
-                }
+                allContentParts.push(result.content.trim());
             }
 
             // ===== 处理 tool calls（状态变更工具） =====
@@ -462,10 +453,10 @@ class Pipeline {
 
                     logger.info(`[Pipeline] Tool call: ${fnName}`, { args: fnArgs });
 
-                    // 跳过 add_content_blocks（已废弃，兼容旧模型可能误调用）
+                    // 跳过已废弃的工具
                     if (fnName === 'add_content_blocks') {
                         logger.warn(`[Pipeline] add_content_blocks called (deprecated), skipping`);
-                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, message: '此工具已废弃。请直接在文本中使用标签格式输出内容。' }) });
+                        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ success: true, message: '此工具已废弃。请直接在文本中写叙事内容。' }) });
                         continue;
                     }
 
@@ -498,42 +489,30 @@ class Pipeline {
                     totalToolCalls++;
                 }
                 logger.info(`[Pipeline] Loop ${loopCount} completed`, { toolCalls: result.tool_calls.length });
-                // 如果已通过 <options> 标签收到选项，结束循环
-                if (toolOptions) {
-                    logger.info('[Pipeline] Options received, ending loop');
-                    break;
-                }
                 continue;
             }
 
-            // ===== AI 未调用工具：检查 content 是否已包含选项 =====
-            if (toolOptions) {
-                logger.info('[Pipeline] Options received from content, ending loop');
-                break;
-            }
-            // 有内容但无选项，提示 AI 需要提交选项
-            if (orderedBlocks.length > 0 && loopCount < MAX_LOOPS) {
-                logger.info('[Pipeline] Content received but no options, requesting options');
-                messages.push({
-                    role: 'user',
-                    content: '【系统提示】内容已收到，但你还没有提供玩家选项。请在回复末尾使用 <options> 标签提交选项：\n<options>\n[{"text":"选项文本","action":"玩家发送的实际文本"}]\n</options>'
-                });
-                continue;
-            }
-            // 完全无内容也无工具，异常重试
-            if (loopCount === 1 && orderedBlocks.length === 0) {
-                logger.warn(`[Pipeline] AI responded with empty content, retrying`);
-                messages.push({
-                    role: 'user',
-                    content: '【系统提示】你的回复为空。请使用标签格式输出叙事内容和选项。'
-                });
-                continue;
-            }
+            // ===== AI 未调用工具：纯文本回复，结束循环 =====
             break;
         }
 
         // 退出循环时的状态摘要
-        logger.info(`[Pipeline] Loop exited: loops=${loopCount}, toolCalls=${totalToolCalls}, blocks=${orderedBlocks.length}, options=${toolOptions ? toolOptions.length : 0}`);
+        logger.info(`[Pipeline] Loop exited: loops=${loopCount}, toolCalls=${totalToolCalls}, contentParts=${allContentParts.length}`);
+
+        // ===== Phase 1.5: 提取器 — 从纯文本中提取选项和角色对话 =====
+        const fullContent = allContentParts.join('\n\n');
+        let extractedOptions = null;
+        let extractedCharacterBlocks = [];
+
+        if (fullContent) {
+            logger.info('[Pipeline] Phase 1.5: Running content extractor');
+            const extractTimer = logger.timer();
+            const extracted = await this._extractStructuredContent(fullContent, saveData, apiConfig);
+            extractTimer.done('Content extractor');
+            extractedOptions = extracted.options;
+            extractedCharacterBlocks = extracted.characterBlocks;
+            logger.info(`[Pipeline] Extractor result: ${extractedOptions.length} options, ${extractedCharacterBlocks.length} character blocks`);
+        }
 
         // ===== Phase 2: 各 Agent 后处理（并行） =====
         logger.info('[Pipeline] Phase 2: Post-processing');
@@ -558,24 +537,34 @@ class Pipeline {
         // ===== Phase 3: 组装最终输出 =====
         logger.info('[Pipeline] Assembling final output');
 
-        // 所有内容来自 orderedBlocks（通过工具调用收集）
-        const finalContent = orderedBlocks.map(block => {
+        // 构建内容块：叙事文本 + 提取的角色对话 + 工具通知
+        const finalContent = [];
+
+        // 1. 叙事文本作为 narrative 块
+        if (fullContent) {
+            finalContent.push({ type: 'narrative', text: fullContent });
+        }
+
+        // 2. 提取的角色对话块
+        for (const charBlock of extractedCharacterBlocks) {
+            finalContent.push(charBlock);
+        }
+
+        // 3. 工具通知
+        for (const block of orderedBlocks) {
             if (block.type === '_notification') {
-                return { type: '_notification', text: block.text, notifType: block.notifType };
+                finalContent.push({ type: '_notification', text: block.text, notifType: block.notifType });
             }
-            const clean = { ...block };
-            delete clean._source;
-            return clean;
-        });
+        }
 
         // 清理所有 Agent 日志
         this.agents.forEach(a => a.clearLog());
 
         logger.info('[Pipeline] Run completed', { totalLoops: loopCount, totalToolCalls });
 
-        let finalOptions = toolOptions || [];
+        let finalOptions = extractedOptions || [];
 
-        // ===== 选项补充：如果 AI 没有生成选项，自动补充 =====
+        // ===== 选项补充：如果提取器未生成选项，自动补充 =====
         if (finalOptions.length === 0) {
             logger.info('[Pipeline] No options generated, requesting fallback options');
             try {
@@ -601,7 +590,111 @@ class Pipeline {
     }
 
     /**
-     * 请求 AI 补充选项（当主循环未生成选项时调用）
+     * 内容提取器：从 AI 的纯文本叙事中提取玩家选项和角色对话
+     * 使用低温度、结构化 prompt 确保输出稳定
+     */
+    async _extractStructuredContent(narrativeText, saveData, apiConfig) {
+        const { apiKey, apiBaseUrl, model } = apiConfig;
+        const location = saveData.map?.locations?.[saveData.map.currentLocation];
+        const locationHint = location ? `当前位置：${saveData.map.currentLocation}` : '';
+        const characters = saveData.characters || {};
+        const characterList = Object.values(characters).map(c => c.name).filter(Boolean).join('、') || '无';
+
+        const extractPrompt = `你是一个内容分析器。分析以下 GM 叙事文本，提取结构化信息。
+
+## 当前游戏状态
+- ${locationHint}
+- 场景中的角色：${characterList}
+
+## 叙事文本
+${narrativeText}
+
+## 任务
+请严格按以下 JSON 格式输出，不要输出任何其他内容：
+
+{
+  "options": [
+    {"text": "玩家看到的选项文本（简短有力）", "action": "玩家发送的实际文本（描述具体行动）"},
+    {"text": "选项2", "action": "行动2"},
+    {"text": "选项3", "action": "行动3"}
+  ],
+  "characters": [
+    {
+      "name": "角色名",
+      "mood": "当前心情",
+      "segments": [
+        {"type": "reaction", "text": "角色的动作/表情描写"},
+        {"type": "dialogue", "text": "角色的口语内容"}
+      ]
+    }
+  ]
+}
+
+规则：
+1. options：生成 2-4 个有实质差异的行动选项。text 是简短描述（10字以内），action 是具体行动描述（15-30字）
+2. characters：提取文本中所有有名字的角色的对话和动作。如果文本中没有角色对话，返回空数组
+3. segments 中 reaction 是动作/表情（第三人称），dialogue 是口语内容
+4. 只输出 JSON，不要输出任何其他文本`;
+
+        try {
+            const response = await fetch(apiBaseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    model,
+                    messages: [{ role: 'user', content: extractPrompt }],
+                    temperature: 0.3,  // 低温度确保稳定
+                    max_tokens: 1024,
+                    stream: false,
+                }),
+            });
+
+            if (!response.ok) {
+                logger.warn('[Extractor] Request failed', { status: response.status });
+                return { options: [], characterBlocks: [] };
+            }
+
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content || '';
+
+            // 解析 JSON
+            let parsed;
+            try {
+                // 尝试直接解析
+                parsed = JSON.parse(content);
+            } catch (e) {
+                // 尝试从文本中提取 JSON
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    parsed = JSON.parse(jsonMatch[0]);
+                } else {
+                    throw new Error('No JSON found in response');
+                }
+            }
+
+            // 提取选项
+            const options = (parsed.options || []).map(opt => ({
+                text: opt.text || '',
+                action: opt.action || opt.text || '',
+            })).filter(opt => opt.text);
+
+            // 提取角色对话块
+            const characterBlocks = (parsed.characters || []).map(char => ({
+                type: 'character',
+                characterName: char.name || '???',
+                mood: char.mood,
+                segments: (char.segments || []).filter(seg => seg.text),
+            })).filter(char => char.segments.length > 0);
+
+            return { options, characterBlocks };
+        } catch (err) {
+            logger.warn('[Extractor] Failed to extract structured content', { error: err.message });
+            return { options: [], characterBlocks: [] };
+        }
+    }
+
+    /**
+     * 请求 AI 补充选项（当提取器未生成选项时调用）
      */
     async _requestFallbackOptions(saveData, apiConfig, messages) {
         const { apiKey, apiBaseUrl, model } = apiConfig;
@@ -761,139 +854,6 @@ async function parseNonStreamResponse(apiBaseUrl, apiKey, model, messages, tools
     const choice = data.choices?.[0];
     if (!choice) throw new Error('AI 返回了空响应');
     return { content: choice.message?.content || '', tool_calls: choice.message?.tool_calls || null };
-}
-
-// ===================================================================
-// ===== 标签内容解析器 =====
-// ===================================================================
-
-/**
- * 解析 AI 在 content 中使用标签格式输出的内容
- * 支持的标签：<narration>, <scene>, <character>, <combat>, <loot>, <options>
- * 未被标签包裹的纯文本自动作为 narration 处理
- * @param {string} content - AI 输出的 content 文本
- * @returns {{ blocks: Array, options: Array|null }}
- */
-function parseTaggedContent(content) {
-    const blocks = [];
-    let options = null;
-
-    if (!content || !content.trim()) return { blocks, options };
-
-    const text = content.trim();
-
-    // 1. 提取 <options> 标签中的 JSON
-    const optionsMatch = text.match(/<options>\s*([\s\S]*?)\s*<\/options>/);
-    if (optionsMatch) {
-        try {
-            const parsed = JSON.parse(optionsMatch[1].trim());
-            if (Array.isArray(parsed)) {
-                options = parsed.map(opt => ({
-                    text: opt.text || '',
-                    action: opt.action || opt.text || '',
-                }));
-            } else if (parsed.options && Array.isArray(parsed.options)) {
-                options = parsed.options.map(opt => ({
-                    text: opt.text || '',
-                    action: opt.action || opt.text || '',
-                }));
-            }
-            if (options && options.length > 0) {
-                logger.info(`[TagParser] Parsed ${options.length} options from <options> tag`);
-            }
-        } catch (e) {
-            logger.warn(`[TagParser] Failed to parse <options> JSON: ${e.message}`);
-        }
-    }
-
-    // 2. 移除 <options> 标签，处理其余内容
-    const contentWithoutOptions = text.replace(/<options>[\s\S]*?<\/options>/g, '').trim();
-
-    // 2.5 过滤未知标签（保留内容，移除标签壳）
-    const knownTags = ['narration', 'scene', 'character', 'combat', 'loot', 'reaction', 'dialogue'];
-    const unknownTagRegex = /<\/?([a-zA-Z][a-zA-Z0-9_-]*)(\s[^>]*)?>/g;
-    const filteredContent = contentWithoutOptions.replace(unknownTagRegex, (fullMatch, tagName) => {
-        if (knownTags.includes(tagName.toLowerCase())) return fullMatch;
-        logger.info(`[TagParser] Stripped unknown tag: <${tagName}>`);
-        return '';
-    }).trim();
-
-    // 3. 提取所有标签块
-    const tagRegex = /<(narration|scene|character|combat|loot)(\s[^>]*)?>\s*([\s\S]*?)\s*<\/\1>/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = tagRegex.exec(filteredContent)) !== null) {
-        // 标签前的纯文本作为 narration
-        const beforeText = filteredContent.substring(lastIndex, match.index).trim();
-        if (beforeText) {
-            blocks.push({ type: 'narrative', text: beforeText, _source: 'untagged_text' });
-        }
-
-        const tagType = match[1];
-        const attrs = match[2] || '';
-        const innerText = match[3].trim();
-
-        if (!innerText) {
-            lastIndex = match.index + match[0].length;
-            continue;
-        }
-
-        switch (tagType) {
-            case 'narration':
-                blocks.push({ type: 'narrative', text: innerText, _source: 'tag' });
-                break;
-            case 'scene':
-                blocks.push({ type: 'scene', text: innerText, _source: 'tag' });
-                break;
-            case 'combat':
-                blocks.push({ type: 'combat', text: innerText, _source: 'tag' });
-                break;
-            case 'loot':
-                blocks.push({ type: 'loot', text: innerText, _source: 'tag' });
-                break;
-            case 'character': {
-                // 解析属性：name="xxx" mood="xxx"
-                const nameMatch = attrs.match(/name=["']([^"']+)["']/);
-                const moodMatch = attrs.match(/mood=["']([^"']+)["']/);
-                const characterName = nameMatch ? nameMatch[1] : '???';
-                const mood = moodMatch ? moodMatch[1] : undefined;
-                // 解析内部 <reaction> 和 <dialogue> 子标签
-                const segments = [];
-                const segRegex = /<(reaction|dialogue)>\s*([\s\S]*?)\s*<\/\1>/g;
-                let segMatch;
-                let plainText = innerText;
-                // 移除子标签后检查是否有剩余文本
-                plainText = plainText.replace(/<(reaction|dialogue)>[\s\S]*?<\/\1>/g, '').trim();
-                while ((segMatch = segRegex.exec(innerText)) !== null) {
-                    segments.push({ type: segMatch[1], text: segMatch[2].trim() });
-                }
-                if (segments.length > 0) {
-                    blocks.push({ type: 'character', characterName, mood, segments, _source: 'tag' });
-                } else if (plainText) {
-                    // 没有子标签，整段文本作为 reaction
-                    blocks.push({ type: 'character', characterName, mood, segments: [{ type: 'reaction', text: innerText }], _source: 'tag' });
-                }
-                break;
-            }
-        }
-
-        lastIndex = match.index + match[0].length;
-    }
-
-    // 4. 最后一个标签后的剩余文本作为 narration
-    const remainingText = filteredContent.substring(lastIndex).trim();
-    if (remainingText) {
-        blocks.push({ type: 'narrative', text: remainingText, _source: 'untagged_text' });
-    }
-
-    // 5. 如果没有任何标签，整个文本作为 narrative
-    if (blocks.length === 0 && filteredContent) {
-        blocks.push({ type: 'narrative', text: filteredContent, _source: 'full_content' });
-    }
-
-    logger.info(`[TagParser] Parsed ${blocks.length} blocks from content (${filteredContent.length} chars)`);
-    return { blocks, options };
 }
 
 // ===================================================================
