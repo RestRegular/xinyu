@@ -442,12 +442,11 @@ class Pipeline {
 
             // 处理 tool calls
             if (result.tool_calls && result.tool_calls.length > 0) {
-                // 先回收 content 中被 AI "漏"出的叙事文本，确保叙事排在工具通知之前
+                // 从 content 中提取 AI 的工具调用描述，作为调试日志输出（不渲染给玩家）
                 if (result.content && result.content.trim()) {
                     const trimmed = result.content.trim();
                     if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-                        orderedBlocks.push({ type: 'narrative', text: trimmed, _source: 'content_fallback' });
-                        logger.info(`[Pipeline] Recovered ${trimmed.length} chars from content field as narrative block`);
+                        logger.info(`[Pipeline] AI tool-call description: "${trimmed}"`);
                     }
                 }
 
