@@ -513,6 +513,15 @@ class Pipeline {
                     messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
                     totalToolCalls++;
                 }
+                // 回收 content 中被 AI "漏"出的叙事文本，避免内容丢失
+                if (result.content && result.content.trim()) {
+                    const trimmed = result.content.trim();
+                    // 过滤掉纯 JSON 工具结果（误当 content 的情况）
+                    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+                        orderedBlocks.push({ type: 'narrative', text: trimmed, _source: 'content_fallback' });
+                        logger.info(`[Pipeline] Recovered ${trimmed.length} chars from content field as narrative block`);
+                    }
+                }
                 logger.info(`[Pipeline] Loop ${loopCount} completed`, { toolCalls: result.tool_calls.length });
                 // 如果已通过工具收到 options，直接结束循环，不需要 AI 再输出结束 JSON
                 if (toolOptions) {
