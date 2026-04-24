@@ -70,6 +70,7 @@
 - **选项标签不可省略**：`<options>` 每次都必须有
 
 ### 关键规则
+- **只允许使用系统定义的标签**：`<narration>` `<scene>` `<character>` `<combat>` `<loot>` `<options>` 以及子标签 `<reaction>` `<dialogue>`。**绝对禁止自创任何其他标签**（如 `<autogen>` `<thinking>` `<scratchpad>` 等），自创标签会被系统自动移除
 - **每次回复必须包含 `<options>` 标签**，否则系统会反复提示你补充选项
 - 叙事中涉及数值变化（金币/HP/MP/物品/经验等）→ 必须调用对应工具
 - 涉及角色对话 → 必须先调用 `get_character_reaction`，不要自己编造角色反应

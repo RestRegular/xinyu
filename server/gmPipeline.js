@@ -809,14 +809,23 @@ function parseTaggedContent(content) {
     // 2. 移除 <options> 标签，处理其余内容
     const contentWithoutOptions = text.replace(/<options>[\s\S]*?<\/options>/g, '').trim();
 
+    // 2.5 过滤未知标签（保留内容，移除标签壳）
+    const knownTags = ['narration', 'scene', 'character', 'combat', 'loot', 'reaction', 'dialogue'];
+    const unknownTagRegex = /<\/?([a-zA-Z][a-zA-Z0-9_-]*)(\s[^>]*)?>/g;
+    const filteredContent = contentWithoutOptions.replace(unknownTagRegex, (fullMatch, tagName) => {
+        if (knownTags.includes(tagName.toLowerCase())) return fullMatch;
+        logger.info(`[TagParser] Stripped unknown tag: <${tagName}>`);
+        return '';
+    }).trim();
+
     // 3. 提取所有标签块
     const tagRegex = /<(narration|scene|character|combat|loot)(\s[^>]*)?>\s*([\s\S]*?)\s*<\/\1>/g;
     let lastIndex = 0;
     let match;
 
-    while ((match = tagRegex.exec(contentWithoutOptions)) !== null) {
+    while ((match = tagRegex.exec(filteredContent)) !== null) {
         // 标签前的纯文本作为 narration
-        const beforeText = contentWithoutOptions.substring(lastIndex, match.index).trim();
+        const beforeText = filteredContent.substring(lastIndex, match.index).trim();
         if (beforeText) {
             blocks.push({ type: 'narrative', text: beforeText, _source: 'untagged_text' });
         }
@@ -873,17 +882,17 @@ function parseTaggedContent(content) {
     }
 
     // 4. 最后一个标签后的剩余文本作为 narration
-    const remainingText = contentWithoutOptions.substring(lastIndex).trim();
+    const remainingText = filteredContent.substring(lastIndex).trim();
     if (remainingText) {
         blocks.push({ type: 'narrative', text: remainingText, _source: 'untagged_text' });
     }
 
     // 5. 如果没有任何标签，整个文本作为 narrative
-    if (blocks.length === 0 && contentWithoutOptions) {
-        blocks.push({ type: 'narrative', text: contentWithoutOptions, _source: 'full_content' });
+    if (blocks.length === 0 && filteredContent) {
+        blocks.push({ type: 'narrative', text: filteredContent, _source: 'full_content' });
     }
 
-    logger.info(`[TagParser] Parsed ${blocks.length} blocks from content (${contentWithoutOptions.length} chars)`);
+    logger.info(`[TagParser] Parsed ${blocks.length} blocks from content (${filteredContent.length} chars)`);
     return { blocks, options };
 }
 
