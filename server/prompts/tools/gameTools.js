@@ -119,48 +119,6 @@ const gameTools = [
             parameters: { type: 'object', properties: { revive_location: { type: 'string' }, hp_percent: { type: 'number' } }, required: [] },
         },
     },
-    // ---- 内容构建工具 ----
-    {
-        type: 'function',
-        function: {
-            name: 'add_content_blocks',
-            description: '向最终输出中逐步添加内容块和选项。在调用其他工具（如 create_location）之后，调用此工具将叙事内容块添加到输出中。最后一次调用时必须同时传入 options。调用此工具时不要在文本中输出任何内容。',
-            parameters: {
-                type: 'object',
-                properties: {
-                    blocks: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                type: { type: 'string', enum: ['narrative', 'scene', 'character', 'combat', 'loot'], description: '内容块类型' },
-                                text: { type: 'string', description: '文本内容（narrative/scene/combat/loot 类型使用）' },
-                                characterName: { type: 'string', description: '角色名称（character 类型使用）' },
-                                characterId: { type: 'string', description: '角色ID（重要角色使用，由 get_character_reaction 返回）' },
-                                mood: { type: 'string', description: '角色心情（重要角色使用）' },
-                                segments: { type: 'array', items: { type: 'object', properties: { type: { type: 'string', enum: ['reaction', 'dialogue'] }, text: { type: 'string' } }, required: ['type', 'text'] }, description: '角色动作和对话片段（character 类型使用）' },
-                            },
-                            required: ['type'],
-                        },
-                        description: '要添加的内容块数组',
-                    },
-                    options: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                text: { type: 'string', description: '选项显示文本' },
-                                action: { type: 'string', description: '玩家发送的实际文本' },
-                            },
-                            required: ['text', 'action'],
-                        },
-                        description: '玩家行动选项（2-4个）。在最后一次调用此工具时必须传入',
-                    },
-                },
-                required: ['blocks'],
-            },
-        },
-    },
     // ---- 新增4个角色工具 ----
     {
         type: 'function',
