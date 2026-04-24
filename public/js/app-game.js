@@ -94,11 +94,17 @@
 
             if (isNewGame) {
                 addSystemMessage(`欢迎来到${data.world.name}，${data.player.name}。你的冒险即将开始...`);
-                // 构建开场提示，如果有自定义初始剧情提示则追加
-                const openingHint = data.world.openingPrompt
-                    ? '【玩家指定的开场方向】\n' + data.world.openingPrompt
-                    : null;
-                const openingMessage = `[系统] 玩家开始新游戏，请根据世界设定和角色背景${openingHint ? '以及玩家指定的开场方向（注：指定的内容未出现在历史记录中）' : ''}，生成一段沉浸式的开场剧情。不要替玩家做任何决定。\n${openingHint}`;
+                const userDirection = data.world.openingPrompt
+                    ? `\n\n【玩家提供的开场方向，仅作为灵感，不是已发生事实】\n${data.world.openingPrompt}`
+                    : '';
+
+                const openingMessage = `[系统] 这是游戏的最原始开端，没有任何历史对话或剧情发生过。
+请根据世界设定和角色背景${data.world.openingPrompt ? '，以及下方玩家提供的开场方向' : ''}，创作一段完整的开场剧情。
+
+要求：
+- 包含简短背景介绍 + 详细开场剧情
+- 不要替玩家做任何决定
+- 玩家提供的内容（如有）只是创作方向，不要延续或引用任何历史记录${userDirection}`;
                 // 直接调用AI生成开场剧情，不显示为玩家消息
                 callAI(openingMessage).catch(err => {
                     addNotification('开场剧情生成失败: ' + err.message, 'negative');
