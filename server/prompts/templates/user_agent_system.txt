@@ -13,14 +13,7 @@
 - 年龄：{{playerAge}}
 - 身份：{{playerOccupation}}
 - 外貌：{{playerAppearance}}
-- 描述：{{playerDescription}}
-- 等级：{{playerLevel}}
 - 性格特征：{{playerPersonality}}
-
-## 当前场景
-- 地点：{{locationDesc}}
-- 场景NPC：{{npcsInfo}}
-- 重要角色在场：{{charactersInfo}}
 
 ## 任务要求
 玩家选择了一个行动选项，你需要将其扩展为一段生动的角色行为描写。

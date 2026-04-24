@@ -130,14 +130,6 @@
                     <textarea class="input create-form-textarea" id="createOpeningPrompt" rows="4" placeholder="指导AI如何开场。例如：&#10;玩家在一个神秘的地下神殿中醒来，周围是古老的符文和微弱的蓝光。远处传来低沉的吟唱声...&#10;开场应营造悬疑氛围，暗示玩家身负某种使命"></textarea>
                     <div class="create-form-hint">指定AI开场时的剧情方向和氛围，留空则由AI自由发挥</div>
                 </div>
-                <div class="create-form-row">
-                    <label class="create-form-label" for="createStartLocation">起始地点名称</label>
-                    <input class="input create-form-input" id="createStartLocation" placeholder="玩家最初醒来的地方...">
-                </div>
-                <div class="create-form-row">
-                    <label class="create-form-label" for="createStartLocationDesc">起始地点描述</label>
-                    <textarea class="input create-form-textarea" id="createStartLocationDesc" rows="3" placeholder="描述玩家最初醒来的地方..."></textarea>
-                </div>
             </div>
         </div>
 
@@ -184,20 +176,6 @@
                 <div class="create-form-row">
                     <label class="create-form-label" for="createPlayerBackstory">角色背景故事</label>
                     <textarea class="input create-form-textarea" id="createPlayerBackstory" rows="5" placeholder="描述角色的过去、动机、目标...这段内容将帮助AI更好地理解你的角色"></textarea>
-                </div>
-                <div class="create-form-row">
-                    <label class="create-form-label" for="createStartGold">初始金币</label>
-                    <input class="input create-form-input" type="number" id="createStartGold" value="0" min="0">
-                </div>
-                <div class="create-form-row">
-                    <label class="create-form-label">初始物品</label>
-                    <div class="create-form-items-container">
-                        <div class="create-form-items-list" id="createStarterItemsList">
-                            <!-- 动态生成物品列表 -->
-                        </div>
-                        <button class="btn btn-sm btn-secondary" onclick="addStarterItem()">+ 添加物品</button>
-                    </div>
-                    <div class="create-form-hint">点击添加物品按钮来设置玩家初始携带的物品</div>
                 </div>
             </div>
         </div>

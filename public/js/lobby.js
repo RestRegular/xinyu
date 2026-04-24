@@ -1,5 +1,5 @@
 // ===================================================================
-// ===== 管理大厅（重构版 - 存档操作调用后端 API） =====
+// ===== 管理大厅（纯叙事RP版 - 存档操作调用后端 API） =====
 // ===================================================================
 function setFilter(filter, el) {
     currentFilter = filter;
@@ -41,7 +41,6 @@ function renderLobby() {
             case 'lastSaved': return new Date(b.last_saved_at || b.lastSavedAt || 0) - new Date(a.last_saved_at || a.lastSavedAt || 0);
             case 'created': return new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0);
             case 'name': return (a.name || '').localeCompare(b.name || '');
-            case 'level': return (b.player_level || b.playerLevel || 0) - (a.player_level || a.playerLevel || 0);
             default: return 0;
         }
     });
@@ -66,16 +65,14 @@ function renderLobby() {
         const worldGenre = save.world_genre || save.worldGenre || '自定义';
         const worldName = save.world_name || save.worldName || '未知世界';
         const playerName = save.player_name || save.playerName || '?';
-        const playerLevel = save.player_level || save.playerLevel || 1;
-        const currentLocation = save.current_location || save.currentLocation || '未知';
         const turnCount = save.turn_count || save.turnCount || 0;
         const lastSavedAt = save.last_saved_at || save.lastSavedAt;
         const pinnedClass = save.pinned ? 'save-card-pinned' : '';
-        
+
         // 生成SVG图片路径（基于世界名称）
         const svgFileName = worldName.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_') + '.svg';
         const svgPath = `/api/game/templates/svg/${encodeURIComponent(svgFileName)}`;
-        
+
         // 使用后端API获取SVG图片
         const svgImage = `<div class="save-card-image" style="background-image: url('${svgPath}'); background-size: cover; background-position: center; height: 80px; border-radius: 4px; margin-bottom: 8px;"></div>`;
 
@@ -91,11 +88,9 @@ function renderLobby() {
                             <div class="dropdown-menu" id="saveMenu_${save.id}">
                                 <button class="dropdown-item" onclick="event.stopPropagation();continueGame('${save.id}');closeDropdowns()">▶ 继续游戏</button>
                                 <button class="dropdown-item" onclick="event.stopPropagation();renameSave('${save.id}');closeDropdowns()">✏️ 重命名</button>
-                                <button class="dropdown-item" onclick="event.stopPropagation();duplicateSave('${save.id}');closeDropdowns()">📋 创建副本</button>
                                 <button class="dropdown-item" onclick="event.stopPropagation();togglePin('${save.id}');closeDropdowns()">${save.pinned ? '📌 取消置顶' : '📌 置顶'}</button>
                                 <button class="dropdown-item" onclick="event.stopPropagation();toggleArchive('${save.id}');closeDropdowns()">${save.archived ? '📦 取消归档' : '📦 归档'}</button>
                                 <div class="dropdown-divider"></div>
-                                <button class="dropdown-item" onclick="event.stopPropagation();viewSaveStats('${save.id}');closeDropdowns()">📊 查看统计</button>
                                 <button class="dropdown-item" onclick="event.stopPropagation();exportWorldFromSave('${save.id}');closeDropdowns()">🌍 导出世界</button>
                                 <button class="dropdown-item" onclick="event.stopPropagation();exportSave('${save.id}');closeDropdowns()">📤 导出存档</button>
                                 <div class="dropdown-divider"></div>
@@ -109,10 +104,7 @@ function renderLobby() {
                         <span class="badge ${genreBadgeClass(worldGenre)}">${genreIcon(worldGenre)} ${escapeHtml(worldGenre)}</span>
                     </div>
                     <div class="save-card-meta-row">
-                        <span>${escapeHtml(playerName)} · Lv.${playerLevel}</span>
-                    </div>
-                    <div class="save-card-meta-row">
-                        <span>📍 ${escapeHtml(currentLocation)}</span>
+                        <span>${escapeHtml(playerName)}</span>
                     </div>
                 </div>
                 <div class="save-card-footer">
@@ -133,7 +125,7 @@ function renderLobby() {
 }
 
 // ===================================================================
-// ===== 存档操作（重构版 - 调用后端 API） =====
+// ===== 存档操作（纯叙事RP版 - 调用后端 API） =====
 // ===================================================================
 async function continueGame(id) {
     const data = await loadSaveData(id);
@@ -172,20 +164,6 @@ async function renameSave(id) {
         }
     };
     openModal('modalRename');
-}
-
-async function duplicateSave(id) {
-    try {
-        const resp = await fetch(`/api/game/${id}/duplicate`, { method: 'POST' });
-        if (resp.ok) {
-            const result = await resp.json();
-            await loadSavesIndex();
-            renderLobby();
-            showToast('已创建副本');
-        }
-    } catch(e) {
-        showToast('创建副本失败', 'error');
-    }
 }
 
 async function togglePin(id) {
@@ -242,6 +220,20 @@ async function exportSave(id) {
 
 function exportCurrentSave() {
     if (currentSaveId) exportSave(currentSaveId);
+}
+
+async function exportWorldFromSave(id) {
+    try {
+        const resp = await fetch(`/api/game/templates/export/${encodeURIComponent(id)}`);
+        if (resp.ok) {
+            const template = await resp.json();
+            exportWorldTemplate(template);
+        } else {
+            showToast('导出世界失败', 'error');
+        }
+    } catch(e) {
+        showToast('导出世界失败', 'error');
+    }
 }
 
 async function exportAllSaves() {

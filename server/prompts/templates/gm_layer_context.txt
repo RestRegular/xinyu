@@ -1,24 +1,2 @@
-## 当前状态
-- 位置：{{currentLocation}}
-- 回合：{{turnCount}}
-- HP：{{hpCurrent}}/{{hpMax}}
-- MP：{{mpCurrent}}/{{mpMax}}
-- 攻击：{{attackCurrent}} | 防御：{{defenseCurrent}}
-- 敏捷：{{agilityCurrent}} | 幸运：{{luckCurrent}}
-- 金币：{{gold}}
-- 背包({{inventoryCount}}/{{maxSlots}})：{{inventoryInfo}}
-- 状态效果：{{statusEffectsInfo}}
-
-## 当前位置
-{{locationDescription}}
-- 此处角色：{{npcsInfo}}
-- 可前往：{{connectionsInfo}}
-
-## 已发现地点
-{{discoveredLocations}}
-
-## 当前位置的重要角色
-{{charactersInfo}}
-
 ## 最近剧情进展
 {{recentPlotSummary}}

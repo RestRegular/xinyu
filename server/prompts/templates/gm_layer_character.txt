@@ -6,4 +6,3 @@
 - 外貌：{{playerAppearance}}
 - 性格：{{playerPersonality}}
 - 背景：{{playerBackstory}}
-- 等级：{{playerLevel}}（经验 {{playerExp}}/{{playerExpNext}}）

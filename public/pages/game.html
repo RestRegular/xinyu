@@ -24,7 +24,6 @@
             <button class="btn btn-ghost btn-sm" onclick="toggleDropdown('gameMenu')">菜单 ▼</button>
             <div class="dropdown-menu" id="gameMenu">
                 <button class="dropdown-item" onclick="manualSave();closeDropdowns()">💾 保存游戏</button>
-                <button class="dropdown-item" onclick="localStorage.setItem('xinyu_active_save_id',currentSaveId);window.location.href='stats.html';closeDropdowns()">📊 游戏统计</button>
                 <button class="dropdown-item" onclick="showWorldInfo();closeDropdowns()">🌍 世界信息</button>
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item" onclick="exportCurrentSave();closeDropdowns()">📤 导出存档</button>
@@ -40,23 +39,7 @@
         <div class="sidebar-section">
             <div class="sidebar-section-title">角色</div>
             <div class="sidebar-char-name" id="sidebarCharName">—</div>
-            <div class="sidebar-char-level" id="sidebarCharLevel">—</div>
-        </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">位置</div>
-            <div class="sidebar-location-name" id="sidebarLocation">—</div>
-            <div class="sidebar-connections" id="sidebarConnections"></div>
-        </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">面板</div>
-            <div class="sidebar-shortcuts">
-                <button class="sidebar-shortcut" onclick="showPanelModal('attributes')">📊 属性</button>
-                <button class="sidebar-shortcut" onclick="showPanelModal('status')">💫 状态</button>
-                <button class="sidebar-shortcut" onclick="showPanelModal('inventory')">🎒 背包</button>
-                <button class="sidebar-shortcut" onclick="showPanelModal('map')">🗺️ 地图</button>
-                <button class="sidebar-shortcut" onclick="showPanelModal('npcs')">👥 NPC</button>
-                <button class="sidebar-shortcut" onclick="showPanelModal('characters')">🎭 角色</button>
-            </div>
+            <div class="sidebar-char-info" id="sidebarCharInfo">—</div>
         </div>
     </div>
 
@@ -71,41 +54,6 @@
                 <button class="game-send-btn" id="gameSendBtn" onclick="sendMessage()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 右侧面板 -->
-    <div class="game-rightpanel" id="gameRightpanel">
-        <div class="rightpanel-section" id="panelAttributes">
-            <div class="sidebar-section-title">属性</div>
-            <div id="attributesPanel"></div>
-        </div>
-        <div class="rightpanel-section" id="panelStatus">
-            <div class="sidebar-section-title">状态效果</div>
-            <div class="status-tags" id="statusPanel">
-                <span style="font-size:12px;color:var(--text-tertiary);">无</span>
-            </div>
-        </div>
-        <div class="rightpanel-section" id="panelInventory">
-            <div class="sidebar-section-title">背包 <span id="inventoryCount" style="color:var(--text-tertiary);font-weight:400;"></span></div>
-            <div class="inventory-gold" id="inventoryGold"></div>
-            <div class="inventory-list" id="inventoryPanel"></div>
-        </div>
-        <div class="rightpanel-section" id="panelMap">
-            <div class="sidebar-section-title">地图</div>
-            <div id="mapPanel"></div>
-        </div>
-        <div class="rightpanel-section" id="panelNpcs">
-            <div class="sidebar-section-title">场景NPC</div>
-            <div id="npcsPanel">
-                <span style="font-size:12px;color:var(--text-tertiary);">暂无</span>
-            </div>
-        </div>
-        <div class="rightpanel-section" id="panelCharacters">
-            <div class="sidebar-section-title">重要角色</div>
-            <div id="charactersPanel">
-                <span style="font-size:12px;color:var(--text-tertiary);">暂无</span>
             </div>
         </div>
     </div>
@@ -128,17 +76,6 @@
     </div>
 </div>
 
-<!-- ==================== 模态框：面板详情 ==================== -->
-<div class="modal-overlay" id="modalPanelDetail">
-    <div class="modal" style="max-width:500px;max-height:80vh;display:flex;flex-direction:column;">
-        <div class="modal-header">
-            <h3 id="panelDetailTitle">详情</h3>
-            <button class="btn btn-ghost btn-sm" onclick="closeModal('modalPanelDetail')">✕</button>
-        </div>
-        <div class="modal-body" id="panelDetailContent" style="overflow-y:auto;flex:1;"></div>
-    </div>
-</div>
-
 <!-- ==================== 模态框：世界信息 ==================== -->
 <div class="modal-overlay" id="modalWorldInfo">
     <div class="modal" style="max-width:500px;">
@@ -155,7 +92,6 @@
 <script src="../js/router.js"></script>
 <script src="../js/game.js"></script>
 <script src="../js/api.js"></script>
-<script src="../js/stats.js"></script>
 <script src="../js/app-game.js"></script>
 </body>
 </html>

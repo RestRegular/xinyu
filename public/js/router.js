@@ -1,5 +1,5 @@
 // ===================================================================
-// ===== 视图路由 =====
+// ===== 视图路由（纯叙事RP版） =====
 // ===================================================================
 function showView(viewName) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -8,7 +8,6 @@ function showView(viewName) {
 
     if (viewName === 'lobby') { renderLobby(); }
     if (viewName === 'settings') { populateSettings(); }
-    if (viewName === 'stats') { renderStats(); }
 }
 
 // ===================================================================
@@ -76,15 +75,6 @@ function genreBadgeClass(genre) {
 function genreIcon(genre) {
     const map = { '奇幻': '⚔️', '科幻': '🚀', '武侠': '🏯', '末日': '☢️' };
     return map[genre] || '✨';
-}
-
-function rarityClass(rarity) {
-    return 'rarity-' + (rarity || 'common');
-}
-
-function itemIcon(type) {
-    const map = { weapon: '⚔️', armor: '🛡️', consumable: '🧪', key: '🔑', quest: '📜', misc: '📦' };
-    return map[type] || '📦';
 }
 
 function escapeHtml(str) {
